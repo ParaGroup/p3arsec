@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# gcc-ff.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/tools/libtool/parsec/gcc.bldconf

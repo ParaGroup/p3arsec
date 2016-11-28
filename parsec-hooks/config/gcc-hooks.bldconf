@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# gcc-hooks.bldconf - file containing global information necessary to build
+#                     PARSEC with hooks API
+#
+# Copyright (C) 2006-2007 Princeton University
+# Written by Christian Bienia
+
+source ${PARSECDIR}/config/gcc-orig.bldconf
+
+MAMMUT_PATH=${PARSECDIR}/pkgs/libs/mammut
+
+# Enable PARSEC hooks
+CFLAGS="${CFLAGS} -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include"
+CXXFLAGS="${CXXFLAGS} --std=c++11 -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include -I${MAMMUT_PATH}"
+LDFLAGS="${LDFLAGS} -L${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/lib -L${MAMMUT_PATH}/mammut"
+LIBS="${LIBS} -lhooks -lm -lstdc++ -pthread -lmammut -lrt"
+
+# Add directory with hooks library to library search path
+if [ -z "${LD_LIBRARY_PATH}" ]; then
+  export LD_LIBRARY_PATH="${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/lib"
+else
+  export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/lib"
+fi

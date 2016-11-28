@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# gcc.bldconf - file containing global information necessary to build
+#               PARSEC with gcc and FastFlow
+#
+# Copyright (C) 2008 Princeton University
+# Written by Christian Bienia
+
+source ${PARSECDIR}/config/gcc-hooks.bldconf
+
