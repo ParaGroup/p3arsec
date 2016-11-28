@@ -29,7 +29,7 @@ To download PARSEC and the parallel patterns implementation of some of its bench
 following commands:
 
 ```
-git clone https://github.com/ParaGroup/parsec-ff.git
+git clone https://github.com/ParaGroup/p3arsec.git
 ```
 
 ```
