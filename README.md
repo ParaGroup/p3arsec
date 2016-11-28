@@ -1,5 +1,9 @@
 # Description
 This repository contains parallel patterns implementations of some applications contained in the PARSEC benchmark.
+
+The structure and modelling of the provided application is described in the paper:
+**P<sup>3</sup>ARSEC: Towards Parallel Patterns Benchmarking** by Marco Danelutto, Tiziano De Matteis, Daniele De Sensi, Gabriele Mencagli and Massimo Torquati. The paper will soon be presented at the [32nd ACM Symposium on Applied Computing (SAC)](http://www.sigapp.org/sac/sac2017/).
+
 At the moment, the following applications have been implemented (**bold** versions are those used by default):
 
 Application  | Patterns implementations
