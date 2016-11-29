@@ -37,7 +37,7 @@ git clone https://github.com/ParaGroup/p3arsec.git
 ```
 
 ```
-cd parsec-ff
+cd p3arsec
 ```
 
 Then, run:
@@ -172,7 +172,7 @@ To do so, execute:
 
 To compile and run the other versions, please refer to the following sections.
 ## Dedup
-At line 33 of the [Makefile](parsec-ff/pkgs/kernels/dedup/src/Makefile), replace `encoder_ff_pipeoffarms.o` with:
+At line 33 of the [Makefile](p3arsec/pkgs/kernels/dedup/src/Makefile), replace `encoder_ff_pipeoffarms.o` with:
 
 * `encoder_ff_farm.o` if you want to run the *farm* version.
 * `encoder_ff_farmofpipes.o` if you want to run the *farm of pipelines* version.
@@ -181,12 +181,9 @@ At line 33 of the [Makefile](parsec-ff/pkgs/kernels/dedup/src/Makefile), replace
 After that, build and run *dedup* as usual.
 
 ## Ferret
-At line 78 of the [Makefile](parsec-ff/pkgs/apps/swaptions/src/Makefile), replace `ferret-ff-pipeoffarms` with:
+At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace `ferret-ff-pipeoffarms` with:
 
 * `ferret-ff-farm` if you want to run the *farm* version.
 * `ferret-ff-farmofpipes` if you want to run the *farm of pipelines* version.
 
 After that, build and run *ferret* as usual.
-
-
-
