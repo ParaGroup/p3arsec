@@ -91,15 +91,17 @@ else
 				echo $APP" "$VER" "$FILE
 				if [ -f $FILE ];
 				then
-					echo "build_deps=\"\${build_deps} hooks\"" >> $FILE
+					echo "build_deps=\"hooks \${build_deps}\"" >> $FILE
 				fi
 			done
 		done
 	fi
 
 	# Repair documentation
-	sh repairpod.sh
+	echo "Repairing documentation..."
+	sh repairpod.sh > /dev/null
 
 	# Clean
 	mv README README_PARSEC
+	echo "Download succeeded."
 fi
