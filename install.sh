@@ -6,7 +6,7 @@ ONLYINPUT=false
 APPLICATIONS="blackscholes ferret swaptions"
 KERNELS="canneal dedup"
 ALLAPS="$APPLICATIONS $KERNELS"
-VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff"
+VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial"
 
 while [[ $# -gt 0 ]]
 do
@@ -99,7 +99,7 @@ else
 
 	# Repair documentation
 	echo "Repairing documentation..."
-	sh repairpod.sh > /dev/null
+	sh repairpod.sh &> /dev/null
 
 	# Clean
 	mv README README_PARSEC
