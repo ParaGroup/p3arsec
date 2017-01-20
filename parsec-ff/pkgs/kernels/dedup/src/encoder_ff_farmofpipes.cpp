@@ -1160,9 +1160,6 @@ public:
 static void runFarmOfPipes(config_t * conf, struct thread_args* data_process_args,
                     struct thread_args* send_block_args, stats_t **threads_anchor_rv,
                     stats_t **threads_chunk_rv, stats_t **threads_compress_rv){
-#ifdef ENABLE_FF_ONDEMAND
-    farm.set_scheduling_ondemand();
-#endif
 
     std::vector<ff::ff_node*> pipelines;
     for(size_t i = 0; i < conf->nthreads; i++){
@@ -1186,6 +1183,9 @@ static void runFarmOfPipes(config_t * conf, struct thread_args* data_process_arg
     farm.add_emitter(new Fragment(data_process_args, conf->nthreads, farm.getlb()));
     farm.add_workers(pipelines);
     farm.add_collector(new Reorder(send_block_args, conf->nthreads));
+#ifdef ENABLE_FF_ONDEMAND
+    farm.set_scheduling_ondemand();
+#endif
     farm.run_and_wait_end();
 #endif
 
