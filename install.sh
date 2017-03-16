@@ -3,8 +3,8 @@
 MEASURE=true
 INPUT=true
 ONLYINPUT=false
-APPLICATIONS="blackscholes ferret swaptions"
-KERNELS="canneal dedup"
+APPLICATIONS="blackscholes ferret fluidanimate freqmine raytrace swaptions vips"
+KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
 VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial"
 
