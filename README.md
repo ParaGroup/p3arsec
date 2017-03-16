@@ -92,7 +92,7 @@ Note that not all these implementations are available for all the benchmarks. Fo
 implementations, please refer to the original [PARSEC documentation](http://wiki.cs.princeton.edu/index.php/PARSEC).
 
 # Run
-Once you compiled a benchmark, you can run it:
+Once you compiled a benchmark, you can run it with:
 ```
 ./parsecmgmt -a run -p [BenchmarkName] -c gcc-ff -n [ConcurrencyLevel]
 ```
