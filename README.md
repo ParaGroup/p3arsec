@@ -4,19 +4,19 @@ This repository contains parallel patterns implementations of some applications 
 The structure and modelling of the provided applications is described in the paper:
 **P<sup>3</sup>ARSEC: Towards Parallel Patterns Benchmarking** by Marco Danelutto, Tiziano De Matteis, Daniele De Sensi, Gabriele Mencagli and Massimo Torquati. The paper will soon be presented at the [32nd ACM Symposium on Applied Computing (SAC)](http://www.sigapp.org/sac/sac2017/).
 
-At the moment, the following applications have been implemented (**bold** versions are those used by default):
+At the moment, the following applications have been implemented (remaining benchmarks are currently under development) (**bold** versions are those used by default):
 
 Application  | Patterns implementations
 ------------ | ---------------------------------------------------------
 Blackscholes | [**Map**](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c)
 Canneal      | [**Master-Worker**](parsec-ff/pkgs/kernels/canneal/src/main.cpp)
 Dedup        | [**Pipeline of Farms**](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)
-	     | [Farm](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farm.cpp), 
-	     | [Farm of Pipelines](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farmofpipes.cpp), 
-	     | [Ordering Farm](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)
-Ferret       | [**Pipeline of Farms**](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp), 
-	     | [Farm of Pipelines](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp), 
-	     | [Farm](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
+"            | [Farm](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farm.cpp)
+"            | [Farm of Pipelines](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farmofpipes.cpp)
+"            | [Ordering Farm](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)
+Ferret       | [**Pipeline of Farms**](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)
+"            | [Farm of Pipelines](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp)
+"            | [Farm](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
 Swaptions    | [**Map**](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)
 
 All the applications have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) 
