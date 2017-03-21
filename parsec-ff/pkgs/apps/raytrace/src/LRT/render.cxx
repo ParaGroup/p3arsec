@@ -1,3 +1,8 @@
+#ifdef FF_VERSION
+#include <ff/map.hpp>
+#undef _INLINE
+#endif
+
 #include "LRT/include/lrt.h"
 #include "RTTL/common/RTInclude.hxx"
 #include "RTTL/common/RTThread.hxx"
@@ -20,6 +25,7 @@
 #ifdef USE_GRID
 # include "RTTL/Grid/Grid.hxx"
 #endif
+
 
 #define NORMALIZE_PRIMARY_RAYS
 
@@ -99,8 +105,13 @@ public:
 
 };
 
+struct fastflowMap;
+
 class Context : public MultiThreadedTaskQueue
 {
+#ifdef FF_VERSION
+    friend struct fastflowMap;
+#endif
 protected:
 
   /* data shared by all threads */
@@ -177,7 +188,6 @@ protected:
 			  const int resX,const int resY);
 
 public:
-
   enum {
     MINIRT_POLYGONAL_GEOMETRY,
     MINIRT_SUBDIVISION_SURFACE_GEOMETRY
@@ -583,6 +593,63 @@ void Context::buildSpatialIndexStructure()
 
 }
 
+
+
+#ifdef FF_VERSION
+int Context::task(int jobID, int threadId){;}
+
+struct fastflowMap: ff::ff_Map<int>{
+private:
+    Context* _context;
+public:
+    fastflowMap(Context* context):_context(context){;}
+
+    int *svc(int *in) {
+        int index;
+        const int tilesPerRow = _context->m_threadData.resX >> TILE_WIDTH_SHIFT;
+        parallel_for(0, _context->m_threadData.maxTiles, [&](const int index) {
+              /* todo: get rid of '/' and '%' */
+              int sx = (index % tilesPerRow)*TILE_WIDTH;
+              int sy = (index / tilesPerRow)*TILE_WIDTH;
+              int ex = min(sx+TILE_WIDTH,_context->m_threadData.resX);
+              int ey = min(sy+TILE_WIDTH,_context->m_threadData.resY);
+              if (_context->m_geometryMode == _context->MINIRT_POLYGONAL_GEOMETRY)
+                _context->renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
+              else if (_context->m_geometryMode == _context->MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+	            _context->renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
+              else
+	            FATAL("unknown mesh type");
+        }, _context->m_threads);
+        return NULL;
+    }
+};
+
+#if 0
+void* svc(void* task)
+{
+  const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
+  int index = *(int*) task;
+  if (index >= m_threadData.maxTiles) return GO_ON;
+
+  /* todo: get rid of '/' and '%' */
+
+  int sx = (index % tilesPerRow)*TILE_WIDTH;
+  int sy = (index / tilesPerRow)*TILE_WIDTH;
+  int ex = min(sx+TILE_WIDTH,m_threadData.resX);
+  int ey = min(sy+TILE_WIDTH,m_threadData.resY);
+
+  if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
+    renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
+  else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+	renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
+  else
+	FATAL("unknown mesh type");
+
+  return GO_ON;
+}
+#endif
+
+#else 
 int Context::task(int jobID, int threadId)
 {
   const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
@@ -608,6 +675,9 @@ int Context::task(int jobID, int threadId)
 
   return THREAD_RUNNING;
 }
+#endif
+
+
 
 /*! render a frame, write pixels to framebuffer. in its original
   version, the framebuffer was specified manually by a pointer; I
@@ -618,21 +688,18 @@ void Context::renderFrame(Camera *camera,
                          const int resX,const int resY)
 {
     assert(camera);
-
-#ifdef FF_VERSION
-
-#else
   if (m_threadsCreated == false)
     {
       if (m_threads > 1)
 	{
 	  cout << "-> starting " << m_threads << " threads..." << flush;
+#ifndef FF_VERSION
 	  createThreads(m_threads);
+#endif
 	  cout << "done" << endl << flush;
 	}
       m_threadsCreated = true;
     }
-#endif
 
   frameBuffer->startNewFrame();
   initSharedThreadData(camera,resX,resY,frameBuffer);
@@ -641,9 +708,15 @@ void Context::renderFrame(Camera *camera,
 
   if (m_threads>1)
     {
+#ifdef FF_VERSION
+      fastflowMap m(this);
+      m.run();
+      m.wait();
+#else
       Context::m_tileCounter.reset();
       startThreads();
       waitForAllThreads();
+#endif
     }
   else
     if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
