@@ -147,10 +147,15 @@ __forceinline int __builtin_expect(int a, int p) { return a; }
 #endif
 
 /// Defined if all SSE ops are emulated (SSE-less implementation).
-#ifndef _XMMINTRIN_H_INCLUDED
+
 #define RT_EMULATE_SSE
-#endif 
+
 #ifdef  RT_EMULATE_SSE
+
+//To avoid inclusion of headers containing functions with the same signature of those specified in RTEmulatedSSE.hxx
+#define _XMMINTRIN_H_INCLUDED 
+#define _X86INTRIN_H_INCLUDED
+
 #include "RTEmulatedSSE.hxx"
 
 #define _MM_SHUFFLE(fp3,fp2,fp1,fp0) (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0)))

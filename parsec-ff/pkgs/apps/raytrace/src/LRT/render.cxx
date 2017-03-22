@@ -1,8 +1,3 @@
-#ifdef FF_VERSION
-#include <ff/map.hpp>
-#undef _INLINE
-#endif
-
 #include "LRT/include/lrt.h"
 #include "RTTL/common/RTInclude.hxx"
 #include "RTTL/common/RTThread.hxx"
@@ -26,6 +21,12 @@
 # include "RTTL/Grid/Grid.hxx"
 #endif
 
+#ifdef FF_VERSION
+#undef _INLINE
+#include <ff/map.hpp>
+#undef _INLINE
+#define _INLINE inline __attribute__((always_inline))
+#endif
 
 #define NORMALIZE_PRIMARY_RAYS
 
@@ -110,7 +111,7 @@ struct fastflowMap;
 class Context : public MultiThreadedTaskQueue
 {
 #ifdef FF_VERSION
-    friend struct fastflowMap;
+  friend struct fastflowMap;
 #endif
 protected:
 
@@ -138,7 +139,9 @@ protected:
   vector< RTTextureObject_RGBA_UCHAR*, Align<RTTextureObject_RGBA_UCHAR*> > m_texture;
 
   /* threads */
-
+#ifdef FF_VERSION
+  fastflowMap m;
+#endif
   int m_threads;
   bool m_threadsCreated;
 
@@ -194,7 +197,11 @@ public:
   };
 
 
-  Context() {
+  Context():
+#ifdef FF_VERSION
+    m(this)
+#endif
+{
     m_bvh = NULL;
     m_mesh = NULL;
     m_threads = 1;
@@ -624,31 +631,6 @@ public:
     }
 };
 
-#if 0
-void* svc(void* task)
-{
-  const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
-  int index = *(int*) task;
-  if (index >= m_threadData.maxTiles) return GO_ON;
-
-  /* todo: get rid of '/' and '%' */
-
-  int sx = (index % tilesPerRow)*TILE_WIDTH;
-  int sy = (index / tilesPerRow)*TILE_WIDTH;
-  int ex = min(sx+TILE_WIDTH,m_threadData.resX);
-  int ey = min(sy+TILE_WIDTH,m_threadData.resY);
-
-  if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
-    renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
-  else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
-	renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
-  else
-	FATAL("unknown mesh type");
-
-  return GO_ON;
-}
-#endif
-
 #else 
 int Context::task(int jobID, int threadId)
 {
@@ -709,7 +691,6 @@ void Context::renderFrame(Camera *camera,
   if (m_threads>1)
     {
 #ifdef FF_VERSION
-      fastflowMap m(this);
       m.run();
       m.wait();
 #else
