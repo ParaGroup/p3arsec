@@ -1,6 +1,16 @@
 #ifndef RTTL_INCLUDE_HXX
 #define RTTL_INCLUDE_HXX
 
+
+#define RT_EMULATE_SSE
+
+#ifdef  RT_EMULATE_SSE
+//To avoid inclusion of headers containing functions with the same signature of those specified in RTEmulatedSSE.hxx 
+#define _XMMINTRIN_H_INCLUDED
+#define _X86INTRIN_H_INCLUDED
+#endif
+
+
 #ifdef _MSC_VER
 // The next warning happens in system files.
 // 4530 warning is a little bit strange: /EHsc *IS* actually enabled.
@@ -147,15 +157,7 @@ __forceinline int __builtin_expect(int a, int p) { return a; }
 #endif
 
 /// Defined if all SSE ops are emulated (SSE-less implementation).
-
-#define RT_EMULATE_SSE
-
-#ifdef  RT_EMULATE_SSE
-
-//To avoid inclusion of headers containing functions with the same signature of those specified in RTEmulatedSSE.hxx
-#define _XMMINTRIN_H_INCLUDED 
-#define _X86INTRIN_H_INCLUDED
-
+#ifdef RT_EMULATE_SSE
 #include "RTEmulatedSSE.hxx"
 
 #define _MM_SHUFFLE(fp3,fp2,fp1,fp0) (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | ((fp0)))

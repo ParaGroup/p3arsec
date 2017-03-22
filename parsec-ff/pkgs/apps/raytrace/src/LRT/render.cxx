@@ -24,6 +24,7 @@
 #ifdef FF_VERSION
 #undef _INLINE
 #include <ff/map.hpp>
+#include <ff/parallel_for.hpp>
 #undef _INLINE
 #define _INLINE inline __attribute__((always_inline))
 #endif
@@ -106,7 +107,17 @@ public:
 
 };
 
-struct fastflowMap;
+class Context;
+
+#ifdef FF_VERSION
+struct fastflowMap: ff::ff_Map<int>{
+private:
+    Context* _context;
+public:
+    fastflowMap(Context* context):_context(context){;}
+    int* svc(int* t);
+};
+#endif
 
 class Context : public MultiThreadedTaskQueue
 {
@@ -140,7 +151,7 @@ protected:
 
   /* threads */
 #ifdef FF_VERSION
-  fastflowMap m;
+  fastflowMap* m;
 #endif
   int m_threads;
   bool m_threadsCreated;
@@ -197,17 +208,16 @@ public:
   };
 
 
-  Context():
-#ifdef FF_VERSION
-    m(this)
-#endif
-{
+  Context(){
     m_bvh = NULL;
     m_mesh = NULL;
     m_threads = 1;
     m_threadsCreated = false;
     m_geometryMode = MINIRT_POLYGONAL_GEOMETRY;
     Context::m_tileCounter.reset();
+#ifdef FF_VERSION
+    m = new fastflowMap(this);
+#endif
   }
 
   /* ------------------------------------ */
@@ -601,35 +611,27 @@ void Context::buildSpatialIndexStructure()
 }
 
 
-
 #ifdef FF_VERSION
 int Context::task(int jobID, int threadId){;}
 
-struct fastflowMap: ff::ff_Map<int>{
-private:
-    Context* _context;
-public:
-    fastflowMap(Context* context):_context(context){;}
-
-    int *svc(int *in) {
-        int index;
-        const int tilesPerRow = _context->m_threadData.resX >> TILE_WIDTH_SHIFT;
-        parallel_for(0, _context->m_threadData.maxTiles, [&](const int index) {
-              /* todo: get rid of '/' and '%' */
-              int sx = (index % tilesPerRow)*TILE_WIDTH;
-              int sy = (index / tilesPerRow)*TILE_WIDTH;
-              int ex = min(sx+TILE_WIDTH,_context->m_threadData.resX);
-              int ey = min(sy+TILE_WIDTH,_context->m_threadData.resY);
-              if (_context->m_geometryMode == _context->MINIRT_POLYGONAL_GEOMETRY)
-                _context->renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
-              else if (_context->m_geometryMode == _context->MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
-	            _context->renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
-              else
-	            FATAL("unknown mesh type");
-        }, _context->m_threads);
-        return NULL;
-    }
-};
+int* fastflowMap::svc(int *in) {
+    int index;
+    const int tilesPerRow = _context->m_threadData.resX >> TILE_WIDTH_SHIFT;
+    ff::parallel_for(0, _context->m_threadData.maxTiles, [&](const int index) {
+          /* todo: get rid of '/' and '%' */
+          int sx = (index % tilesPerRow)*TILE_WIDTH;
+          int sy = (index / tilesPerRow)*TILE_WIDTH;
+          int ex = min(sx+TILE_WIDTH,_context->m_threadData.resX);
+          int ey = min(sy+TILE_WIDTH,_context->m_threadData.resY);
+          if (_context->m_geometryMode == _context->MINIRT_POLYGONAL_GEOMETRY)
+            _context->renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
+          else if (_context->m_geometryMode == _context->MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+             _context->renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
+          else
+              FATAL("unknown mesh type");
+    }, _context->m_threads);
+    return NULL;
+}
 
 #else 
 int Context::task(int jobID, int threadId)
@@ -691,8 +693,38 @@ void Context::renderFrame(Camera *camera,
   if (m_threads>1)
     {
 #ifdef FF_VERSION
-      m.run();
-      m.wait();
+#if 0
+        // Map
+        m->run();
+        m->wait();
+#else
+        // Parallel for
+        int index;
+        const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
+        static ff::ParallelFor pf(m_threads, true, true);
+#ifdef FF_VERSION_LAMBDA
+        ff::parallel_for(0, m_threadData.maxTiles, [&](const int index) 
+#else
+         pf.parallel_for(0, m_threadData.maxTiles, [&](const int index)            
+#endif
+                {
+                /* todo: get rid of '/' and '%' */
+                int sx = (index % tilesPerRow)*TILE_WIDTH;
+                int sy = (index / tilesPerRow)*TILE_WIDTH;
+                int ex = min(sx+TILE_WIDTH,m_threadData.resX);
+                int ey = min(sy+TILE_WIDTH,m_threadData.resY);
+                if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
+                    renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
+                else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+                    renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
+                else
+                    FATAL("unknown mesh type");
+            }
+#ifdef FF_VERSION_LAMBDA
+            , m_threads
+#endif
+           );
+#endif
 #else
       Context::m_tileCounter.reset();
       startThreads();
