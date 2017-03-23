@@ -705,7 +705,7 @@ void Context::renderFrame(Camera *camera,
 #ifdef FF_VERSION_LAMBDA
         ff::parallel_for(0, m_threadData.maxTiles, [&](const int index) 
 #else
-         pf.parallel_for(0, m_threadData.maxTiles, [&](const int index)            
+         pf.parallel_for(0, m_threadData.maxTiles, 1, 4, [&](const int index)            
 #endif
                 {
                 /* todo: get rid of '/' and '%' */
