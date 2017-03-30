@@ -217,6 +217,7 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 
 	return 1;
 }
+#endif
 
 //Body tracking threaded with OpenMP
 #if defined(USE_OPENMP)
@@ -434,7 +435,7 @@ int main(int argc, char **argv)
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
 #define __PARSEC_XSTRING(x) __PARSEC_STRING(x)
-        cout << "PARSEC Benchmark Suite Version "__PARSEC_XSTRING(PARSEC_VERSION) << endl << flush;
+        cout << "PARSEC Benchmark Suite Version " __PARSEC_XSTRING(PARSEC_VERSION) << endl << flush;
 #else
         cout << "PARSEC Benchmark Suite" << endl << flush;
 #endif //PARSEC_VERSION

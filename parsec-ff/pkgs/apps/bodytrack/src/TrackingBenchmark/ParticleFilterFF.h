@@ -70,8 +70,8 @@ void ParticleFilterFF<T>::CalcWeights(std::vector<Vectorf > &particles)
 		int n = omp_get_thread_num();
 		mWeights[j] = mModel->LogLikelihood(particles[j], vflag, n);						//compute log-likelihood weights for each particle
 		valid[j] = vflag ? 1 : 0;
-	}
-    );
+	},
+    mModel->GetNumThreads());
 	uint i = 0;
 	while(i < particles.size())
 	{	if(!valid[i])																		//if not valid(model prior), remove the particle from the list
@@ -112,8 +112,8 @@ void ParticleFilterFF<T>::GenerateNewParticles(int k)
     _pf.parallel_for(0, mNParticles, [&](const long i)            //distribute new particles randomly according to model stdDevs						
 	{	mNewParticles[i] = mParticles[mIndex[i]];											//add new particle for each entry in each bin distributed randomly about duplicated particle
 		AddGaussianNoise(mNewParticles[i], mModel->StdDevs()[k], mRnd[i]);
-	}
-    );
+	},
+    mModel->GetNumThreads());
 }
 
 

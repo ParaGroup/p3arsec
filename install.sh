@@ -3,7 +3,7 @@
 MEASURE=true
 INPUT=true
 ONLYINPUT=false
-APPLICATIONS="blackscholes ferret fluidanimate freqmine raytrace swaptions vips"
+APPLICATIONS="blackscholes bodytrack ferret fluidanimate freqmine raytrace swaptions vips"
 KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
 VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial"
@@ -100,6 +100,9 @@ else
 	# Repair documentation
 	echo "Repairing documentation..."
 	sh repairpod.sh &> /dev/null
+    
+    # Removing caches
+    rm -rf pkgs/apps/bodytrack/src/autom4te.cache/
 
 	# Clean
 	mv README README_PARSEC

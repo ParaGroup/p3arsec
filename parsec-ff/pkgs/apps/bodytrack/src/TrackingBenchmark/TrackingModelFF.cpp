@@ -52,8 +52,8 @@ bool FlexFilterRowVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, int 
 			pdst++;
 			psrc++;
 		}
-	}
-    );
+	},
+    mThreads);
 	return true;
 }
 
@@ -79,8 +79,8 @@ bool FlexFilterColumnVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, i
 			pdst++;
 			psrc++;
 		}
-	}
-    );
+	},
+    mThreads);
 	return true;
 }
 
@@ -110,8 +110,8 @@ inline FlexImage8u GradientMagThresholdFF(FlexImage8u &src, float threshold)
 			*pr = (mag < threshold) ? 0 : 255;
 			p++; ph++; pl++; pr++;
 		}
-	}
-    );
+	},
+    mThreads);
 	return r;
 }
 
