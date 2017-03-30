@@ -32,7 +32,7 @@ using namespace std;
 
 //FF threaded - 1D filter Row wise 1 channel any type data or kernel valid pixels only
 template<class T, class T2>
-bool FlexFilterRowVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, int kernelSize, bool allocate = true)
+bool FlexFilterRowVFF(ff::ParallelFor* pf, int mThreads, FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, int kernelSize, bool allocate = true)
 {
 	if(kernelSize % 2 == 0)									//enforce odd length kernels
 		return false;
@@ -40,8 +40,7 @@ bool FlexFilterRowVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, int 
 		dst.Reallocate(src.Size());
 	dst.Set((T)0);
 	int n = kernelSize / 2, h = src.Height();
-    _pf.parallel_for(0, h, [&](const long y)
-	for(int y = 0; y < h; y++)
+     pf->parallel_for(0, h, [&](const int y)
 	{	T *psrc = &src(n, y), *pdst = &dst(n, y);
 		for(int x = n; x < src.Width() - n; x++)
 		{	int k = 0;
@@ -59,7 +58,7 @@ bool FlexFilterRowVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, int 
 
 //FF threaded - 1D filter Column wise 1 channel any type data or kernel valid pixels only
 template<class T, class T2>
-bool FlexFilterColumnVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, int kernelSize, bool allocate = true)
+bool FlexFilterColumnVFF(ff::ParallelFor* pf, int mThreads, FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, int kernelSize, bool allocate = true)
 {
 	if(kernelSize % 2 == 0)									//enforce odd length kernels
 		return false;
@@ -68,7 +67,7 @@ bool FlexFilterColumnVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, i
 	dst.Set((T)0);
 	int n = kernelSize / 2;
 	int sb = src.StepBytes(), h = src.Height() - n;
-    _pf.parallel_for(0, h, [&](const long y)
+    pf->parallel_for(0, h, [&](const int y)
 	{	T *psrc = &src(0, y), *pdst = &dst(0, y);
 		for(int x = 0; x < src.Width(); x++)
 		{	int k = 0;
@@ -88,20 +87,20 @@ bool FlexFilterColumnVFF(FlexImage<T,1> &src, FlexImage<T,1> &dst, T2 *kernel, i
 
 //Generate an edge map from the original camera image
 //Separable 7x7 gaussian filter - threaded
-inline void GaussianBlurFF(FlexImage8u &src, FlexImage8u &dst)
+inline void GaussianBlurFF(ff::ParallelFor* pf, int mThreads, FlexImage8u &src, FlexImage8u &dst)
 {
 	float k[] = {0.12149085090552f, 0.14203719483447f, 0.15599734045770f, 0.16094922760463f, 0.15599734045770f, 0.14203719483447f, 0.12149085090552f};
 	FlexImage8u tmp;
-	FlexFilterRowVFF(src, tmp, k, 7);											//separable gaussian convolution using kernel k
-	FlexFilterColumnVFF(tmp, dst, k, 7);
+	FlexFilterRowVFF(pf, mThreads, src, tmp, k, 7);											//separable gaussian convolution using kernel k
+	FlexFilterColumnVFF(pf, mThreads, tmp, dst, k, 7);
 }
 
 //Calculate gradient magnitude and threshold to binarize - threaded
-inline FlexImage8u GradientMagThresholdFF(FlexImage8u &src, float threshold)
+inline FlexImage8u GradientMagThresholdFF(ff::ParallelFor* pf, int mThreads, FlexImage8u &src, float threshold)
 {
 	FlexImage8u r(src.Size());
 	ZeroBorder(r);
-    _pf.parallel_for(1, src.Height() - 1, [&](const long y)
+      pf->parallel_for(1, src.Height() - 1, [&](const int y)
 	{	Im8u *p = &src(1,y), *ph = &src(1,y - 1), *pl = &src(1,y + 1), *pr = &r(1,y);
 		for(int x = 1; x < src.Width() - 1; x++)
 		{	float xg = -0.125f * ph[-1] + 0.125f * ph[1] - 0.250f * p[-1] + 0.250f * p[1] - 0.125f * pl[-1] + 0.125f * pl[1];	//calc x and y gradients
@@ -118,8 +117,8 @@ inline FlexImage8u GradientMagThresholdFF(FlexImage8u &src, float threshold)
 //Generate an edge map from the original camera image
 void TrackingModelFF::CreateEdgeMap(FlexImage8u &src, FlexImage8u &dst)
 {
-	FlexImage8u gr = GradientMagThresholdFF(src, 16.0f);						//calc gradient magnitude and threshold
-	GaussianBlurFF(gr, dst);													//Blur to create distance error map
+        FlexImage8u gr = GradientMagThresholdFF(_pf, mThreads, src, 16.0f);						//calc gradient magnitude and threshold
+	GaussianBlurFF(_pf, mThreads, gr, dst);													//Blur to create distance error map
 }
 
 //templated conversion to string with field width

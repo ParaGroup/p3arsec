@@ -184,9 +184,11 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 		return 0;
 	}
 	model.SetNumThreads(threads);
+        ff::ParallelFor parallelFor(threads);
+        model.setParallelFor(&parallelFor);                                 //set parallelFor object.  
 	model.GetObservation(0);  														    //load data for first frame
-    model.setParallelFor(new ff::ParallelFor(threads));                                 //set parallelFor object.
 	ParticleFilterFF<TrackingModel> pf;											     	//particle filter (FF threaded) instantiated with body tracking model type
+        pf.setParallelFor(&parallelFor);
 	pf.SetModel(model);																	//set the particle filter model
 	pf.InitializeParticles(particles);													//generate initial set of particles and evaluate the log-likelihoods
 
@@ -210,7 +212,6 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 		if(OutputBMP)
 			pf.Model().OutputBMP(estimate, i);											//save output bitmap file
 	}
-    delete model.getParallelFor();
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_end();
 #endif

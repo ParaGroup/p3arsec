@@ -24,6 +24,7 @@
 # include "config.h"
 #endif
 
+#include <ff/utils.hpp>
 #include <ff/parallel_for.hpp>
 #include "ParticleFilter.h"
 
@@ -41,6 +42,8 @@ class ParticleFilterFF : public ParticleFilter<T> {
 	using ParticleFilter<T>:: mRnd;
 	typedef typename ParticleFilter<T>::fpType fpType;
 	typedef typename ParticleFilter<T>::Vectorf Vectorf;
+private:
+        ff::ParallelFor* parallelFor;
 
 protected:
 	std::vector<int> mIndex;																//list of particles to regenerate
@@ -50,8 +53,10 @@ protected:
 
 	//New particle generation - threaded version 
 	void GenerateNewParticles(int k);
-
-
+public:
+        void setParallelFor(ff::ParallelFor* pf){
+            parallelFor = pf;
+        }
 };
 
 //Calculate particle weights (mWeights) and find highest likelihood particle. 
@@ -64,14 +69,16 @@ void ParticleFilterFF<T>::CalcWeights(std::vector<Vectorf > &particles)
 	fpType total = 0, best = 0, minWeight = 1e30f, annealingFactor = 1;
 	mWeights.resize(particles.size());
 
-	int np = (int)particles.size(), j;
-    _pf.parallel_for(0, np, [&](const long j)   											//FastFlow parallelized loop to compute log-likelihoods 
+	int np = (int)particles.size(), j = 0;
+        // parallelFor->parallel_for(0, np, [&](const int j)   											//FastFlow parallelized loop to compute log-likelihoods 
+        using ff::error;
+        // Fatto cosi per accedere a _ff_tread_id, non so se si puo' fare con il parallelFor->parallel_for
+        FF_PARFOR_START(parallelFor,j,0,np,1,PARFOR_STATIC(0),mModel->GetNumThreads())
 	{	bool vflag;
-		int n = omp_get_thread_num();
-		mWeights[j] = mModel->LogLikelihood(particles[j], vflag, n);						//compute log-likelihood weights for each particle
+                mWeights[j] = mModel->LogLikelihood(particles[j], vflag, _ff_thread_id);						//compute log-likelihood weights for each particle
 		valid[j] = vflag ? 1 : 0;
-	},
-    mModel->GetNumThreads());
+	} FF_PARFOR_STOP(parallelFor);
+
 	uint i = 0;
 	while(i < particles.size())
 	{	if(!valid[i])																		//if not valid(model prior), remove the particle from the list
@@ -109,11 +116,11 @@ void ParticleFilterFF<T>::GenerateNewParticles(int k)
 	for(int i = 0; i < (int)mBins.size(); i++)										
 		for(uint j = 0; j < mBins[i]; j++)													//index particles to be regenerated
 			mIndex[p++] = i;
-    _pf.parallel_for(0, mNParticles, [&](const long i)            //distribute new particles randomly according to model stdDevs						
+        parallelFor->parallel_for(0, mNParticles, [&](const long i)            //distribute new particles randomly according to model stdDevs						
 	{	mNewParticles[i] = mParticles[mIndex[i]];											//add new particle for each entry in each bin distributed randomly about duplicated particle
 		AddGaussianNoise(mNewParticles[i], mModel->StdDevs()[k], mRnd[i]);
 	},
-    mModel->GetNumThreads());
+        mModel->GetNumThreads());
 }
 
 
