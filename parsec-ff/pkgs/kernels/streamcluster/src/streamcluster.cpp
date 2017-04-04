@@ -6,6 +6,10 @@
  * streamcluster - Online clustering algorithm
  *
  */
+
+/**
+  * FastFlow version implemented by Tiziano De Matteis <dematteis at di.unipi.it>
+  */
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -15,6 +19,10 @@
 #include <math.h>
 #include <sys/resource.h>
 #include <limits.h>
+
+#if defined(FF_VERSION)
+#include "ff/parallel_for.hpp"
+#endif
 
 #if defined(ENABLE_THREADS) || defined(FF_VERSION)
 #include <pthread.h>
@@ -73,6 +81,16 @@ static int* center_table; //index table of centers
 
 static int nproc; //# of threads
 
+#ifdef FF_VERSION
+//support data structure for FF
+
+typedef struct{
+	ff::ParallelFor *pf;
+}ff_support;
+
+ff_support fastflowsup;
+
+#endif
 
 #ifdef TBB_VERSION
 tbb::cache_aligned_allocator<float> memoryFloat;
@@ -654,12 +672,47 @@ float dist(Point p1, Point p2, int dim)
   return(result);
 }
 
-#ifdef FF_VERSION
+#if defined(FF_VERSION)
 float pspeedy(Points *points, float z, long *kcenter)
 {
-    ;
-}
+  /*In this case the different parallel parts have been implemented by using
+   * parallel for (essentially Map) over all the points*/
 
+  double totalcost;
+  int i;
+
+  /* create center at first point, send it to itself */
+  fastflowsup.pf->parallel_for(0,points->num,[&](const long idx){
+	  float distance = dist(points->p[idx],points->p[0],points->dim);
+	  points->p[idx].cost = distance * points->p[idx].weight;
+	  points->p[idx].assign=0;
+  },nproc);
+
+
+  *kcenter = 1;
+
+  for(i = 1; i < points->num; i++ )  {
+	bool to_open = ((float)lrand48()/(float)INT_MAX)<(points->p[i].cost/z);
+	if( to_open )  {
+		(*kcenter)++;
+		fastflowsup.pf->parallel_for(0,points->num,[&](const long idx){
+
+			float distance = dist(points->p[i],points->p[idx],points->dim);
+			if( distance*points->p[idx].weight < points->p[idx].cost )
+			{
+				points->p[idx].cost = distance * points->p[idx].weight;
+				points->p[idx].assign=i;
+			}
+		},nproc);
+	}
+  }
+
+  totalcost=z*(*kcenter);
+  for(int i=0;i<points->num;i++)
+	  totalcost+=points->p[i].cost;
+
+  return(totalcost);
+}
 #elif defined(TBB_VERSION)
 /* run speedy on the points, return total cost of solution */
 float pspeedy(Points *points, float z, long *kcenter)
@@ -768,25 +821,25 @@ float pspeedy(Points *points, float z, long *kcenter, int pid, pthread_barrier_t
     } 
   }
   else  { // I am the master thread. I decide whether to open a center and notify others if so. 
-    for(i = 1; i < points->num; i++ )  {
-      bool to_open = ((float)lrand48()/(float)INT_MAX)<(points->p[i].cost/z);
-      if( to_open )  {
-	(*kcenter)++;
+	  for(i = 1; i < points->num; i++ )  {
+		  bool to_open = ((float)lrand48()/(float)INT_MAX)<(points->p[i].cost/z);
+		  if( to_open )  {
+			  (*kcenter)++;
 #ifdef ENABLE_THREADS
-	pthread_mutex_lock(&mutex);
+			  pthread_mutex_lock(&mutex);
 #endif
-	open = true;
+			  open = true;
 #ifdef ENABLE_THREADS
-	pthread_mutex_unlock(&mutex);
-	pthread_cond_broadcast(&cond);
+			  pthread_mutex_unlock(&mutex);
+			  pthread_cond_broadcast(&cond);
 #endif
-	for( int k = k1; k < k2; k++ )  {
-	  float distance = dist(points->p[i],points->p[k],points->dim);
-	  if( distance*points->p[k].weight < points->p[k].cost )  {
-	    points->p[k].cost = distance * points->p[k].weight;
-	    points->p[k].assign=i;
-	  }
-	}
+			  for( int k = k1; k < k2; k++ )  {
+				  float distance = dist(points->p[i],points->p[k],points->dim);
+				  if( distance*points->p[k].weight < points->p[k].cost )  {
+					  points->p[k].cost = distance * points->p[k].weight;
+					  points->p[k].assign=i;
+				  }
+			  }
 #ifdef ENABLE_THREADS
 	pthread_barrier_wait(barrier);
 #endif
@@ -854,13 +907,223 @@ float pspeedy(Points *points, float z, long *kcenter, int pid, pthread_barrier_t
    points */
 
 
-#ifdef FF_VERSION
+
+#if defined(FF_VERSION)
 double pgain(long x, Points *points, double z, long int *numcenters)
 {
-    ;
+
+  /*
+   * To maintain a schema similar to the one of the pthreads implementation,
+   * the "parallel for"  are used to iterate over the available threads, each of which
+   * will execute work over a different portion of the data
+   */
+  int i;
+
+  double *work_mem;
+  double gl_cost_of_opening_x = 0;
+  int gl_number_of_centers_to_close = 0;
+
+  //each thread takes a block of working_mem.
+  int stride = *numcenters+2;
+  //make stride a multiple of CACHE_LINE
+  int cl = CACHE_LINE/sizeof(double);
+  if( stride % cl != 0 ) {
+	stride = cl * ( stride / cl + 1);
+  }
+  int K = stride -2 ; // K==*numcenters
+
+  //we must have a cost_of_opening_x local for each thread
+  double *cost_of_opening_x;
+
+
+  work_mem = (double*) malloc(stride*(nproc+1)*sizeof(double));
+  cost_of_opening_x = (double *)calloc(nproc,sizeof(double));
+
+  /*For each center, we have a *lower* field that indicates
+	how much we will save by closing the center.
+	Each thread has its own copy of the *lower* fields as an array.
+	We first build a table to index the positions of the *lower* fields.
+  */
+
+  long bsize = points->num/nproc;
+  for( int p = 0; p < nproc; p++ ) {
+	  long k1 = bsize*p;
+	  long k2 = k1 + bsize;
+	  if(p == nproc-1) {
+		  k2 = points->num;
+	  }
+	  int count = 0;
+	  for(int i = k1; i < k2; i++ ) {
+		  if( is_center[i] ) {
+			  center_table[i] = count++;
+		  }
+	  }
+	  work_mem[p*stride] = count;
+  }
+
+
+  int accum = 0;
+  for( int p = 0; p < nproc; p++ ) {
+	  int tmp = (int)work_mem[p*stride];
+	  work_mem[p*stride] = accum;
+	  accum += tmp;
+  }
+
+  for( int p = 0; p < nproc; p++ ) {
+	  long k1 = bsize*p;
+	  long k2 = k1 + bsize;
+	  if(p == nproc-1) {
+		k2 = points->num;
+	  }
+	  for( int i = k1; i < k2; i++ ) {
+		  if( is_center[i] ) {
+			  center_table[i] += (int)work_mem[p*stride];
+		  }
+	  }
+  }
+
+
+
+
+  //now we finish building the table. clear the working memory.
+  memset(switch_membership , 0, points->num*sizeof(bool));
+  memset(work_mem, 0, stride*(nproc+1)*sizeof(double));
+
+
+
+  //global *lower* fields
+  double* gl_lower = &work_mem[nproc*stride];
+
+  fastflowsup.pf->parallel_for(0,nproc,[&](const long idx){
+	  long k1 = bsize*idx;
+	  long k2 = k1 + bsize;
+	  if (idx == nproc-1) k2 = points->num;
+
+	  //my *lower* fields
+	  double* lower = &work_mem[idx*stride];
+	  for (int i = k1; i < k2; i++ ) {
+		  float x_cost = dist(points->p[i], points->p[x], points->dim)
+			* points->p[i].weight;
+		  float current_cost = points->p[i].cost;
+
+		  if ( x_cost < current_cost ) {
+
+			// point i would save cost just by switching to x
+			// (note that i cannot be a median,
+			// or else dist(p[i], p[x]) would be 0)
+
+			switch_membership[i] = 1;
+			cost_of_opening_x[idx] += x_cost - current_cost;
+
+		  } else {
+
+			// cost of assigning i to x is at least current assignment cost of i
+
+			// consider the savings that i's **current** median would realize
+			// if we reassigned that median and all its members to x;
+			// note we've already accounted for the fact that the median
+			// would save z by closing; now we have to subtract from the savings
+			// the extra cost of reassigning that median and its members
+			int assign = points->p[i].assign;
+			lower[center_table[assign]] += current_cost - x_cost;
+		  }
+	  }
+
+  },nproc);
+
+
+  fastflowsup.pf->parallel_for(0,nproc,[&](const long idx){
+	 int number_of_centers_to_close = 0;
+
+	  long k1 = bsize*idx;
+	  long k2 = k1 + bsize;
+	  if (idx == nproc-1) k2 = points->num;
+	  // at this time, we can calculate the cost of opening a center
+	  // at x; if it is negative, we'll go through with opening it
+
+	  for ( int i = k1; i < k2; i++ ) {
+		  if( is_center[i] ) {
+			  double low = z;
+			  //aggregate from all threads
+			  for( int p = 0; p < nproc; p++ ) {
+				  low += work_mem[center_table[i]+p*stride];
+			  }
+			  gl_lower[center_table[i]] = low; //ok, questa non e'
+			  if ( low > 0 ) {
+				  // i is a median, and
+				  // if we were to open x (which we still may not) we'd close i
+
+				  // note, we'll ignore the following quantity unless we do open x
+				  ++number_of_centers_to_close;
+				  cost_of_opening_x[idx] -= low;
+			  }
+		  }
+	  }
+	  //use the rest of working memory to store the following
+	  work_mem[idx*stride + K] = number_of_centers_to_close;
+	  work_mem[idx*stride + K+1] = cost_of_opening_x[idx];
+  },nproc);
+
+
+  gl_cost_of_opening_x = z;
+  //aggregate
+  for( int p = 0; p < nproc; p++ ) {
+	  gl_number_of_centers_to_close += (int)work_mem[p*stride + K];
+	  gl_cost_of_opening_x += work_mem[p*stride+K+1];
+  }
+
+
+  // Now, check whether opening x would save cost; if so, do it, and
+  // otherwise do nothing
+
+  if ( gl_cost_of_opening_x < 0 ) {
+	  //  we'd save money by opening x; we'll do it
+	  fastflowsup.pf->parallel_for(0,nproc,[&](const long idx){
+
+		  long k1 = bsize*idx;
+		  long k2 = k1 + bsize;
+		  if (idx == nproc-1) k2 = points->num;
+		  for ( int i = k1; i < k2; i++ ) {
+			  bool close_center = gl_lower[center_table[points->p[i].assign]] > 0 ;
+			  if ( switch_membership[i] || close_center ) {
+				  // Either i's median (which may be i itself) is closing,
+				  // or i is closer to x than to its current median
+				  points->p[i].cost = points->p[i].weight *
+						  dist(points->p[i], points->p[x], points->dim);
+				  points->p[i].assign = x;
+			  }
+		  }
+		  for( int i = k1; i < k2; i++ ) {
+			  if( is_center[i] && gl_lower[center_table[i]] > 0 ) {
+				  is_center[i] = false;
+			  }
+		  }
+		  if( x >= k1 && x < k2 ) {
+			  is_center[x] = true;
+		  }
+	  },nproc);
+
+
+
+
+	  *numcenters = *numcenters + 1 - gl_number_of_centers_to_close;
+  }
+  else {
+	  gl_cost_of_opening_x = 0;  // the value we'll return
+  }
+
+  free(work_mem);
+  //    free(is_center);
+  //    free(switch_membership);
+  //    free(proc_cost_of_opening_x);
+  //    free(proc_number_of_centers_to_close);
+
+  return -gl_cost_of_opening_x;
 }
 
+
 #elif defined(TBB_VERSION)
+double pgain(long x, Points *points, double z, long int *numcenters)
 {
   int i;
   int number_of_centers_to_close = 0;
@@ -962,7 +1225,7 @@ double pgain(long x, Points *points, double z, long int *numcenters)
 // Sequential and pthreads
 double pgain(long x, Points *points, double z, long int *numcenters, int pid, pthread_barrier_t* barrier)
 {
-  //  printf("pgain pthread %d begin\n",pid);
+
 #ifdef ENABLE_THREADS
   pthread_barrier_wait(barrier);
 #endif
@@ -1046,11 +1309,13 @@ double pgain(long x, Points *points, double z, long int *numcenters, int pid, pt
 #ifdef ENABLE_THREADS
   pthread_barrier_wait(barrier);
 #endif
-  
+
+
   //my *lower* fields
   double* lower = &work_mem[pid*stride];
   //global *lower* fields
   double* gl_lower = &work_mem[nproc*stride];
+
 
   for ( i = k1; i < k2; i++ ) {
     float x_cost = dist(points->p[i], points->p[x], points->dim) 
@@ -1077,41 +1342,51 @@ double pgain(long x, Points *points, double z, long int *numcenters, int pid, pt
       // the extra cost of reassigning that median and its members 
       int assign = points->p[i].assign;
       lower[center_table[assign]] += current_cost - x_cost;
+
     }
   }
+
+
 
 #ifdef ENABLE_THREADS
   pthread_barrier_wait(barrier);
 #endif
+
 
   // at this time, we can calculate the cost of opening a center
   // at x; if it is negative, we'll go through with opening it
 
-  for ( int i = k1; i < k2; i++ ) {
-    if( is_center[i] ) {
-      double low = z;
-      //aggregate from all threads
-      for( int p = 0; p < nproc; p++ ) {
-	low += work_mem[center_table[i]+p*stride];
-      }
-      gl_lower[center_table[i]] = low;
-      if ( low > 0 ) {
-	// i is a median, and
-	// if we were to open x (which we still may not) we'd close i
+	for ( int i = k1; i < k2; i++ ) {
+		if( is_center[i] ) {
+			double low = z;
+			//aggregate from all threads
+			for( int p = 0; p < nproc; p++ ) {
+				low += work_mem[center_table[i]+p*stride];
+			}
+			gl_lower[center_table[i]] = low;
+			if ( low > 0 ) {
+				// i is a median, and
+				// if we were to open x (which we still may not) we'd close i
 
-	// note, we'll ignore the following quantity unless we do open x
-	++number_of_centers_to_close;  
-	cost_of_opening_x -= low;
-      }
-    }
-  }
-  //use the rest of working memory to store the following
-  work_mem[pid*stride + K] = number_of_centers_to_close;
-  work_mem[pid*stride + K+1] = cost_of_opening_x;
+				// note, we'll ignore the following quantity unless we do open x
+				++number_of_centers_to_close;
+				cost_of_opening_x -= low;
+			}
+		}
+	}
+	//use the rest of working memory to store the following
+	work_mem[pid*stride + K] = number_of_centers_to_close;
+	work_mem[pid*stride + K+1] = cost_of_opening_x;
+
+
+
 
 #ifdef ENABLE_THREADS
   pthread_barrier_wait(barrier);
 #endif
+
+
+
   //  printf("thread %d cost complete\n",pid); 
 
   if( pid==0 ) {
@@ -1149,6 +1424,8 @@ double pgain(long x, Points *points, double z, long int *numcenters, int pid, pt
       is_center[x] = true;
     }
 
+
+
     if( pid==0 ) {
       *numcenters = *numcenters + 1 - gl_number_of_centers_to_close;
     }
@@ -1182,12 +1459,37 @@ double pgain(long x, Points *points, double z, long int *numcenters, int pid, pt
 /* halt if there is < e improvement after iter calls to gain */
 /* feasible is an array of numfeasible points which may be centers */
 
-#ifdef FF_VERSION
+#if defined (FF_VERSION)
 float pFL(Points *points, int *feasible, int numfeasible,
-	  double z, long *k, double cost, long iter, double e)
-{  
-    ;
+		  float z, long *k, double cost, long iter, float e)
+{
+
+	/* This is executed sequentially
+	 */
+
+	long i;
+	long x;
+	double change;
+	long numberOfPoints;
+
+	change = cost;
+	/* continue until we run iter iterations without improvement */
+	/* stop instead if improvement is less than e */
+	while (change/cost > 1.0*e) {
+		change = 0.0;
+		numberOfPoints = points->num;
+		/* randomize order in which centers are considered */
+
+		intshuffle(feasible, numfeasible);
+		for (i=0;i<iter;i++) {
+			x = i%numfeasible;
+			change += pgain(feasible[x], points, z, k);
+		}
+		cost -= change;
+	}
+	return(cost);
 }
+
 #elif defined(TBB_VERSION)
 float pFL(Points *points, int *feasible, int numfeasible,
 	  double z, long *k, double cost, long iter, double e)
@@ -1264,7 +1566,7 @@ float pFL(Points *points, int *feasible, int numfeasible,
 
 
 
-#ifdef TBB_VERSION
+#if defined(TBB_VERSION) || defined(FF_VERSION)
 int selectfeasible_fast(Points *points, int **feasible, int kmin)
 #else
 int selectfeasible_fast(Points *points, int **feasible, int kmin, int pid, pthread_barrier_t* barrier)
@@ -1346,10 +1648,126 @@ int selectfeasible_fast(Points *points, int **feasible, int kmin, int pid, pthre
 
 
 #ifdef FF_VERSION
-float pkmedian(Points *points, long kmin, long kmax, long* kfinal,
-	       int pid, pthread_barrier_t* barrier )
+float pkmedian(Points *points, long kmin, long kmax, long* kfinal)
 {
-    ;
+  int i;
+  double cost;
+  double lastcost;
+  double hiz, loz, z;
+
+  static long k;
+  static int *feasible;
+  static int numfeasible;
+  static double* hizs;
+
+  hiz = loz = 0.0;
+  long numberOfPoints = points->num;
+  long ptDimension = points->dim;
+
+
+  //ParFor+Reduce: compute distances from the first point
+
+  hizs = (double*)calloc(points->num, sizeof(double));
+
+
+  fastflowsup.pf->parallel_for(0, points->num, [&](const long idx){
+        hizs[idx] += dist(points->p[idx], points->p[0],ptDimension)*points->p[idx].weight;
+  },nproc);
+
+  for(int i = 0; i < points->num; i++){
+     hiz += hizs[i];
+  }
+
+  loz=0.0; z = (hiz+loz)/2.0;
+
+
+  /* Check whether more centers than points! */
+  // This is again a parfor
+  if (points->num <= kmax) {
+    /* just return all points as facilities */
+	  fastflowsup.pf->parallel_for(0,points->num,[&](const long idx){
+		  points->p[idx].assign = idx;
+		  points->p[idx].cost = 0;
+	  },nproc);
+
+    cost = 0;
+	free(hizs);
+	*kfinal = k;
+    return cost;
+  }
+
+  shuffle(points);
+  cost = pspeedy(points, z, &k);
+
+  i=0;
+  /* give speedy SP chances to get at least kmin/2 facilities */
+  while ((k < kmin)&&(i<SP)) {
+	cost = pspeedy(points, z, &k);
+    i++;
+  }
+
+  /* if still not enough facilities, assume z is too high */
+  while (k < kmin) {
+    if (i >= SP) {hiz=z; z=(hiz+loz)/2.0; i=0;}
+	shuffle(points);
+	cost = pspeedy(points, z, &k);
+    i++;
+  }
+
+  /* now we begin the binary search for real */
+  /* must designate some points as feasible centers */
+  /* this creates more consistancy between FL runs */
+  /* helps to guarantee correct # of centers at the end */
+  
+
+  numfeasible = selectfeasible_fast(points,&feasible,kmin);
+  for( int i = 0; i< points->num; i++ ) {
+	  is_center[points->p[i].assign]= true;
+  }
+
+  while(1) {
+    /* first get a rough estimate on the FL solution */
+    lastcost = cost;
+    cost = pFL(points, feasible, numfeasible,
+		   z, &k, cost, (long)(ITER*kmax*log((double)kmax)), 0.1);
+
+    /* if number of centers seems good, try a more accurate FL */
+    if (((k <= (1.1)*kmax)&&(k >= (0.9)*kmin))||
+	((k <= kmax+2)&&(k >= kmin-2))) {
+
+      /* may need to run a little longer here before halting without
+	 improvement */
+      cost = pFL(points, feasible, numfeasible,
+		 z, &k, cost, (long)(ITER*kmax*log((double)kmax)), 0.001);
+    }
+
+    if (k > kmax) {
+      /* facilities too cheap */
+      /* increase facility cost and up the cost accordingly */
+      loz = z; z = (hiz+loz)/2.0;
+      cost += (z-loz)*k;
+    }
+    if (k < kmin) {
+      /* facilities too expensive */
+      /* decrease facility cost and reduce the cost accordingly */
+      hiz = z; z = (hiz+loz)/2.0;
+      cost += (z-hiz)*k;
+    }
+
+    /* if k is good, return the result */
+    /* if we're stuck, just give up and return what we have */
+    if (((k <= kmax)&&(k >= kmin))||((loz >= (0.999)*hiz)) )
+      { 
+	break;
+      }
+  }
+
+  //clean up...
+  free(feasible);
+  free(hizs);
+  *kfinal = k;
+
+  return cost;
 }
 #elif defined(TBB_VERSION)
 /* compute approximate kmedian on the points */
@@ -1714,16 +2132,16 @@ struct pkmedian_arg_t
 void* localSearchSub(void* arg_) {
 
   pkmedian_arg_t* arg= (pkmedian_arg_t*)arg_;
+#if defined(FF_VERSION)
+  pkmedian(arg->points,arg->kmin,arg->kmax,arg->kfinal);
+#else
   pkmedian(arg->points,arg->kmin,arg->kmax,arg->kfinal,arg->pid,arg->barrier);
+#endif
 
   return NULL;
 }
 
-#ifdef FF_VERSION
-void localSearch( Points* points, long kmin, long kmax, long* kfinal ) {
-    ;
-}
-#elif defined(TBB_VERSION)
+#if defined(TBB_VERSION) || defined(FF_VERSION)
 void localSearch( Points* points, long kmin, long kmax, long* kfinal ) {
   pkmedian_arg_t arg;
   arg.points = points;
@@ -1731,6 +2149,7 @@ void localSearch( Points* points, long kmin, long kmax, long* kfinal ) {
   arg.kmax = kmax;
   arg.pid = 0;
   arg.kfinal = kfinal;
+  arg.barrier = NULL;
   localSearchSub(&arg);
 }
 #else //!TBB_VERSION
@@ -1861,9 +2280,9 @@ void outcenterIDs( Points* centers, long* centerIDs, char* outfile ) {
   fclose(fp);
 }
 
-void streamCluster( PStream* stream, 
-		    long kmin, long kmax, int dim,
-		    long chunksize, long centersize, char* outfile )
+void streamCluster( PStream* stream,
+			long kmin, long kmax, int dim,
+			long chunksize, long centersize, char* outfile )
 {
 
 #ifdef TBB_VERSION
@@ -1934,14 +2353,14 @@ void streamCluster( PStream* stream,
 #else
     switch_membership = (bool*)malloc(points.num*sizeof(bool));
     is_center = (bool*)calloc(points.num,sizeof(bool));
-    center_table = (int*)malloc(points.num*sizeof(int));
+	center_table = (int*)calloc(points.num,sizeof(int));
 #endif
 
 
     //fprintf(stderr,"center_table = 0x%08x\n",(int)center_table);
     //fprintf(stderr,"is_center = 0x%08x\n",(int)is_center);
 
-    localSearch(&points,kmin, kmax,&kfinal); // parallel
+	localSearch(&points,kmin, kmax,&kfinal); // parallel
 
     //fprintf(stderr,"finish local search\n");
     contcenters(&points); /* sequential */
@@ -1980,6 +2399,7 @@ void streamCluster( PStream* stream,
   center_table = (int*)malloc(centers.num*sizeof(int));
 #endif
 
+
   localSearch( &centers, kmin, kmax ,&kfinal ); // parallel
   contcenters(&centers);
   outcenterIDs( &centers, centerIDs, outfile);
@@ -1995,7 +2415,7 @@ int main(int argc, char **argv)
 #ifdef PARSEC_VERSION
 #define __PARSEC_STRING(x) #x
 #define __PARSEC_XSTRING(x) __PARSEC_STRING(x)
-        fprintf(stderr,"PARSEC Benchmark Suite Version "__PARSEC_XSTRING(PARSEC_VERSION)"\n");
+		fprintf(stderr,"PARSEC Benchmark Suite Version " __PARSEC_XSTRING(PARSEC_VERSION)"\n");
 	fflush(NULL);
 #else
         fprintf(stderr,"PARSEC Benchmark Suite\n");
@@ -2038,6 +2458,13 @@ int main(int argc, char **argv)
 #ifdef TBB_VERSION
   fprintf(stderr,"TBB version. Number of divisions: %d\n",NUM_DIVISIONS);
   tbb::task_scheduler_init init(nproc);
+#endif
+#ifdef FF_VERSION
+  //ParFor creation
+
+  ff::ParallelFor pf(nproc);
+
+  fastflowsup.pf=&pf;
 #endif
 
 
