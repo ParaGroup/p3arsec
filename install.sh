@@ -3,7 +3,7 @@
 MEASURE=true
 INPUT=true
 ONLYINPUT=false
-APPLICATIONS="blackscholes bodytrack ferret fluidanimate freqmine raytrace swaptions vips"
+APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips"
 KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
 VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial"
