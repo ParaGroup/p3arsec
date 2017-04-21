@@ -14,6 +14,7 @@
 #include "../Utilities/LOG.h"
 #include "../Utilities/DEBUG_UTILITIES.h"
 #include "../Thread_Utilities/THREAD_POOL.h"
+
 #ifdef ENABLE_FF
 #include <ff/parallel_for.hpp>
 extern ff::ParallelFor* ffpf;
@@ -296,7 +297,11 @@ One_Newton_Step_Toward_Steady_State (const T convergence_tolerance, const int ma
 				helpers (p).time = time;
 				helpers (p).beta = beta;
 				helpers (p).S_dot_Q_partial = &S_dot_Q_partial;
+#ifdef ENABLE_FF
+                                One_Newton_Step_Toward_Steady_State_CG_Helper_I(p, &helpers (p));
+#else
 				pool.Add_Task (One_Newton_Step_Toward_Steady_State_CG_Helper_I, &helpers (p));
+#endif
 			}
 #ifdef ENABLE_FF
             ,pool.number_of_threads);
@@ -311,7 +316,11 @@ One_Newton_Step_Toward_Steady_State (const T convergence_tolerance, const int ma
 #endif
 
             {
+#ifdef ENABLE_FF
+                                One_Newton_Step_Toward_Steady_State_CG_Helper_II(p, &helpers(p));
+#else
 				pool.Add_Task(One_Newton_Step_Toward_Steady_State_CG_Helper_II,&helpers(p));
+#endif
             }
 #ifdef ENABLE_FF
             ,pool.number_of_threads);
@@ -372,7 +381,11 @@ One_Newton_Step_Toward_Steady_State (const T convergence_tolerance, const int ma
 				helpers (p).dX_full = &dX_full;
 				helpers (p).rho_new_partial = &rho_new_partial;
 				helpers (p).supnorm_partial = &supnorm_partial;
+#ifdef ENABLE_FF
+                                One_Newton_Step_Toward_Steady_State_CG_Helper_III(p, &helpers (p));
+#else
 				pool.Add_Task (One_Newton_Step_Toward_Steady_State_CG_Helper_III, &helpers (p));
+#endif
 			}
 
 #ifdef ENABLE_FF
