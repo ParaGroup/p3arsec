@@ -322,9 +322,11 @@ typedef struct {
 
 	VipsThreadState *state;
 
+#ifndef HAVE_FF
 	/* Thread we are running.
 	 */
         GThread *thread;  	
+#endif
 
 	/* Set this to ask the thread to exit.
 	 */
@@ -361,6 +363,7 @@ typedef struct _VipsThreadpool {
 	int nthr;		/* Number of threads in pool */
 	VipsThread **thr;	/* Threads */
 
+#ifndef HAVE_FF
 	/* The caller blocks here until all threads finish.
 	 */
 	im_semaphore_t finish;	
@@ -368,6 +371,7 @@ typedef struct _VipsThreadpool {
 	/* Workers up this for every loop to make the main thread tick.
 	 */
 	im_semaphore_t tick;	
+#endif
 
 	/* Set this to abort evaluation early with an error.
 	 */
@@ -414,6 +418,7 @@ vips_thread_save_time_buffers( VipsThread *thr )
 static void
 vips_thread_free( VipsThread *thr )
 {
+#ifndef HAVE_FF
         /* Is there a thread running this region? Kill it!
          */
         if( thr->thread ) {
@@ -425,6 +430,7 @@ vips_thread_free( VipsThread *thr )
 		VIPS_DEBUG_MSG_RED( "thread_free: g_thread_join()\n" );
 		thr->thread = NULL;
         }
+#endif
 
 	IM_FREEF( g_object_unref, thr->state );
 	thr->pool = NULL;
@@ -543,7 +549,6 @@ vips_thread_main_loop( void *a )
 	for(;;) {
 		vips_thread_work_unit( thr );
 		im_semaphore_up( &pool->tick );
-
 		if( pool->stop || pool->error )
 			break;
 	} 
@@ -552,7 +557,7 @@ vips_thread_main_loop( void *a )
 	 */
 	im_semaphore_up( &pool->finish );
 
-        return( NULL );
+    return(NULL);
 }
 #endif /*HAVE_THREADS*/
 
@@ -567,7 +572,9 @@ vips_thread_new( VipsThreadpool *pool )
 		return( NULL );
 	thr->pool = pool;
 	thr->state = NULL;
+#ifndef HAVE_FF
 	thr->thread = NULL;
+#endif
 	thr->exit = 0;
 	thr->error = 0;
 #ifdef TIME_THREAD
@@ -590,7 +597,7 @@ vips_thread_new( VipsThreadpool *pool )
 	}
 #endif /*TIME_THREAD*/
 
-#ifdef HAVE_THREADS
+#if defined(HAVE_THREADS) && !defined(HAVE_FF)
 	/* Make a worker thread. We have to use g_thread_create_full() because
 	 * we need to insist on a non-tiny stack. Some platforms default to
 	 * very small values (eg. various BSDs).
@@ -605,7 +612,7 @@ vips_thread_new( VipsThreadpool *pool )
 	}
 
 	VIPS_DEBUG_MSG_RED( "vips_thread_new: g_thread_create_full()\n" );
-#endif /*HAVE_THREADS*/
+#endif /*HAVE_THREADS && !HAVE_FF*/
 
 	return( thr );
 }
@@ -637,9 +644,10 @@ vips_threadpool_free( VipsThreadpool *pool )
 
 	vips_threadpool_kill_threads( pool );
 	IM_FREEF( g_mutex_free, pool->allocate_lock );
+#ifndef HAVE_FF
 	im_semaphore_destroy( &pool->finish );
 	im_semaphore_destroy( &pool->tick );
-
+#endif
 	return( 0 );
 }
 
@@ -658,8 +666,10 @@ vips_threadpool_new( VipsImage *im )
 	pool->allocate_lock = g_mutex_new();
 	pool->nthr = im_concurrency_get();
 	pool->thr = NULL;
+#ifndef HAVE_FF
 	im_semaphore_init( &pool->finish, 0, "finish" );
 	im_semaphore_init( &pool->tick, 0, "tick" );
+#endif
 	pool->stop = FALSE;
 	pool->error = FALSE;
 
@@ -809,6 +819,118 @@ vips_threadpool_create_threads( VipsThreadpool *pool )
  *
  * Returns: 0 on success, or -1 on error.
  */
+#ifdef HAVE_FF
+#include <ff/farm.hpp>
+
+class Emitter: public ff::ff_node{
+public:
+    void* svc(void*){
+        getlb()->broadcast_task(GO_ON);
+        return EOS;
+    }
+};
+
+class Worker: public ff::ff_node{
+private:
+    VipsThreadpool *_pool; 
+    int _dummy_task;
+public:
+    Worker(VipsThreadpool *pool):_pool(pool), _dummy_task(0){
+        ;
+    }
+
+    void* svc(void*){
+        VipsThread *thr = _pool->thr[get_my_id()];
+	    g_assert(_pool == thr->pool);
+
+	    while(1){
+		    vips_thread_work_unit(thr);
+            // Just send something to collector so it can execute progress routine.
+            ff_send_out((void*) &_dummy_task);
+		    if(_pool->stop || _pool->error)
+			    break;
+	    } 
+        return EOS;
+    }
+}
+
+class Collector: public ff::ff_node{
+private:
+    VipsThreadpool *_pool; 
+	VipsThreadpoolProgress _progress;
+public:
+    Collector(VipsThreadpool *pool, 
+              VipsThreadpoolProgress progress):
+                _pool(pool), _progress(progress){;}
+
+    void* svc(void* t){
+		VIPS_DEBUG_MSG( "vips_threadpool_run: tick\n" );
+		if(_pool->stop || _pool->error){
+			return t;
+        }
+
+		if(_progress && _progress(_pool->a)){
+		    _pool->error = TRUE;
+        }
+
+		if(_pool->stop || _pool->error){
+			return t;
+        }
+        return t;
+    }
+}
+
+int
+vips_threadpool_run( VipsImage *im, 
+	VipsThreadStart start, 
+	VipsThreadpoolAllocate allocate, 
+	VipsThreadpoolWork work,
+	VipsThreadpoolProgress progress, 
+	void *a )
+{
+#ifndef HAVE_THREADS
+#error "FastFlow version requires HAVE_THREADS to be defined."
+#endif
+
+	VipsThreadpool *pool; 
+	int result;
+
+#ifdef TIME_THREAD
+	if( !thread_timer )
+		thread_timer = g_timer_new();
+#endif /*TIME_THREAD*/
+
+	if( !(pool = vips_threadpool_new( im )) )
+		return( -1 );
+
+	pool->start = start;
+	pool->allocate = allocate;
+	pool->work = work;
+	pool->a = a;
+
+    /*
+     * Create worker structures (not real threads).
+     */
+    if(vips_threadpool_create_threads(pool)){
+	    vips_threadpool_free(pool);
+	    return(-1);
+    }
+    Emitter e;
+    Collector c(pool, progress);
+    std::vector<ff_node*> workers;
+    for(size_t i = 0; i < im_concurrency_get(); i++){
+        workers.push_back(new Worker(pool));
+    }
+    ff_farm farm(&workers, &e, &c);
+    farm.run_and_wait_end();
+	/* Return 0 for success.
+	 */
+	result = pool->error ? -1 : 0;
+	vips_threadpool_free( pool );
+
+	return( result );
+}
+#else
 int
 vips_threadpool_run( VipsImage *im, 
 	VipsThreadStart start, 
@@ -876,6 +998,7 @@ vips_threadpool_run( VipsImage *im,
 
 	return( result );
 }
+#endif
 
 /**
  * vips_get_tile_size:
