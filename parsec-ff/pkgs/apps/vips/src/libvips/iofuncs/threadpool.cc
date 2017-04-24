@@ -59,6 +59,7 @@
 #include <vips/vips.h>
 #include <vips/internal.h>
 #include <vips/thread.h>
+#include <vips/threadpool.h>
 #include <vips/debug.h>
 
 #ifdef OS_WIN32
@@ -269,10 +270,10 @@ vips_thread_state_build( VipsObject *object )
 }
 
 static void
-vips_thread_state_class_init( VipsThreadStateClass *class )
+vips_thread_state_class_init( VipsThreadStateClass *tsclass )
 {
-	GObjectClass *gobject_class = G_OBJECT_CLASS( class );
-	VipsObjectClass *object_class = VIPS_OBJECT_CLASS( class );
+	GObjectClass *gobject_class = G_OBJECT_CLASS( tsclass );
+	VipsObjectClass *object_class = VIPS_OBJECT_CLASS( tsclass );
 
 	gobject_class->dispose = vips_thread_state_dispose;
 
@@ -532,7 +533,7 @@ vips_thread_work_unit( VipsThread *thr )
 		thr->error = TRUE;
 }
 
-#ifdef HAVE_THREADS
+#if defined(HAVE_THREADS) && !defined(HAVE_FF)
 /* What runs as a thread ... loop, waiting to be told to do stuff.
  */
 static void *
@@ -823,9 +824,15 @@ vips_threadpool_create_threads( VipsThreadpool *pool )
 #include <ff/farm.hpp>
 
 class Emitter: public ff::ff_node{
+private:
+    ff::ff_loadbalancer* _lb;
 public:
+    Emitter():_lb(NULL){;}
+    void setlb(ff::ff_loadbalancer* lb){
+        _lb = lb;
+    }
     void* svc(void*){
-        getlb()->broadcast_task(GO_ON);
+        _lb->broadcast_task(GO_ON);
         return EOS;
     }
 };
@@ -852,7 +859,7 @@ public:
 	    } 
         return EOS;
     }
-}
+};
 
 class Collector: public ff::ff_node{
 private:
@@ -878,7 +885,7 @@ public:
         }
         return t;
     }
-}
+};
 
 int
 vips_threadpool_run( VipsImage *im, 
@@ -888,6 +895,7 @@ vips_threadpool_run( VipsImage *im,
 	VipsThreadpoolProgress progress, 
 	void *a )
 {
+    printf("Fastflow version executing...");
 #ifndef HAVE_THREADS
 #error "FastFlow version requires HAVE_THREADS to be defined."
 #endif
@@ -917,11 +925,12 @@ vips_threadpool_run( VipsImage *im,
     }
     Emitter e;
     Collector c(pool, progress);
-    std::vector<ff_node*> workers;
+    std::vector<ff::ff_node*> workers;
     for(size_t i = 0; i < im_concurrency_get(); i++){
         workers.push_back(new Worker(pool));
     }
-    ff_farm farm(&workers, &e, &c);
+    ff::ff_farm<> farm(workers, (ff::ff_node*) &e, (ff::ff_node*) &c);
+    e.setlb(farm.getlb());
     farm.run_and_wait_end();
 	/* Return 0 for success.
 	 */
