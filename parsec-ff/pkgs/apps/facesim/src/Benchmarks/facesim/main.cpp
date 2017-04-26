@@ -1,6 +1,9 @@
 //#####################################################################
 // Copyright 2004, Igor Neverov, Eftychios Sifakis.
 // This file is part of PhysBAM whose distribution is governed by the license contained in the accompanying file PHYSBAM_COPYRIGHT.txt.
+// 
+// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
+// 
 //#####################################################################
 #include "../../Public_Library/Utilities/PARSE_ARGS.h"
 #include "../../Public_Library/Thread_Utilities/THREAD_POOL.h"

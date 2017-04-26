@@ -1985,6 +1985,7 @@ else
   enable_tbb=no
 fi;
 
+# Check whether --enable-ff or --disable-ff was given.
 if test "${enable_ff+set}" = set; then
   enableval="$enable_ff"
 

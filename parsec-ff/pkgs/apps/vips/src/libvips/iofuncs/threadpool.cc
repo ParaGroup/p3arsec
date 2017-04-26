@@ -10,6 +10,9 @@
  * 11/5/10
  * 	- argh, stopping many threads could sometimes leave allocated work
  * 	  undone
+ *
+ * FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
+ *
  */
 
 /*

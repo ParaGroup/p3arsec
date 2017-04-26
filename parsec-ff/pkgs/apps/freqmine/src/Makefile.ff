@@ -18,8 +18,8 @@ fpgrowth.o: fpmax.cpp data.h fp_tree.h common.h fsout.h
 data.o: data.cpp data.h
 	$(CXX) $(CXXFLAGS) -c data.cpp
 
-fp_tree.o: fp_tree.cpp data.h fp_tree.h common.h fsout.h
-	$(CXX) $(CXXFLAGS) -c fp_tree.cpp
+fp_tree.o: fp_tree_ff.cpp data.h fp_tree.h common.h fsout.h
+	$(CXX) $(CXXFLAGS) -c fp_tree_ff.cpp
 
 buffer.o: buffer.cpp data.h buffer.h
 	$(CXX) $(CXXFLAGS) -c buffer.cpp

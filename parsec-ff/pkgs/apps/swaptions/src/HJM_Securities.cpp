@@ -3,6 +3,8 @@
 //Authors: Mark Broadie, Jatin Dewanwala
 //Collaborator: Mikhail Smelyanskiy, Jike Chong, Intel
 //Modified by Christian Bienia for the PARSEC Benchmark Suite
+//
+// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
 
 #include <stdio.h>
 #include <stdlib.h>

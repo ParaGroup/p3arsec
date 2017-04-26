@@ -1,3 +1,7 @@
+//
+// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
+//
+
 #include "LRT/include/lrt.h"
 #include "RTTL/common/RTInclude.hxx"
 #include "RTTL/common/RTThread.hxx"
@@ -110,6 +114,7 @@ public:
 class Context;
 
 #ifdef FF_VERSION
+#if 0
 struct fastflowMap: ff::ff_Map<int>{
 private:
     Context* _context;
@@ -118,11 +123,14 @@ public:
     int* svc(int* t);
 };
 #endif
+#endif
 
 class Context : public MultiThreadedTaskQueue
 {
 #ifdef FF_VERSION
+#if 0
   friend struct fastflowMap;
+#endif
 #endif
 protected:
 
@@ -151,7 +159,9 @@ protected:
 
   /* threads */
 #ifdef FF_VERSION
+#if 0
   fastflowMap* m;
+#endif
 #endif
   int m_threads;
   bool m_threadsCreated;
@@ -216,7 +226,9 @@ public:
     m_geometryMode = MINIRT_POLYGONAL_GEOMETRY;
     Context::m_tileCounter.reset();
 #ifdef FF_VERSION
+#if 0
     m = new fastflowMap(this);
+#endif
 #endif
   }
 
@@ -614,6 +626,7 @@ void Context::buildSpatialIndexStructure()
 #ifdef FF_VERSION
 int Context::task(int jobID, int threadId){;}
 
+#if 0
 int* fastflowMap::svc(int *in) {
     int index;
     const int tilesPerRow = _context->m_threadData.resX >> TILE_WIDTH_SHIFT;
@@ -632,6 +645,7 @@ int* fastflowMap::svc(int *in) {
     }, _context->m_threads);
     return NULL;
 }
+#endif
 
 #else 
 int Context::task(int jobID, int threadId)
@@ -702,12 +716,8 @@ void Context::renderFrame(Camera *camera,
         int index;
         const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
         static ff::ParallelFor pf(m_threads, true, true);
-#ifdef FF_VERSION_LAMBDA
-        ff::parallel_for(0, m_threadData.maxTiles, [&](const int index) 
-#else
-         pf.parallel_for(0, m_threadData.maxTiles, 1, 4, [&](const int index)            
-#endif
-                {
+        pf.parallel_for(0, m_threadData.maxTiles, 1, 4, [&](const int index)            
+        {
                 /* todo: get rid of '/' and '%' */
                 int sx = (index % tilesPerRow)*TILE_WIDTH;
                 int sy = (index / tilesPerRow)*TILE_WIDTH;
@@ -720,11 +730,8 @@ void Context::renderFrame(Camera *camera,
                 else
                     FATAL("unknown mesh type");
             }
-#ifdef FF_VERSION_LAMBDA
             , m_threads
-#endif
            );
-#endif
 #else
       Context::m_tileCounter.reset();
       startThreads();

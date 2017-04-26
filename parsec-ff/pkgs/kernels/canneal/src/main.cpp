@@ -2,6 +2,7 @@
 //
 // Created by Daniel Schwartz-Narbonne on 13/04/07.
 // Modified by Christian Bienia
+// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
 //
 // Copyright 2007-2008 Princeton University
 // All rights reserved.
