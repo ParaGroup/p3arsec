@@ -70,14 +70,15 @@ void ParticleFilterFF<T>::CalcWeights(std::vector<Vectorf > &particles)
 	mWeights.resize(particles.size());
 
 	int np = (int)particles.size(), j = 0;
-        // parallelFor->parallel_for(0, np, [&](const int j)   											//FastFlow parallelized loop to compute log-likelihoods 
-        using ff::error;
-        // Fatto cosi per accedere a _ff_tread_id, non so se si puo' fare con il parallelFor->parallel_for
-        FF_PARFOR_START(parallelFor,j,0,np,1,PARFOR_STATIC(0),mModel->GetNumThreads())
-	{	bool vflag;
-                mWeights[j] = mModel->LogLikelihood(particles[j], vflag, _ff_thread_id);						//compute log-likelihood weights for each particle
+    using ff::error;
+    parallelFor->parallel_for_thid(0, np, 1, PARFOR_STATIC(0), [&](const int j, const int thid)				//FastFlow parallelized loop to compute log-likelihoods 
+	{
+		bool vflag;
+        mWeights[j] = mModel->LogLikelihood(particles[j], vflag, thid);						//compute log-likelihood weights for each particle
 		valid[j] = vflag ? 1 : 0;
-	} FF_PARFOR_STOP(parallelFor);
+	}, 
+	mModel->GetNumThreads());
+
 
 	uint i = 0;
 	while(i < particles.size())

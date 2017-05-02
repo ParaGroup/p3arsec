@@ -17,7 +17,8 @@
 build_deps=""
 
 # Environment to use for configure script and Makefile
-build_env="CXXFLAGS=\"${CXXFLAGS} \" version=ff"
+# -fopenmp is needed to get the number of threads
+build_env="CXXFLAGS=\"${CXXFLAGS} -fopenmp\" version=ff"
 
 # Whether the build system supports only in-place compilation.
 # If TRUE, then all sources will be copied to the build directory before we

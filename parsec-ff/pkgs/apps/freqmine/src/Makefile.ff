@@ -6,8 +6,8 @@ CXXFLAGS += -Wno-deprecated
 
 all: $(TARGET)
 
-$(TARGET): fpgrowth.o data.o fp_tree.o buffer.o fsout.o fp_node.o wtime.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) fpgrowth.o data.o fp_tree.o buffer.o fsout.o fp_node.o wtime.o $(LIBS) -o $(TARGET)
+$(TARGET): fpgrowth.o data.o fp_tree_ff.o buffer.o fsout.o fp_node.o wtime.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) fpgrowth.o data.o fp_tree_ff.o buffer.o fsout.o fp_node.o wtime.o $(LIBS) -o $(TARGET)
 
 wtime.o: wtime.cpp wtime.h
 	$(CXX) $(CXXFLAGS) -c wtime.cpp -o wtime.o
@@ -18,7 +18,7 @@ fpgrowth.o: fpmax.cpp data.h fp_tree.h common.h fsout.h
 data.o: data.cpp data.h
 	$(CXX) $(CXXFLAGS) -c data.cpp
 
-fp_tree.o: fp_tree_ff.cpp data.h fp_tree.h common.h fsout.h
+fp_tree_ff.o: fp_tree_ff.cpp data.h fp_tree.h common.h fsout.h
 	$(CXX) $(CXXFLAGS) -c fp_tree_ff.cpp
 
 buffer.o: buffer.cpp data.h buffer.h

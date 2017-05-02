@@ -90,6 +90,9 @@ int main (int argc, char* argv[])
 		printf ("Error: Number of threads cannot be greater than 1 for serial runs\n");
 		exit (1);
 	}
+#ifdef ENABLE_FF
+    ffpf = new ff::ParallelFor();
+#endif
 
 	THREAD_DIVISION_PARAMETERS<float>& parameters = *THREAD_DIVISION_PARAMETERS<float>::Singleton();
 	parameters.grid_divisions_3d = VECTOR_3D<int> (5, 5, 5);

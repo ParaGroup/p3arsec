@@ -711,7 +711,7 @@ void Context::renderFrame(Camera *camera,
         // Map
         m->run();
         m->wait();
-#else
+#endif
         // Parallel for
         int index;
         const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;

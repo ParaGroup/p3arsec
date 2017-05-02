@@ -8,7 +8,7 @@ AC_ARG_ENABLE([gprof], AC_HELP_STRING([--enable-gprof], [add profiling code for 
 AC_ARG_ENABLE([threads], AC_HELP_STRING([--enable-threads], [enable conventional threading @<:@default=yes@:>@]), [], [enable_threads=yes])
 AC_ARG_ENABLE([openmp], AC_HELP_STRING([--enable-openmp], [enable OpenMP threading @<:@default=no@:>@]), [], [enable_openmp=no])
 AC_ARG_ENABLE([tbb], AC_HELP_STRING([--enable-tbb], [enable Intel TBB threading @<:@default=no@:>@]), [], [enable_tbb=no])
-AC_ARG_ENABLE([ff], AC_HELP_STRING([--enable-ff], [enable FastFlow threading @<:@default=no@:>@]), [], [enable_tbb=no])
+AC_ARG_ENABLE([ff], AC_HELP_STRING([--enable-ff], [enable FastFlow threading @<:@default=no@:>@]), [], [enable_ff=no])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
