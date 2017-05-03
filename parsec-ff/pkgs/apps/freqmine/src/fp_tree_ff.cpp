@@ -42,6 +42,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "common.h"
 #include "wtime.h"
 
+#include <iostream>
+
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -50,6 +52,7 @@ static int omp_get_thread_num() {return 0;}
 #endif //_OPENMP
 
 #include <ff/parallel_for.hpp>
+#include <ff/spin-lock.hpp>
 #include <pthread.h>
 
 #define fast_rightsib_table_size 16
@@ -105,7 +108,7 @@ int **threadworkload;
 int *threadworkloadnum;
 
 ff::ParallelFor* ffpf;
-pthread_mutex_t critical;
+ff::lock_t critical;
 bool globalinitdone = false;
 
 template <class T> void transform_FPTree_into_FPArray(FP_tree *fptree, int thread, T mark)
@@ -213,7 +216,6 @@ template <class T> void first_transform_FPTree_into_FPArray(FP_tree *fptree, T m
 	}
 	new_data_num[0][0] = sum_new_data_num;
 	T *ItemArray = (T *)local_buf->newbuf(1, new_data_num[0][0] * sizeof(T));
-        ffpf = new ff::ParallelFor(omp_get_max_threads());
         ffpf->parallel_for(0, workingthread, 1, PARFOR_STATIC(0), [&](const long j) {
 		int kept_itemiter;
 		int itemiter = content_offset_array[j] - 1;
@@ -288,7 +290,6 @@ template <class T> void first_transform_FPTree_into_FPArray(FP_tree *fptree, T m
 			}
 		}
 	}, workingthread);
-        delete ffpf;
 	fptree->ItemArray = (int *) ItemArray;
 }
 
@@ -520,7 +521,7 @@ void FP_tree::init(int old_itemno, int new_itemno, int thread)
 	}
 	itemno = new_itemno;
         if(!globalinitdone){
-            assert(pthread_mutex_init(&critical, NULL) == 0);
+            init_unlocked(critical);
             globalinitdone = true;
         }
 }
@@ -540,8 +541,6 @@ void FP_tree::database_tiling(int workingthread)
 		for (j = local_num_hot_item; j < local_itemno; j ++)
 			origin[i][j] = 1;
 	}
-        ffpf = new ff::ParallelFor(omp_get_max_threads());
-
     ffpf->parallel_for_thid(0, mapfile->tablesize, 1, 1, [&](const long i, const int thid) {
 		int k, l;
 		int *content;
@@ -635,7 +634,6 @@ void FP_tree::database_tiling(int workingthread)
 			currentnode->finalize();
 			thread_pos[thread] = currentpos;
 	}, workingthread);
-    delete ffpf;
 	
 	for (i = 0; i < workingthread; i ++) {
 		thread_pos[i] = 0;
@@ -725,8 +723,6 @@ void FP_tree::database_tiling(int workingthread)
 				tempntypeoffsetbase[i] += ntypearray[j][i];
 			}
 		}
-        ffpf = new ff::ParallelFor(omp_get_max_threads());
-
     ffpf->parallel_for(0, workingthread, 1, PARFOR_STATIC(0), [&](const long i) {
 		MapFileNode *current_mapfilenode;
 		unsigned short * content;
@@ -751,7 +747,7 @@ void FP_tree::database_tiling(int workingthread)
 			current_mapfilenode = current_mapfilenode->next;
 		}
 	}, workingthread);
-    delete ffpf;
+
 	delete [] tempntypeoffsetbase;
 	delete [] thread_pos;
 }
@@ -880,6 +876,7 @@ void FP_tree::scan1_DB(Data* fdat)
 	}
 	hot_node_depth[0] = 0;
         ffpf = new ff::ParallelFor(omp_get_max_threads());
+
     ffpf->parallel_for(0, workingthread, 1, PARFOR_STATIC(0), [&](const long k) {
 		int i;
 		currentnodeiter[k] = (int**)fp_buf[k]->newbuf(1, itemno * (14 + fast_rightsib_table_size) * sizeof(int *) + num_hot_node * 2 * sizeof(int *)  + (fast_rightsib_table_size * itemno) * sizeof(int *) + fast_rightsib_table_size + 3 * sizeof(int*));
@@ -924,7 +921,7 @@ void FP_tree::scan1_DB(Data* fdat)
 			bran[k][i] = 0;
 		}
 	}, workingthread);
-    delete ffpf;
+
 	mapfile->transform_list_table();
 	for (i = 0; i < hot_node_num; i ++)
 		ntypeidarray[i] = i;
@@ -1052,7 +1049,6 @@ void FP_tree::scan2_DB(int workingthread)
 	wtime(&tstart);
 	database_tiling(workingthread);
 	Fnode **local_hashtable = hashtable[0];
-        ffpf = new ff::ParallelFor(omp_get_max_threads());
 
     ffpf->parallel_for_thid(0, mergedworknum, 1, 1, [&](const long j, const int thid) {
 		int thread = thid;
@@ -1158,7 +1154,7 @@ void FP_tree::scan2_DB(int workingthread)
 		rightsib_backpatch_count[thread][0] = local_rightsib_backpatch_count;
 		threadworkloadnum[thread] = localthreadworkloadnum;
 	}, workingthread);
-    delete ffpf;
+
 	delete database_buf;
 	
 	for (int i = 0; i < workingthread; i ++) {
@@ -1167,14 +1163,14 @@ void FP_tree::scan2_DB(int workingthread)
 			temp += global_nodenum[i][j];
 	}
 	int totalnodes = cal_level_25(0);
-        ffpf = new ff::ParallelFor(omp_get_max_threads());
+
 	ffpf->parallel_for(0, workingthread, 1, PARFOR_STATIC(0), [&](const int j) {
 		int local_rightsib_backpatch_count = rightsib_backpatch_count[j][0];
 		Fnode ***local_rightsib_backpatch_stack = rightsib_backpatch_stack[j];
 		for (int i = 0; i < local_rightsib_backpatch_count; i ++)
 			*local_rightsib_backpatch_stack[i] = NULL;
 	}, workingthread);
-        delete ffpf;
+
 	wtime(&tend);
 //	printf("Creating the first tree from source file cost %f seconds\n", tend - tstart);
 //       printf("we have %d nodes in the initial FP tree\n", totalnodes);
@@ -1259,12 +1255,13 @@ void FP_tree::release_node_array_after_mining(int sequence, int thread, int work
 			current = thread_finish_status[i];
 	}
 {
-    pthread_mutex_lock(&critical);
+
+    spin_lock(critical /*, thread*/);
 	if (current < released_pos) {
 		released_pos = current;
 		fp_node_sub_buf->freebuf(MR_nodes[current], MC_nodes[current], MB_nodes[current]);
 	}
-    pthread_mutex_unlock(&critical);
+        spin_unlock(critical /*, thread*/);
 }
 
 }
@@ -1280,12 +1277,12 @@ void FP_tree::release_node_array_before_mining(int sequence, int thread, int wor
 	}
 	current ++;
 {
-    pthread_mutex_lock(&critical);
+    spin_lock(critical /*, thread*/);
 	if (current < released_pos) {
 		released_pos = current;
 		fp_node_sub_buf->freebuf(MR_nodes[current], MC_nodes[current], MB_nodes[current]);
 	}
-    pthread_mutex_unlock(&critical);
+        spin_unlock(critical /*, thread*/);
 }
 
 }
@@ -1343,12 +1340,7 @@ int FP_tree::FP_growth_first(FSout* fout)
 			}
 		}
 
-//	    ffpf->parallel_for_thid(1, upperbound - lowerbound + 1, 1, 1, [&](const int index, const int thid) {
-//			sequence = upperbound - index;
-//		ffpf->parallel_for_thid(upperbound - 1, lowerbound - 1, -1, 1, [&](const int sequence, const int thid) {
 		if(upperbound > lowerbound){
-                    ffpf = new ff::ParallelFor(omp_get_max_threads());
-
 			ffpf->parallel_for_thid(lowerbound, upperbound, 1, 1, [&](const int sequence, const int thid) {
 				int current, new_item_no, listlen;
 				int MC2=0;			
@@ -1433,7 +1425,6 @@ int FP_tree::FP_growth_first(FSout* fout)
 					release_node_array_after_mining(sequence, thread, workingthread);
 				}
 			}, workingthread);
-                        delete ffpf;
 		}
 	}
 	 wtime(&tend);

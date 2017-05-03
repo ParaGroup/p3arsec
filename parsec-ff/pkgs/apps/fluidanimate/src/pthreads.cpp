@@ -1,6 +1,5 @@
 //Code written by Richard O. Lee and Christian Bienia
 //Modified by Christian Fensch
-// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
 
 
 
@@ -20,6 +19,7 @@
 
 #include "fluid.hpp"
 #include "cellpool.hpp"
+#include "parsec_barrier.hpp"
 
 #ifdef ENABLE_VISUALIZATION
 #include "fluidview.hpp"
@@ -28,8 +28,6 @@
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
 #endif
-
-#include <ff/parallel_for.hpp>
 
 //Uncomment to add code to check that Courant–Friedrichs–Lewy condition is satisfied at runtime
 //#define ENABLE_CFL_CHECK
@@ -73,10 +71,18 @@ struct Grid
   };
 } *grids;
 bool  *border;
+pthread_attr_t attr;
+pthread_t *thread;
 pthread_mutex_t **mutex;  // used to lock cells in RebuildGrid and also particles in other functions
+pthread_barrier_t barrier;  // global barrier used by all threads
+#ifdef ENABLE_VISUALIZATION
+pthread_barrier_t visualization_barrier;  // global barrier to separate (serial) visualization phase from (parallel) fluid simulation
+#endif
 
-ff::ParallelFor* ffpf;
-int frames;
+typedef struct __thread_args {
+  int tid;      //thread id, determines work partition
+  int frames;      //number of frames to compute
+} thread_args;      //arguments for threads
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -125,6 +131,7 @@ void InitSim(char const *fileName, unsigned int threadnum)
   if(XDIVS*ZDIVS != threadnum) XDIVS*=2;
   assert(XDIVS * ZDIVS == threadnum);
 
+  thread = new pthread_t[NUM_GRIDS];
   grids = new struct Grid[NUM_GRIDS];
   assert(sizeof(Grid) <= CACHELINE_SIZE); // as we put and aligh grid on the cacheline size to avoid false-sharing
                                           // if asserts fails - increase pp union member in Grid declarationi
@@ -249,6 +256,9 @@ void InitSim(char const *fileName, unsigned int threadnum)
            } // for(int dk = -1; dk <= 1; ++dk)
         }
 
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
   mutex = new pthread_mutex_t *[numCells];
   for(int i = 0; i < numCells; ++i)
   {
@@ -258,6 +268,11 @@ void InitSim(char const *fileName, unsigned int threadnum)
     for(int j = 0; j < n; ++j)
       pthread_mutex_init(&mutex[i][j], NULL);
   }
+  pthread_barrier_init(&barrier, NULL, NUM_GRIDS);
+#ifdef ENABLE_VISUALIZATION
+  //visualization barrier is used by all NUM_GRIDS worker threads and 1 master thread
+  pthread_barrier_init(&visualization_barrier, NULL, NUM_GRIDS+1);
+#endif
   //make sure Cell structure is multiple of estiamted cache line size
   assert(sizeof(Cell) % CACHELINE_SIZE == 0);
   //make sure helper Cell structure is in sync with real Cell structure
@@ -467,6 +482,7 @@ void CleanUpSim()
   //      itself. This guarantees that all allocated cells will be freed but it might
   //      render other cell pools unusable so they also have to be destroyed.
   for(int i=0; i<NUM_GRIDS; i++) cellpool_destroy(&pools[i]);
+  pthread_attr_destroy(&attr);
 
   for(int i = 0; i < numCells; ++i)
   {
@@ -477,6 +493,10 @@ void CleanUpSim()
     delete[] mutex[i];
   }
   delete[] mutex;
+  pthread_barrier_destroy(&barrier);
+#ifdef ENABLE_VISUALIZATION
+  pthread_barrier_destroy(&visualization_barrier);
+#endif
 
   delete[] border;
 
@@ -493,14 +513,14 @@ void CleanUpSim()
   free(cnumPars2);
   free(last_cells);
 #endif
+  delete[] thread;
   delete[] grids;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClearParticlesMT()
+void ClearParticlesMT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
       for(int ix = grids[tid].sx; ix < grids[tid].ex; ++ix)
@@ -510,12 +530,11 @@ void ClearParticlesMT()
 		cells[index].next = NULL;
         last_cells[index] = &cells[index];
       }
-	}, NUM_GRIDS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void RebuildGridMT()
+void RebuildGridMT(int tid)
 {
   // Note, in parallel versions the below swaps
   // occure outside RebuildGrid()
@@ -523,7 +542,7 @@ void RebuildGridMT()
   //   std::swap(cells, cells2);
   // swap src and dest arrays with counts of particles
   //  std::swap(cnumPars, cnumPars2);
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
+
   //iterate through source cell lists
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
@@ -616,7 +635,6 @@ void RebuildGridMT()
           cellpool_returncell(&pools[tid], cell2);
     }
       }
-}, NUM_GRIDS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -652,9 +670,8 @@ int InitNeighCellList(int ci, int cj, int ck, int *neighCells)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void InitDensitiesAndForcesMT()
+void InitDensitiesAndForcesMT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
       for(int ix = grids[tid].sx; ix < grids[tid].ex; ++ix)
@@ -672,15 +689,14 @@ void InitDensitiesAndForcesMT()
           }
         }
       }
-}, NUM_GRIDS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void ComputeDensitiesMT()
+void ComputeDensitiesMT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   int neighCells[3*3*3];
+
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
       for(int ix = grids[tid].sx; ix < grids[tid].ex; ++ix)
@@ -742,14 +758,12 @@ void ComputeDensitiesMT()
           }
         }
       }
-}, NUM_GRIDS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void ComputeDensities2MT()
+void ComputeDensities2MT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   const fptype tc = hSq*hSq*hSq;
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
@@ -768,14 +782,12 @@ void ComputeDensities2MT()
           }
         }
       }
-}, NUM_GRIDS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void ComputeForcesMT()
+void ComputeForcesMT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   int neighCells[3*3*3];
 
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
@@ -848,7 +860,6 @@ void ComputeForcesMT()
           }
         }
       }
-}, NUM_GRIDS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -905,9 +916,8 @@ void ProcessCollisionsMT(int tid)
       }
 }
 #else
-void ProcessCollisionsMT()
+void ProcessCollisionsMT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
   {
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
@@ -968,15 +978,13 @@ void ProcessCollisionsMT()
       }
 	}
   }
-}, NUM_GRIDS);
 }
 #endif
 
 #define USE_ImpeneratableWall
 #if defined(USE_ImpeneratableWall)
-void ProcessCollisions2MT()
+void ProcessCollisions2MT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
   {
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
@@ -1067,15 +1075,13 @@ void ProcessCollisions2MT()
       }
 	}
   }
-}, NUM_GRIDS);
 }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void AdvanceParticlesMT()
+void AdvanceParticlesMT(int tid)
 {
-	ffpf->parallel_for(0, NUM_GRIDS,[&](const int tid) {
   for(int iz = grids[tid].sz; iz < grids[tid].ez; ++iz)
     for(int iy = grids[tid].sy; iy < grids[tid].ey; ++iy)
       for(int ix = grids[tid].sx; ix < grids[tid].ex; ++ix)
@@ -1106,39 +1112,88 @@ void AdvanceParticlesMT()
           }
         }
       }
-}, NUM_GRIDS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void AdvanceFrameMT()
+void AdvanceFrameMT(int tid)
 {
-	std::swap(cells, cells2);
+  //swap src and dest arrays with particles
+  if(tid==0) {
+    std::swap(cells, cells2);
     std::swap(cnumPars, cnumPars2);
+  }
+  pthread_barrier_wait(&barrier);
 
-  ClearParticlesMT();
-  RebuildGridMT();
-  InitDensitiesAndForcesMT();
-  ComputeDensitiesMT();
-  ComputeDensities2MT();
-  ComputeForcesMT();
-  ProcessCollisionsMT();
-  AdvanceParticlesMT();
+  ClearParticlesMT(tid);
+  pthread_barrier_wait(&barrier);
+  RebuildGridMT(tid);
+  pthread_barrier_wait(&barrier);
+  InitDensitiesAndForcesMT(tid);
+  pthread_barrier_wait(&barrier);
+  ComputeDensitiesMT(tid);
+  pthread_barrier_wait(&barrier);
+  ComputeDensities2MT(tid);
+  pthread_barrier_wait(&barrier);
+  ComputeForcesMT(tid);
+  pthread_barrier_wait(&barrier);
+  ProcessCollisionsMT(tid);
+  pthread_barrier_wait(&barrier);
+  AdvanceParticlesMT(tid);
+  pthread_barrier_wait(&barrier);
 #if defined(USE_ImpeneratableWall)
   // N.B. The integration of the position can place the particle
   // outside the domain. We now make a pass on the perimiter cells
   // to account for particle migration beyond domain.
-  ProcessCollisions2MT();
+  ProcessCollisions2MT(tid);
+  pthread_barrier_wait(&barrier);
 #endif
 }
 
-void *AdvanceFramesMT()
+#ifndef ENABLE_VISUALIZATION
+void *AdvanceFramesMT(void *args)
 {
-  for(int i = 0; i < frames; ++i) {
-    AdvanceFrameMT();
+  thread_args *targs = (thread_args *)args;
+
+  for(int i = 0; i < targs->frames; ++i) {
+    AdvanceFrameMT(targs->tid);
   }
+  
   return NULL;
 }
+#else
+//Frame advancement function for worker threads
+void *AdvanceFramesMT(void *args)
+{
+  thread_args *targs = (thread_args *)args;
+
+#if 1
+  while(1)
+#else
+  for(int i = 0; i < targs->frames; ++i)
+#endif
+  {
+    pthread_barrier_wait(&visualization_barrier);
+    //Phase 1: Compute frame, visualization code blocked
+    AdvanceFrameMT(targs->tid);
+    pthread_barrier_wait(&visualization_barrier);
+    //Phase 2: Visualize, worker threads blocked
+  }
+
+  return NULL;
+}
+
+//Frame advancement function for master thread (executes serial visualization code)
+void AdvanceFrameVisualization()
+{
+    //End of phase 2: Worker threads blocked, visualization code busy (last frame)
+    pthread_barrier_wait(&visualization_barrier);
+    //Phase 1: Visualization thread blocked, worker threads busy (next frame)
+    pthread_barrier_wait(&visualization_barrier);
+    //Begin of phase 2: Worker threads blocked, visualization code busy (next frame)
+}
+#endif //ENABLE_VISUALIZATION
+
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char *argv[])
@@ -1179,22 +1234,31 @@ int main(int argc, char *argv[])
 
   InitSim(argv[3], threadnum);
 #ifdef ENABLE_VISUALIZATION
-  InitVisualizationMode(&argc, argv, &AdvanceFrameMT, &numCells, &cells, &cnumPars);
+  InitVisualizationMode(&argc, argv, &AdvanceFrameVisualization, &numCells, &cells, &cnumPars);
 #endif
 
-	frames = framenum;
-	ffpf = new ff::ParallelFor(threadnum, true, true);
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_begin();
-#endif	
+#endif
+#if defined(WIN32)
+  thread_args* targs = (thread_args*)alloca(sizeof(thread_args)*threadnum);
+#else
+  thread_args targs[threadnum];
+#endif
+  for(int i = 0; i < threadnum; ++i) {
+    targs[i].tid = i;
+    targs[i].frames = framenum;
+    pthread_create(&thread[i], &attr, AdvanceFramesMT, &targs[i]);
+  }
 
   // *** PARALLEL PHASE *** //
 #ifdef ENABLE_VISUALIZATION
-	Visualize();
-#else
-	AdvanceFramesMT();
+  Visualize();
 #endif
-	delete ffpf;
+
+  for(int i = 0; i < threadnum; ++i) {
+    pthread_join(thread[i], NULL);
+  }
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif

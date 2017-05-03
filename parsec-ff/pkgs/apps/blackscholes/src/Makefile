@@ -22,7 +22,7 @@ ifdef version
     CXXFLAGS += -pthread
   endif
   ifeq "$(version)" "openmp"
-    MT        = -DENABLE_OPENMP
+    MT        = -DENABLE_OPENMP -fopenmp
   endif
   ifeq "$(version)" "tbb"
     MT        = -DENABLE_TBB
