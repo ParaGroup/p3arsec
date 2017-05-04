@@ -2,7 +2,7 @@
 This repository contains parallel patterns implementations of some applications contained in the PARSEC benchmark.
 
 The structure and modelling of the provided applications is described in the paper:
-**P<sup>3</sup>ARSEC: Towards Parallel Patterns Benchmarking** by Marco Danelutto, Tiziano De Matteis, Daniele De Sensi, Gabriele Mencagli and Massimo Torquati. The paper will soon be presented at the [32nd ACM Symposium on Applied Computing (SAC)](http://www.sigapp.org/sac/sac2017/).
+**P<sup>3</sup>ARSEC: Towards Parallel Patterns Benchmarking** by Marco Danelutto, Tiziano De Matteis, Daniele De Sensi, Gabriele Mencagli and Massimo Torquati. The paper has been presented at the [32nd ACM Symposium on Applied Computing (SAC)](http://www.sigapp.org/sac/sac2017/).
 
 At the moment, the following applications have been implemented (remaining benchmarks are currently under development) (**bold** versions are those used by default):
 
@@ -19,9 +19,10 @@ Ferret       | [**Pipeline of Farms**](parsec-ff/pkgs/apps/ferret/src/benchmark/
 "            | [Farm](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
 Swaptions    | [**Map**](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)
 
-All the applications have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) 
-pattern-based parallel programming framework.
-More applications will come in the future. 
+Applications have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) 
+and the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/)
+pattern-based parallel programming frameworks.
+*x264* is the only application missing at the moment.
 
 These implementations have been engineered in order to be used with the standard PARSEC tools.
 Accordingly, you can use and evaluate the parallel patterns implementations together with
@@ -57,6 +58,9 @@ be able to measure execution time and energy consumption for all the benchmarks
 and some small test inputs. You can download the input datasets later by running `./install.sh --inputs`
 * `--inputs`: This parameter will **only** download the PARSEC input files. It should be used
 only if `./install.sh --fast` has already been run.
+* `--skepu`: This parameter compiles and install the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) 
+source to source compiler. This is not mandatory and you only need it if you want to modify the 
+`*_skepu.cpp` files.
 
 
 # Compile
@@ -87,6 +91,7 @@ If you also want to compile the other existing versions of the benchmark, just r
 * *gcc-pthreads* for the Pthreads implementation.
 * *gcc-openmp* for the OpenMP implementation.
 * *gcc-tbb* for the Intel TBB implementation.
+* *gcc-skepu* for the SkePU2 implementation. Only available if `--skepu` flag has been used during installation.
 
 Note that not all these implementations are available for all the benchmarks. For more details on supported 
 implementations, please refer to the original [PARSEC documentation](http://wiki.cs.princeton.edu/index.php/PARSEC).

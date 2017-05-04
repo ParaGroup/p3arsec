@@ -1,0 +1,27 @@
+################################################################################
+#                     ____  _        ____  _   _   ____                        #
+#                    / ___|| | _____|  _ \| | | | |___ \                       #
+#                    \___ \| |/ / _ \ |_) | | | |   __) |                      #
+#                     ___) |   <  __/  __/| |_| |  / __/                       #
+#                    |____/|_|\_\___|_|    \___/  |_____|                      #
+#                                                                              #
+#                        ~ SkePU 2 options Makefile ~                          #
+################################################################################
+
+# NOTE:
+# Override the variables set in Makefile here.
+
+# path to LLVM products directory
+LLVM_BIN =
+
+# path to Clang source directory (repository root)
+CLANG_SRC =
+
+# path to the SkePU sources
+SKEPU_SRC =
+
+CXX =
+
+OPENCL_FLAGS =
+
+CLANGTOOL_USER_FLAGS =

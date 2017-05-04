@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# gcc-skepu.bldconf - file containing global information necessary to build
+#                     PARSEC with gcc and SkePU2
+#
+# Copyright (C) 2008 Princeton University
+# Written by Christian Bienia
+
+source ${PARSECDIR}/config/gcc-hooks.bldconf
+
+CXXFLAGS="--std=c++11 ${CXXFLAGS} -I${PARSECDIR}/pkgs/libs/skepu2/include -fopenmp"

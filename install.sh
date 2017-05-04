@@ -3,10 +3,11 @@
 MEASURE=true
 INPUT=true
 ONLYINPUT=false
+SKEPU=false
 APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips"
 KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
-VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial"
+VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu"
 
 while [[ $# -gt 0 ]]
 do
@@ -24,6 +25,9 @@ case $key in
     ;;
     -i|--inputs)
     ONLYINPUT=true
+    ;;
+    -s|--skepu)
+    SKEPU=true
     ;;
     *)
             # unknown option
@@ -96,6 +100,20 @@ else
 			done
 		done
 	fi
+
+	# Install SkePU2
+	rootdir = $(pwd)
+	echo "Rootdir: " $rootdir
+	if [ "$SKEPU" = true ]; then
+		# Change LLVM_TARGETS_TO_BUILD value according to the specific architecture
+		cd ./pkgs/libs/skepu2 && mkdir external
+		cd external && git clone http://llvm.org/git/llvm.git && cd llvm && git checkout d3d1bf00  && cd tools 
+		git clone http://llvm.org/git/clang.git && cd clang/ && git checkout 37b415dd  && git apply ../../../../clang_patch.patch
+		ln -s $(pwd)/../../../../clang_precompiler $(pwd)/tools/skepu-tool
+		cmake -DLLVM_TARGETS_TO_BUILD=X86 -G "Unix Makefiles" ../../ -DCMAKE_BUILD_TYPE=Release && make -j skepu-tool
+	fi
+	echo "Moving to: " $rootdir
+	cd $rootdir
 
 	# Repair documentation
 	echo "Repairing documentation..."

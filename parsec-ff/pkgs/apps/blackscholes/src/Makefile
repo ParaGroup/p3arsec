@@ -30,6 +30,10 @@ ifdef version
   ifeq "$(version)" "ff"
     MT        = -DENABLE_FF
   endif
+  ifeq "$(version)" "skepu"
+	CSRC = blackscholes_skepu_omp.cpp
+	MT = -fopenmp
+  endif
 else
   MT        = 
 endif
