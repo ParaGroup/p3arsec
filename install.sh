@@ -102,18 +102,16 @@ else
 	fi
 
 	# Install SkePU2
-	rootdir = $(pwd)
-	echo "Rootdir: " $rootdir
 	if [ "$SKEPU" = true ]; then
+		rootdir=$(pwd)
 		# Change LLVM_TARGETS_TO_BUILD value according to the specific architecture
 		cd ./pkgs/libs/skepu2 && mkdir external
 		cd external && git clone http://llvm.org/git/llvm.git && cd llvm && git checkout d3d1bf00  && cd tools 
 		git clone http://llvm.org/git/clang.git && cd clang/ && git checkout 37b415dd  && git apply ../../../../clang_patch.patch
 		ln -s $(pwd)/../../../../clang_precompiler $(pwd)/tools/skepu-tool
 		cmake -DLLVM_TARGETS_TO_BUILD=X86 -G "Unix Makefiles" ../../ -DCMAKE_BUILD_TYPE=Release && make -j skepu-tool
+		cd $rootdir
 	fi
-	echo "Moving to: " $rootdir
-	cd $rootdir
 
 	# Repair documentation
 	echo "Repairing documentation..."

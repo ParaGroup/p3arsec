@@ -313,9 +313,6 @@ int main (int argc, char **argv)
 
     printf("Size of data: %lu\n", numOptions * (sizeof(OptionData) + sizeof(int)));
 
-#ifdef ENABLE_PARSEC_HOOKS
-    __parsec_roi_begin();
-#endif
 	skepu2::Vector<fptype> sptprice_sk(sptprice, numOptions, false), 
                           strike_sk(strike, numOptions, false),
                           rate_sk(rate, numOptions, false), 
@@ -324,8 +321,10 @@ int main (int argc, char **argv)
 	skepu2::Vector<int> otype_sk(otype, numOptions, false);
 	skepu2::Vector<OptionData> data_sk(data, numOptions, false);
 	skepu2::Vector<fptype> prices_sk(prices, numOptions, false);	
-
 	auto vsum = skepu2::Map<7>(mapFunction);
+#ifdef ENABLE_PARSEC_HOOKS
+    __parsec_roi_begin();
+#endif
 	vsum(prices_sk, sptprice_sk, strike_sk, rate_sk, 
          volatility_sk, otime_sk, otype_sk, data_sk);
 #ifdef ENABLE_PARSEC_HOOKS
