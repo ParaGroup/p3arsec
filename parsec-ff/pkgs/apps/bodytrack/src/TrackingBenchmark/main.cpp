@@ -373,12 +373,21 @@ int mainTBB(string path, int cameras, int frames, int particles, int layers, int
 	pf.setOutputFile((path + "poses.txt").c_str());
 	ofstream outputFileAvg((path + "poses.txt").c_str());
 
+#if defined(ENABLE_PARSEC_HOOKS)
+        __parsec_roi_begin();
+#endif
+
 	// Create the TBB pipeline - 1 stage for image processing, one for particle filter update
 	tbb::pipeline pipeline;
 	pipeline.add_filter(model);
 	pipeline.add_filter(pf);
 	pipeline.run(1);
 	pipeline.clear();
+
+#if defined(ENABLE_PARSEC_HOOKS)
+        __parsec_roi_end();
+#endif
+
 
 	return 1;
 }
