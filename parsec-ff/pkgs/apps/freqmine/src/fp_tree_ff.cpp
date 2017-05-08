@@ -1341,7 +1341,10 @@ int FP_tree::FP_growth_first(FSout* fout)
 		}
 
 		if(upperbound > lowerbound){
-			ffpf->parallel_for_thid(lowerbound, upperbound, 1, 1, [&](const int sequence, const int thid) {
+//		for(sequence=upperbound - 1; sequence>=lowerbound; sequence--)
+  			ffpf->parallel_for_thid(1, upperbound - lowerbound + 1, 1, 1, [&](const int index, const int thid) {		
+				int sequence = upperbound - index;
+//			ffpf->parallel_for_thid(lowerbound, upperbound, 1, 1, [&](const int sequence, const int thid) {
 				int current, new_item_no, listlen;
 				int MC2=0;			
 				unsigned int MR2=0;	

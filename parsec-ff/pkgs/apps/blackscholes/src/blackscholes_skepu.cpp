@@ -321,11 +321,14 @@ int main (int argc, char **argv)
 	skepu2::Vector<int> otype_sk(otype, numOptions, false);
 	skepu2::Vector<OptionData> data_sk(data, numOptions, false);
 	skepu2::Vector<fptype> prices_sk(prices, numOptions, false);	
-	auto vsum = skepu2::Map<7>(mapFunction);
+	auto map = skepu2::Map<7>(mapFunction);
+	auto spec = skepu2::BackendSpec{skepu2::Backend::Type::OpenMP};
+	spec.setCPUThreads(nThreads);
+	map.setBackend(spec);
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
-	vsum(prices_sk, sptprice_sk, strike_sk, rate_sk, 
+	map(prices_sk, sptprice_sk, strike_sk, rate_sk, 
          volatility_sk, otime_sk, otype_sk, data_sk);
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();

@@ -125,7 +125,7 @@ fptype CNDF ( fptype InputX )
     
     return OutputX;
 }
-struct skepu2_userfunction_vsum_CNDF
+struct skepu2_userfunction_map_CNDF
 {
 constexpr static size_t totalArity = 1;
 constexpr static bool indexed = 0;
@@ -347,7 +347,7 @@ fptype BlkSchlsEqEuroNoDiv( fptype sptprice,
     
     return OptionPrice;
 }
-struct skepu2_userfunction_vsum_BlkSchlsEqEuroNoDiv
+struct skepu2_userfunction_map_BlkSchlsEqEuroNoDiv
 {
 constexpr static size_t totalArity = 7;
 constexpr static bool indexed = 0;
@@ -421,8 +421,8 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE float OMP(fptype sptprice, fptype str
     d1 = xD1;
     d2 = xD2;
     
-    NofXd1 = skepu2_userfunction_vsum_CNDF::OMP( d1 );
-    NofXd2 = skepu2_userfunction_vsum_CNDF::OMP( d2 );
+    NofXd1 = skepu2_userfunction_map_CNDF::OMP( d1 );
+    NofXd2 = skepu2_userfunction_map_CNDF::OMP( d2 );
 
     FutureValueX = strike * ( exp( -(rate)*(time) ) );        
     if (otype == 0) {            
@@ -497,8 +497,8 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE float CPU(fptype sptprice, fptype str
     d1 = xD1;
     d2 = xD2;
     
-    NofXd1 = skepu2_userfunction_vsum_CNDF::CPU( d1 );
-    NofXd2 = skepu2_userfunction_vsum_CNDF::CPU( d2 );
+    NofXd1 = skepu2_userfunction_map_CNDF::CPU( d1 );
+    NofXd2 = skepu2_userfunction_map_CNDF::CPU( d2 );
 
     FutureValueX = strike * ( exp( -(rate)*(time) ) );        
     if (otype == 0) {            
@@ -536,7 +536,7 @@ fptype mapFunction(fptype sptprice_e, fptype strike_e, fptype rate_e, fptype vol
 #endif
 	return price;
 }
-struct skepu2_userfunction_vsum_mapFunction
+struct skepu2_userfunction_map_mapFunction
 {
 constexpr static size_t totalArity = 7;
 constexpr static bool indexed = 0;
@@ -564,7 +564,7 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE float OMP(fptype sptprice_e, fptype s
     /* Calling main function to calculate option value based on
      * Black & Scholes's equation.
      */
-    price = skepu2_userfunction_vsum_BlkSchlsEqEuroNoDiv::OMP(sptprice_e, strike_e,
+    price = skepu2_userfunction_map_BlkSchlsEqEuroNoDiv::OMP(sptprice_e, strike_e,
                                 rate_e, volatility_e, otime_e,
                                 otype_e, 0);
 
@@ -594,7 +594,7 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE float CPU(fptype sptprice_e, fptype s
     /* Calling main function to calculate option value based on
      * Black & Scholes's equation.
      */
-    price = skepu2_userfunction_vsum_BlkSchlsEqEuroNoDiv::CPU(sptprice_e, strike_e,
+    price = skepu2_userfunction_map_BlkSchlsEqEuroNoDiv::CPU(sptprice_e, strike_e,
                                 rate_e, volatility_e, otime_e,
                                 otype_e, 0);
 
@@ -715,12 +715,14 @@ int main (int argc, char **argv)
 	skepu2::Vector<int> otype_sk(otype, numOptions, false);
 	skepu2::Vector<OptionData> data_sk(data, numOptions, false);
 	skepu2::Vector<fptype> prices_sk(prices, numOptions, false);	
-
-	skepu2::backend::Map<7, skepu2_userfunction_vsum_mapFunction, bool, void> vsum(false);
+	skepu2::backend::Map<7, skepu2_userfunction_map_mapFunction, bool, void> map(false);
+	auto spec = skepu2::BackendSpec{skepu2::Backend::Type::OpenMP};
+	spec.setCPUThreads(nThreads);
+	map.setBackend(spec);
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
-	vsum(prices_sk, sptprice_sk, strike_sk, rate_sk, 
+	map(prices_sk, sptprice_sk, strike_sk, rate_sk, 
          volatility_sk, otime_sk, otype_sk, data_sk);
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();

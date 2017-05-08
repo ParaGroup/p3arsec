@@ -3,6 +3,7 @@ DEF =
 INCLUDE =
 
 EXEC = swaptions 
+SECFILE = HJM_Securities.o
 
 ifdef version
   ifeq "$(version)" "pthreads" 
@@ -16,11 +17,15 @@ ifdef version
   ifeq "$(version)" "ff"
     DEF := $(DEF) -DENABLE_THREADS -DFF_VERSION
   endif
+  ifeq "$(version)" "skepu"
+	# ./skepu-tool -openmp /home/daniele/Code/p3arsec/parsec-ff/pkgs/apps/swaptions/src/HJM_Securities_skepu.cpp -name=/tmp/HJM_Securities_skepu_omp -fnames="HJM_Swaption_Blocking __assert_fail" -- -std=c++11 -I../lib/Headers -I/home/daniele/Desktop/p3arsec_with_tools/pkgs/libs/skepu2/include -I/usr/include -I/home/daniele/Code/parsec-3.0-ff/pkgs/apps/swaptions/src
+    SECFILE := HJM_Securities_skepu_omp.o
+  endif
 endif
 
 OBJS= CumNormalInv.o MaxFunction.o RanUnif.o nr_routines.o icdf.o \
 	HJM_SimPath_Forward_Blocking.o HJM.o HJM_Swaption_Blocking.o  \
-	HJM_Securities.o
+	$(SECFILE)
 
 all: $(EXEC)
 

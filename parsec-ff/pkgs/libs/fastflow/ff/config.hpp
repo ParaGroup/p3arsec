@@ -98,7 +98,7 @@ static const size_t FF_NBLK          = (FF_EOS-0x6);  /// automatically propagat
 
 // maximum number of threads that can be spawned
 #if !defined(MAX_NUM_THREADS)
-#define MAX_NUM_THREADS       256 
+#define MAX_NUM_THREADS       1024 
 #endif
 
 // maximum number of workers in a farm

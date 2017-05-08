@@ -31,4 +31,3 @@ build_inplace="TRUE"
 
 # Arguments to pass to the configure script, if it exists
 build_conf=""
-build_deps="hooks ${build_deps}"
