@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# This is a wrapper script for cmake. All we do is check whether the cmake
+# binary exists and execute it to generate the Makefiles.
+
+# Check whether PARSEC environment variables are set
+if [ -z "${PARSECDIR}" ]; then
+  echo "Error: Variable PARSECDIR not set."
+  exit 1
+fi
+
+if [ -z "${PARSECPLAT}" ]; then
+  echo "Error: Variable PARSECPLAT not set."
+  exit 1
+fi
+
+# Warn user if any arguments are specified (This is not a GNU autoconf script)
+if [ ! -z "$@" ]; then
+  echo "Warning: Ignoring specified arguments"
+fi
+
+SKEPU=""
+if [ ! -z "${WITH_SKEPU}" ]; then
+ #/home/daniele/Desktop/p3arsec_with_tools/pkgs/libs/skepu2/external/llvm/tools/clang/bin/skepu-tool -verbose -openmp /home/daniele/Code/p3arsec/parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu.cxx -name=/tmp/render_skepu_omp -fnames="min exit renderTile" -- -std=c++11 -I/home/daniele/Desktop/p3arsec_with_tools/pkgs/libs/skepu2/include -I/usr/include -I/home/daniele/Code/parsec-3.0-ff/pkgs/apps/raytrace/src/ -I../lib/Headers -I/usr/lib/gcc/x86_64-linux-gnu/4.9/include/ -I/usr/lib/gcc/x86_64-linux-gnu/4.9/include-fixed/ -D_XMMINTRIN_H_INCLUDED -D_X86INTRIN_H_INCLUDED
+  SKEPU="-DWITH_SKEPU=ON"
+fi
+
+# Execute cmake with correct flags
+${PARSECDIR}/pkgs/tools/cmake/inst/${PARSECPLAT}/bin/cmake -G "Unix Makefiles" $SKEPU -D CMAKE_PREFIX_PATH=${GNUTOOL_HOME} -D CMAKE_INSTALL_PREFIX=${PARSECDIR}/pkgs/apps/raytrace/inst/${PARSECPLAT} -D CMAKE_CXX_COMPILER=${CXX} -D CMAKE_CXX_FLAGS="${CXXFLAGS}" -D USE_PBOS=1 -D NEED_ARB_WRAPPERS=0 -D CMAKE_LIBRARY_PATH=${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/lib -D CMAKE_INCLUDE_PATH=${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/include .
+

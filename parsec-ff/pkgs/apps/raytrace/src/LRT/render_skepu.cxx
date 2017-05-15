@@ -1,5 +1,5 @@
 //
-// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
+// SkePU2 version by Daniele De Sensi (d.desensi.software@gmail.com)
 //
 
 #include "LRT/include/lrt.h"
@@ -25,13 +25,7 @@
 # include "RTTL/Grid/Grid.hxx"
 #endif
 
-#ifdef FF_VERSION
-#undef _INLINE
-#include <ff/map.hpp>
-#include <ff/parallel_for.hpp>
-#undef _INLINE
-#define _INLINE inline __attribute__((always_inline))
-#endif
+#include <skepu2.hpp>
 
 #define NORMALIZE_PRIMARY_RAYS
 
@@ -113,25 +107,9 @@ public:
 
 class Context;
 
-#ifdef FF_VERSION
-#if 0
-struct fastflowMap: ff::ff_Map<int>{
-private:
-    Context* _context;
-public:
-    fastflowMap(Context* context):_context(context){;}
-    int* svc(int* t);
-};
-#endif
-#endif
 
 class Context : public MultiThreadedTaskQueue
 {
-#ifdef FF_VERSION
-#if 0
-  friend struct fastflowMap;
-#endif
-#endif
 protected:
 
   /* data shared by all threads */
@@ -158,11 +136,6 @@ protected:
   vector< RTTextureObject_RGBA_UCHAR*, Align<RTTextureObject_RGBA_UCHAR*> > m_texture;
 
   /* threads */
-#ifdef FF_VERSION
-#if 0
-  fastflowMap* m;
-#endif
-#endif
   int m_threads;
   bool m_threadsCreated;
 
@@ -206,12 +179,13 @@ protected:
 
   virtual int task(int jobID, int threadID);
 
+
+
+public:
   template <class MESH, const int LAYOUT>
   _INLINE void renderTile(LRT::FrameBuffer *frameBuffer,
 			  const int startX,const int startY,
 			  const int resX,const int resY);
-
-public:
   enum {
     MINIRT_POLYGONAL_GEOMETRY,
     MINIRT_SUBDIVISION_SURFACE_GEOMETRY
@@ -225,11 +199,6 @@ public:
     m_threadsCreated = false;
     m_geometryMode = MINIRT_POLYGONAL_GEOMETRY;
     Context::m_tileCounter.reset();
-#ifdef FF_VERSION
-#if 0
-    m = new fastflowMap(this);
-#endif
-#endif
   }
 
   /* ------------------------------------ */
@@ -623,59 +592,25 @@ void Context::buildSpatialIndexStructure()
 }
 
 
-#ifdef FF_VERSION
 int Context::task(int jobID, int threadId){;}
 
-#if 0
-int* fastflowMap::svc(int *in) {
-    int index;
-    const int tilesPerRow = _context->m_threadData.resX >> TILE_WIDTH_SHIFT;
-    ff::parallel_for(0, _context->m_threadData.maxTiles, [&](const int index) {
-          /* todo: get rid of '/' and '%' */
-          int sx = (index % tilesPerRow)*TILE_WIDTH;
-          int sy = (index / tilesPerRow)*TILE_WIDTH;
-          int ex = min(sx+TILE_WIDTH,_context->m_threadData.resX);
-          int ey = min(sy+TILE_WIDTH,_context->m_threadData.resY);
-          if (_context->m_geometryMode == _context->MINIRT_POLYGONAL_GEOMETRY)
-            _context->renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
-          else if (_context->m_geometryMode == _context->MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
-             _context->renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
-          else
-              FATAL("unknown mesh type");
-    }, _context->m_threads);
-    return NULL;
+
+int mapFunction(skepu2::Index1D index, Context* c, int tilesPerRow, LRT::FrameBuffer *frameBuffer, int resX, int resY, int m_geometryMode){
+    /* todo: get rid of '/' and '%' */
+    int sx = (index.i % tilesPerRow)*TILE_WIDTH;
+    int sy = (index.i / tilesPerRow)*TILE_WIDTH;
+    int ex = min(sx+TILE_WIDTH,resX);
+    int ey = min(sy+TILE_WIDTH,resY);
+    if (m_geometryMode == Context::MINIRT_POLYGONAL_GEOMETRY)
+        c->renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(frameBuffer,sx,sy,ex,ey);
+    else if (m_geometryMode == Context::MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+        c->renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(frameBuffer,sx,sy,ex,ey);
+    else
+        FATAL("unknown mesh type");
+	return 0;
 }
-#endif
 
-#else 
-int Context::task(int jobID, int threadId)
-{
-  const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
-  while(1)
-    {
-      int index = Context::m_tileCounter.inc();
-      if (index >= m_threadData.maxTiles) break;
-
-      /* todo: get rid of '/' and '%' */
-
-      int sx = (index % tilesPerRow)*TILE_WIDTH;
-      int sy = (index / tilesPerRow)*TILE_WIDTH;
-      int ex = min(sx+TILE_WIDTH,m_threadData.resX);
-      int ey = min(sy+TILE_WIDTH,m_threadData.resY);
-
-      if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
-	renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
-      else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
-	renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
-      else
-	FATAL("unknown mesh type");
-    }
-
-  return THREAD_RUNNING;
-}
-#endif
-
-
+static auto skmap = skepu2::Map<0>(mapFunction);
 
 /*! render a frame, write pixels to framebuffer. in its original
   version, the framebuffer was specified manually by a pointer; I
@@ -688,14 +623,9 @@ void Context::renderFrame(Camera *camera,
     assert(camera);
   if (m_threadsCreated == false)
     {
-      if (m_threads > 1)
-	{
-	  cout << "-> starting " << m_threads << " threads..." << flush;
-#ifndef FF_VERSION
-	  createThreads(m_threads);
-#endif
-	  cout << "done" << endl << flush;
-	}
+	auto spec = skepu2::BackendSpec{skepu2::Backend::Type::OpenMP};
+	spec.setCPUThreads(m_threads);
+	skmap.setBackend(spec);
       m_threadsCreated = true;
     }
 
@@ -704,39 +634,10 @@ void Context::renderFrame(Camera *camera,
 
   BVH_STAT_COLLECTOR(BVHStatCollector::global.reset());
 
-  if (m_threads>1)
-    {
-#ifdef FF_VERSION
-#if 0
-        // Map
-        m->run();
-        m->wait();
-#endif
-        // Parallel for
-        int index;
+  if (m_threads>1){
         const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
-        static ff::ParallelFor pf(m_threads, false, true);
-        pf.parallel_for(0, m_threadData.maxTiles, 1, 4, [&](const int index)            
-        {
-                /* todo: get rid of '/' and '%' */
-                int sx = (index % tilesPerRow)*TILE_WIDTH;
-                int sy = (index / tilesPerRow)*TILE_WIDTH;
-                int ex = min(sx+TILE_WIDTH,m_threadData.resX);
-                int ey = min(sy+TILE_WIDTH,m_threadData.resY);
-                if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
-                    renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
-                else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
-                    renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
-                else
-                    FATAL("unknown mesh type");
-            }
-            , m_threads
-           );
-#else
-      Context::m_tileCounter.reset();
-      startThreads();
-      waitForAllThreads();
-#endif
+		skepu2::Vector<int> dummy(m_threadData.maxTiles);
+		skmap(dummy, this, tilesPerRow, m_threadData.frameBuffer, m_threadData.resX, m_threadData.resY, m_geometryMode);
     }
   else
     if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)

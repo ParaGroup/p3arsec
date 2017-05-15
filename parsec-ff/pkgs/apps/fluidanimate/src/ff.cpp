@@ -1183,7 +1183,7 @@ int main(int argc, char *argv[])
 #endif
 
 	frames = framenum;
-	ffpf = new ff::ParallelFor(threadnum, true, true);
+	ffpf = new ff::ParallelFor(threadnum, false, true);
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_begin();
 #endif	
