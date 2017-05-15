@@ -328,8 +328,10 @@ int main (int argc, char **argv)
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
-	map(prices_sk, sptprice_sk, strike_sk, rate_sk, 
-         volatility_sk, otime_sk, otype_sk, data_sk);
+	for(uint j = 0; j < NUM_RUNS; j++){
+		map(prices_sk, sptprice_sk, strike_sk, rate_sk, 
+    	     volatility_sk, otime_sk, otype_sk, data_sk);
+	}
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();
 #endif
