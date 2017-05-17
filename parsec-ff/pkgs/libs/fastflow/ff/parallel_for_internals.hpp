@@ -67,6 +67,10 @@
 
 enum {FF_AUTO=-1};
 
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+static int dummyTask;
+#endif
+
 #if defined(__ICC)
 #define PRAGMA_IVDEP _Pragma("ivdep")
 #else
@@ -558,6 +562,15 @@ public:
     }
 
     inline bool sendTask(const bool skipmore=false) {
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        if(!static_scheduling && _step == 1 && _chunk == 1){
+            // Just start the workers and die.
+            for(size_t wid=0;wid<_nw;++wid) {
+                lb->ff_send_out_to((void*) &dummyTask, (int) wid);
+           }
+        return true;
+        }
+#endif
         size_t remaining    = totaltasks;
         const long endchunk = (_chunk-1)*_step + 1;
 
@@ -595,7 +608,7 @@ public:
 
 
     inline bool nextTaskConcurrentNoStealing(forall_task_t *task, const int wid) {  
-#ifdef FF_PARFOR_PASSIVE_NOSTEALING   
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
         long r = _nextIteration.fetch_add(_step);
         if(r >= _stop){return false;}
         task->set(r, r + _step);
@@ -606,7 +619,12 @@ public:
     }
 
     // this method is accessed concurrently by all worker threads
-    inline bool nextTaskConcurrentStealing(forall_task_t *task, const int wid) {
+    inline bool nextTaskConcurrent(forall_task_t *task, const int wid) {
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        if(!static_scheduling && _step == 1 && _chunk == 1){
+            return nextTaskConcurrentNoStealing(task, wid);
+        }
+#endif
         const long endchunk = (_chunk-1)*_step + 1; // next end-point
         auto id  = wid;
     L1:
@@ -686,21 +704,13 @@ public:
 #endif
         return false; 
     }
-
-    inline bool nextTaskConcurrent(forall_task_t *task, const int wid) {
+    
+    inline bool nextTask(forall_task_t *task, const int wid) {
 #ifdef FF_PARFOR_PASSIVE_NOSTEALING
         if(!static_scheduling && _step == 1 && _chunk == 1){
             return nextTaskConcurrentNoStealing(task, wid);
-        }else{
-#endif
-            return nextTaskConcurrentStealing(task, wid);
-#ifdef FF_PARFOR_PASSIVE_NOSTEALING
         }
 #endif
-    }
-
-    
-    inline bool nextTask(forall_task_t *task, const int wid) {
         const long endchunk = (_chunk-1)*_step + 1;
         int id  = wid;
         if (data[id].ntask) {
@@ -834,8 +844,18 @@ public:
         auto task = (forall_task_t*)t;
         auto myid = get_my_id();
 
+#ifndef FF_PARFOR_PASSIVE_NOSTEALING
         F(task->start,task->end,myid,res);
         if (schedRunning) return t;
+#else
+        forall_task_t tmptask;
+        if(t != (void*) &dummyTask){
+            F(task->start,task->end,myid,res);
+            if (schedRunning) return t;
+        }else{
+            task = &tmptask;
+        }
+#endif
 
         // the code below is executed only if the scheduler thread is not running
         while(sched->nextTaskConcurrent(task,myid))

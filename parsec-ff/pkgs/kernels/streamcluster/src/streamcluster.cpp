@@ -86,6 +86,7 @@ static int nproc; //# of threads
 
 typedef struct{
 	ff::ParallelFor *pf;
+	ff::ParallelForReduce<double> *pfr;
 }ff_support;
 
 ff_support fastflowsup;
@@ -1658,7 +1659,7 @@ float pkmedian(Points *points, long kmin, long kmax, long* kfinal)
   static long k;
   static int *feasible;
   static int numfeasible;
-  static double* hizs;
+  double* hizs;
 
   hiz = loz = 0.0;
   long numberOfPoints = points->num;
@@ -1670,13 +1671,13 @@ float pkmedian(Points *points, long kmin, long kmax, long* kfinal)
   hizs = (double*)calloc(points->num, sizeof(double));
 
 
-  fastflowsup.pf->parallel_for(0, points->num, [&](const long idx){
+  fastflowsup.pfr->parallel_for(0, points->num, [&](const long idx){
         hizs[idx] += dist(points->p[idx], points->p[0],ptDimension)*points->p[idx].weight;
   },nproc);
 
-  for(int i = 0; i < points->num; i++){
-     hiz += hizs[i];
-  }
+  auto red1 = [&hizs](const long i, double& sum) { sum += hizs[i];};
+  auto red2 = [](double& v, const double elem) { v += elem; };
+  fastflowsup.pfr->parallel_reduce(hiz, 0, 0, points->num, 1, PARFOR_STATIC(0), red1, red2, nproc);
 
   loz=0.0; z = (hiz+loz)/2.0;
 
@@ -2463,8 +2464,10 @@ int main(int argc, char **argv)
   //ParFor creation
 
   ff::ParallelFor pf(nproc);
+  ff::ParallelForReduce<double> pfr(nproc);
 
   fastflowsup.pf=&pf;
+  fastflowsup.pfr=&pfr;
 #endif
 
 

@@ -15,7 +15,6 @@ ifdef version
   endif
   ifeq "$(version)" "ff"
     CXXFLAGS :=	$(CXXFLAGS) -DFF_VERSION -pthread
-    OBJS += parsec_barrier.o
   endif
 endif
 
