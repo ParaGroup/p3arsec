@@ -43,6 +43,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "wtime.h"
 
 #include <iostream>
+#include <mutex>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -51,6 +52,7 @@ static int omp_get_max_threads() {return 1;}
 static int omp_get_thread_num() {return 0;}
 #endif //_OPENMP
 
+#define FF_PARFOR_PASSIVE_NOSTEALING
 #include <ff/parallel_for.hpp>
 #include <ff/spin-lock.hpp>
 #include <pthread.h>
@@ -108,7 +110,8 @@ int **threadworkload;
 int *threadworkloadnum;
 
 ff::ParallelFor* ffpf;
-ff::lock_t critical;
+//ff::lock_t critical;
+std::mutex critical;
 bool globalinitdone = false;
 
 template <class T> void transform_FPTree_into_FPArray(FP_tree *fptree, int thread, T mark)
@@ -521,7 +524,7 @@ void FP_tree::init(int old_itemno, int new_itemno, int thread)
 	}
 	itemno = new_itemno;
         if(!globalinitdone){
-            init_unlocked(critical);
+            //init_unlocked(critical);
             globalinitdone = true;
         }
 }
@@ -1256,12 +1259,14 @@ void FP_tree::release_node_array_after_mining(int sequence, int thread, int work
 	}
 {
 
-    spin_lock(critical /*, thread*/);
+    //        spin_lock(critical /*, thread*/);
+    critical.lock();
 	if (current < released_pos) {
 		released_pos = current;
 		fp_node_sub_buf->freebuf(MR_nodes[current], MC_nodes[current], MB_nodes[current]);
 	}
-        spin_unlock(critical /*, thread*/);
+        //  spin_unlock(critical /*, thread*/);
+        critical.unlock();
 }
 
 }
@@ -1277,12 +1282,14 @@ void FP_tree::release_node_array_before_mining(int sequence, int thread, int wor
 	}
 	current ++;
 {
-    spin_lock(critical /*, thread*/);
+    //    spin_lock(critical /*, thread*/);
+    critical.lock();
 	if (current < released_pos) {
 		released_pos = current;
 		fp_node_sub_buf->freebuf(MR_nodes[current], MC_nodes[current], MB_nodes[current]);
 	}
-        spin_unlock(critical /*, thread*/);
+        //        spin_unlock(critical /*, thread*/);
+        critical.unlock();
 }
 
 }
@@ -1341,10 +1348,9 @@ int FP_tree::FP_growth_first(FSout* fout)
 		}
 
 		if(upperbound > lowerbound){
-//		for(sequence=upperbound - 1; sequence>=lowerbound; sequence--)
-  			ffpf->parallel_for_thid(1, upperbound - lowerbound + 1, 1, 1, [&](const int index, const int thid) {		
+            ffpf->disableScheduler();
+  			ffpf->parallel_for_thid(1, upperbound - lowerbound + 1, 1, 1, [&](const int index, const int thid) { 
 				int sequence = upperbound - index;
-//			ffpf->parallel_for_thid(lowerbound, upperbound, 1, 1, [&](const int sequence, const int thid) {
 				int current, new_item_no, listlen;
 				int MC2=0;			
 				unsigned int MR2=0;	
@@ -1428,6 +1434,7 @@ int FP_tree::FP_growth_first(FSout* fout)
 					release_node_array_after_mining(sequence, thread, workingthread);
 				}
 			}, workingthread);
+			ffpf->disableScheduler(false);
 		}
 	}
 	 wtime(&tend);

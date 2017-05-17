@@ -4,25 +4,29 @@ This repository contains parallel patterns implementations of some applications 
 The structure and modelling of the provided applications is described in the paper:
 **P<sup>3</sup>ARSEC: Towards Parallel Patterns Benchmarking** by Marco Danelutto, Tiziano De Matteis, Daniele De Sensi, Gabriele Mencagli and Massimo Torquati. The paper has been presented at the [32nd ACM Symposium on Applied Computing (SAC)](http://www.sigapp.org/sac/sac2017/).
 
-At the moment, the following applications have been implemented (remaining benchmarks are currently under development) (**bold** versions are those used by default):
+All the applications (except x264) have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) pattern-based parallel programming framework. Some benchmarks have been also implemented with the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) framework. In the following table you can find more details about the pattern used for each benchmark and the file(s) containing the actual implementation, both for **FastFlow** and for **SkePU2**. Some benchmarks can be implemented by using different patterns (**bold** pattern is the one used by default). To use a different pattern refer to the specific [section](#run-alternative-versions) of this document.
 
-Application  | Patterns implementations
------------- | ---------------------------------------------------------
-Blackscholes | [**Map**](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c)
-Canneal      | [**Master-Worker**](parsec-ff/pkgs/kernels/canneal/src/main.cpp)
-Dedup        | [**Pipeline of Farms**](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)
-"            | [Farm](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farm.cpp)
-"            | [Farm of Pipelines](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farmofpipes.cpp)
-"            | [Ordering Farm](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)
-Ferret       | [**Pipeline of Farms**](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)
-"            | [Farm of Pipelines](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp)
-"            | [Farm](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
-Swaptions    | [**Map**](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)
+Application   | Used Pattern           | FastFlow Files                                                | SkePU2 Files
+------------- | -----------------------|---------------------------------------------------------------|--------------
+Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c) | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu_omp.cpp)
+Bodytrack     | **Maps**               | [File 1](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/TrackingModelFF.cpp), [File 2](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/ParticleFilterFF.h)
+Canneal       | **Master-Worker**      | [File 1](parsec-ff/pkgs/kernels/canneal/src/main.cpp)
+Dedup         | **Pipeline of Farms**  | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)
+"             | Farm                   | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farm.cpp)
+"             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farmofpipes.cpp)
+"             | Ordering Farm          | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)
+Facesim       | **Maps**               | [File 1](parsec-ff/pkgs/apps/facesim/src/Benchmarks/facesim/FACE_EXAMPLE.h), [File 2](parsec-ff/pkgs/apps/facesim/src/Public_Library/Forces_And_Torques/DIAGONALIZED_FINITE_VOLUME_3D.cpp), [File 3](parsec-ff/pkgs/apps/facesim/src/Public_Library/Deformable_Objects/DEFORMABLE_OBJECT.cpp), [File 4](parsec-ff/pkgs/apps/facesim/src/Public_Library/Arrays/ARRAY_PARALLEL_OPERATIONS.cpp)
+Ferret        | **Pipeline of Farms**  | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)
+"             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp)
+"             | Farm                   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
+Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)
+Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)
+Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)
+Streamcluster | **Maps and MapReduce** | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster.cpp)
+Swaptions     | **Map**                | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)
+Vips          | **Map**                | [File 1](parsec-ff/pkgs/apps/vips/src/libvips/iofuncs/threadpool.cc)
+x264          | Not available.
 
-Applications have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) 
-and the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/)
-pattern-based parallel programming frameworks.
-*x264* is the only application missing at the moment.
 
 These implementations have been engineered in order to be used with the standard PARSEC tools.
 Accordingly, you can use and evaluate the parallel patterns implementations together with
@@ -157,11 +161,11 @@ on the running architecture. TYPE can be one of the followings:
 
 	This counter is available on newer Intel architectures (Silvermont, Broadwell, Haswell, Ivy Bridge, Sandy Bridge, Skylake,
         Xeon Phi KNL).
-	If you need more detailed measurements (e.g. separating the consumption of individual sockets, please [contact us](mailto:Paragroup@di.unipi.it)).
+	If you need more detailed measurements (e.g. separating the consumption of individual sockets, please [contact us](mailto:d.desensi.software@gmail.com)).
 * `PLUG`: In this case only one value will be printed, corresponding to the total energy consumption of the machine (measured at the
 	  power plug level. This counter is available on:
 	* Architectures using a [SmartPower](http://odroid.com/dokuwiki/doku.php?id=en:odroidsmartpower).
-	* IBM Power8 machines. This support is still experimental. If you need to use it, please [contact us](mailto:Paragroup@di.unipi.it).
+	* IBM Power8 machines. This support is still experimental. If you need to use it, please [contact us](mailto:d.desensi.software@gmail.com).
 	
 If energy counters are not present, only execution time will be printed.
 
@@ -192,3 +196,6 @@ At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace 
 * `ferret-ff-farmofpipes` if you want to run the *farm of pipelines* version.
 
 After that, build and run *ferret* as usual.
+
+# Contributors
+P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto:d.desensi.software@gmail.com) and [Tiziano De Matteis](dematteis@di.unipi.it).

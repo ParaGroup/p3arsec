@@ -441,8 +441,11 @@ protected:
     std::vector<bool>      eossent;
     std::vector<dataPair>  data;
     std::atomic_long       maxid;
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+    std::atomic_long       _nextIteration;
+#endif
 protected:
-    // initialize the data vector
+
     virtual inline size_t init_data(ssize_t start, ssize_t stop) {
         static_scheduling = false;  // enable work stealing in the nextTaskConcurrent
         const long numtasks  = std::lrint(std::ceil((stop-start)/(double)_step));
@@ -482,6 +485,7 @@ protected:
         // printf("totaltasks=%ld\n", tt);
         return tt;
     }    
+
     // initialize the data vector
     virtual inline size_t init_data_static(long start, long stop) {
         assert(_chunk <= 0);
@@ -534,6 +538,9 @@ public:
     forall_Scheduler(ff_loadbalancer* lb, long start, long stop, long step, long chunk, size_t nw):
         lb(lb),_start(start),_stop(stop),_step(step),_chunk(chunk),totaltasks(0),_nw(nw),
         jump(0),skip1(false),workersspinwait(false),static_scheduling(false) {
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        _nextIteration = _start;
+#endif
 		maxid.store(-1); // MA: consistency of store to be checked
         if (_chunk<=0) totaltasks = init_data_static(start,stop);
         else           totaltasks = init_data(start,stop);
@@ -542,6 +549,9 @@ public:
     forall_Scheduler(ff_loadbalancer* lb, size_t nw):
         lb(lb),_start(0),_stop(0),_step(1),_chunk(1),totaltasks(0),_nw(nw),
         jump(0),skip1(false),workersspinwait(false),static_scheduling(false) {
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        _nextIteration = 0;
+#endif
 		maxid.store(-1); // MA: consistency of store to be checked
         totaltasks = init_data(0,0);
         assert(totaltasks==0);
@@ -583,8 +593,20 @@ public:
         }
     }
 
+
+    inline bool nextTaskConcurrentNoStealing(forall_task_t *task, const int wid) {  
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING   
+        long r = _nextIteration.fetch_add(_step);
+        if(r >= _stop){return false;}
+        task->set(r, r + _step);
+        return true;
+#else
+        error("To use nextTaskConcurrentNoStealing you need to define macro FF_PARFOR_PASSIVE_NOSTEALING\n");
+#endif
+    }
+
     // this method is accessed concurrently by all worker threads
-    inline bool nextTaskConcurrent(forall_task_t *task, const int wid) {
+    inline bool nextTaskConcurrentStealing(forall_task_t *task, const int wid) {
         const long endchunk = (_chunk-1)*_step + 1; // next end-point
         auto id  = wid;
     L1:
@@ -664,6 +686,19 @@ public:
 #endif
         return false; 
     }
+
+    inline bool nextTaskConcurrent(forall_task_t *task, const int wid) {
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        if(!static_scheduling && _step == 1 && _chunk == 1){
+            return nextTaskConcurrentNoStealing(task, wid);
+        }else{
+#endif
+            return nextTaskConcurrentStealing(task, wid);
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        }
+#endif
+    }
+
     
     inline bool nextTask(forall_task_t *task, const int wid) {
         const long endchunk = (_chunk-1)*_step + 1;
@@ -745,6 +780,9 @@ public:
 
     inline void setloop(long start, long stop, long step, long chunk, size_t nw) {
         _start=start, _stop=stop, _step=step, _chunk=chunk, _nw=nw;
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        _nextIteration = _start;
+#endif
         if (_chunk<=0) totaltasks = init_data_static(start,stop);
         else           totaltasks = init_data(start,stop);
 

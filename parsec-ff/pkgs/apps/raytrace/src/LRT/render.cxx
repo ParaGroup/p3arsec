@@ -27,6 +27,7 @@
 
 #ifdef FF_VERSION
 #undef _INLINE
+#define FF_PARFOR_PASSIVE_NOSTEALING
 #include <ff/map.hpp>
 #include <ff/parallel_for.hpp>
 #undef _INLINE
@@ -50,6 +51,7 @@
 /* -- screen tile used for scheduling work on threads -- */
 #define TILE_WIDTH (4*PACKET_WIDTH)
 #define TILE_WIDTH_SHIFT 5
+
 
 #define CAST_FLOAT(s,x) ((float*)&(s))[x]
 #define CAST_INT(s,x)   ((int*)&(s))[x]
@@ -113,25 +115,8 @@ public:
 
 class Context;
 
-#ifdef FF_VERSION
-#if 0
-struct fastflowMap: ff::ff_Map<int>{
-private:
-    Context* _context;
-public:
-    fastflowMap(Context* context):_context(context){;}
-    int* svc(int* t);
-};
-#endif
-#endif
-
 class Context : public MultiThreadedTaskQueue
 {
-#ifdef FF_VERSION
-#if 0
-  friend struct fastflowMap;
-#endif
-#endif
 protected:
 
   /* data shared by all threads */
@@ -158,17 +143,16 @@ protected:
   vector< RTTextureObject_RGBA_UCHAR*, Align<RTTextureObject_RGBA_UCHAR*> > m_texture;
 
   /* threads */
-#ifdef FF_VERSION
-#if 0
-  fastflowMap* m;
-#endif
-#endif
   int m_threads;
   bool m_threadsCreated;
 
   // need to be aligned, therefore made static
   static SharedThreadData m_threadData;
   static AtomicCounter m_tileCounter;
+
+#ifdef FF_VERSION
+	ff::ParallelFor* pf;
+#endif
 
   /* textures */
 
@@ -226,9 +210,7 @@ public:
     m_geometryMode = MINIRT_POLYGONAL_GEOMETRY;
     Context::m_tileCounter.reset();
 #ifdef FF_VERSION
-#if 0
-    m = new fastflowMap(this);
-#endif
+	pf = NULL;
 #endif
   }
 
@@ -626,27 +608,6 @@ void Context::buildSpatialIndexStructure()
 #ifdef FF_VERSION
 int Context::task(int jobID, int threadId){;}
 
-#if 0
-int* fastflowMap::svc(int *in) {
-    int index;
-    const int tilesPerRow = _context->m_threadData.resX >> TILE_WIDTH_SHIFT;
-    ff::parallel_for(0, _context->m_threadData.maxTiles, [&](const int index) {
-          /* todo: get rid of '/' and '%' */
-          int sx = (index % tilesPerRow)*TILE_WIDTH;
-          int sy = (index / tilesPerRow)*TILE_WIDTH;
-          int ex = min(sx+TILE_WIDTH,_context->m_threadData.resX);
-          int ey = min(sy+TILE_WIDTH,_context->m_threadData.resY);
-          if (_context->m_geometryMode == _context->MINIRT_POLYGONAL_GEOMETRY)
-            _context->renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
-          else if (_context->m_geometryMode == _context->MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
-             _context->renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(_context->m_threadData.frameBuffer,sx,sy,ex,ey);
-          else
-              FATAL("unknown mesh type");
-    }, _context->m_threads);
-    return NULL;
-}
-#endif
-
 #else 
 int Context::task(int jobID, int threadId)
 {
@@ -691,7 +652,10 @@ void Context::renderFrame(Camera *camera,
       if (m_threads > 1)
 	{
 	  cout << "-> starting " << m_threads << " threads..." << flush;
-#ifndef FF_VERSION
+#ifdef FF_VERSION
+      pf = new ff::ParallelFor(m_threads, false, true);
+      pf->disableScheduler();
+#else
 	  createThreads(m_threads);
 #endif
 	  cout << "done" << endl << flush;
@@ -707,16 +671,10 @@ void Context::renderFrame(Camera *camera,
   if (m_threads>1)
     {
 #ifdef FF_VERSION
-#if 0
-        // Map
-        m->run();
-        m->wait();
-#endif
         // Parallel for
         int index;
         const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
-        static ff::ParallelFor pf(m_threads, false, true);
-        pf.parallel_for(0, m_threadData.maxTiles, 1, 4, [&](const int index)            
+        pf->parallel_for(0, m_threadData.maxTiles, 1, 1, [&](const int index) 
         {
                 /* todo: get rid of '/' and '%' */
                 int sx = (index % tilesPerRow)*TILE_WIDTH;
@@ -729,9 +687,9 @@ void Context::renderFrame(Camera *camera,
                     renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
                 else
                     FATAL("unknown mesh type");
-            }
-            , m_threads
-           );
+         }
+         , m_threads
+         );
 #else
       Context::m_tileCounter.reset();
       startThreads();
