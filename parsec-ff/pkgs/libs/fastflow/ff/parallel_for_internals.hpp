@@ -69,6 +69,7 @@ enum {FF_AUTO=-1};
 
 #ifdef FF_PARFOR_PASSIVE_NOSTEALING
 static int dummyTask;
+static bool globalSchedRunning;
 #endif
 
 #if defined(__ICC)
@@ -449,7 +450,7 @@ protected:
     std::atomic_long       _nextIteration;
 #endif
 protected:
-
+    // initialize the data vector
     virtual inline size_t init_data(ssize_t start, ssize_t stop) {
         static_scheduling = false;  // enable work stealing in the nextTaskConcurrent
         const long numtasks  = std::lrint(std::ceil((stop-start)/(double)_step));
@@ -489,7 +490,6 @@ protected:
         // printf("totaltasks=%ld\n", tt);
         return tt;
     }    
-
     // initialize the data vector
     virtual inline size_t init_data_static(long start, long stop) {
         assert(_chunk <= 0);
@@ -561,9 +561,14 @@ public:
         assert(totaltasks==0);
     }
 
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+    inline bool canUseNoStealing(){
+        return !globalSchedRunning && !static_scheduling && _step == 1 && _chunk == 1;
+    }
+#endif
     inline bool sendTask(const bool skipmore=false) {
 #ifdef FF_PARFOR_PASSIVE_NOSTEALING
-        if(!static_scheduling && _step == 1 && _chunk == 1){
+        if(canUseNoStealing()){
             // Just start the workers and die.
             for(size_t wid=0;wid<_nw;++wid) {
                 lb->ff_send_out_to((void*) &dummyTask, (int) wid);
@@ -605,8 +610,6 @@ public:
             lb->ff_send_out_to(&taskv[id], int(id));
         }
     }
-
-
     inline bool nextTaskConcurrentNoStealing(forall_task_t *task, const int wid) {  
 #ifdef FF_PARFOR_PASSIVE_NOSTEALING
         long r = _nextIteration.fetch_add(_step);
@@ -621,7 +624,7 @@ public:
     // this method is accessed concurrently by all worker threads
     inline bool nextTaskConcurrent(forall_task_t *task, const int wid) {
 #ifdef FF_PARFOR_PASSIVE_NOSTEALING
-        if(!static_scheduling && _step == 1 && _chunk == 1){
+        if(canUseNoStealing()){
             return nextTaskConcurrentNoStealing(task, wid);
         }
 #endif
@@ -707,8 +710,8 @@ public:
     
     inline bool nextTask(forall_task_t *task, const int wid) {
 #ifdef FF_PARFOR_PASSIVE_NOSTEALING
-        if(!static_scheduling && _step == 1 && _chunk == 1){
-            return nextTaskConcurrentNoStealing(task, wid);
+        if(canUseNoStealing()){
+                return nextTaskConcurrentNoStealing(task, wid);
         }
 #endif
         const long endchunk = (_chunk-1)*_step + 1;
@@ -844,17 +847,17 @@ public:
         auto task = (forall_task_t*)t;
         auto myid = get_my_id();
 
-#ifndef FF_PARFOR_PASSIVE_NOSTEALING
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        forall_task_t tmptask;
+        if(t != (void*) &dummyTask || schedRunning){
+           F(task->start,task->end,myid,res);
+           if (schedRunning) return t;
+        }else{
+           task = &tmptask;
+        }
+#else
         F(task->start,task->end,myid,res);
         if (schedRunning) return t;
-#else
-        forall_task_t tmptask;
-        if(t != (void*) &dummyTask){
-            F(task->start,task->end,myid,res);
-            if (schedRunning) return t;
-        }else{
-            task = &tmptask;
-        }
 #endif
 
         // the code below is executed only if the scheduler thread is not running
@@ -1122,6 +1125,10 @@ public:
     
         // NOTE: in case of static scheduling, the scheduler is never started !
         schedRunning = (!removeSched && startScheduler(nw, ((forall_Scheduler*)getEmitter())->getnumtasks()));
+
+#ifdef FF_PARFOR_PASSIVE_NOSTEALING
+        globalSchedRunning = schedRunning;
+#endif
 
         if (schedRunning)  {
             for(size_t i=0;i<nw;++i) {
