@@ -35,6 +35,8 @@ FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
 #include <../image/image.h>
 #include "tpool.h"
 
+#define NO_DEFAULT_MAPPING  
+#define ENABLE_FF_ONDEMAND
 #include <ff/farm.hpp>
 #include <ff/pipeline.hpp>
 #include <iostream>
