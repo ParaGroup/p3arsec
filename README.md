@@ -8,7 +8,7 @@ All the applications (except x264) have been implemented by using the [FastFlow]
 
 Application   | Used Pattern           | FastFlow Files                                                | SkePU2 Files
 ------------- | -----------------------|---------------------------------------------------------------|--------------
-Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c) | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu_omp.cpp)
+Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c) | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu.cpp)
 Bodytrack     | **Maps**               | [File 1](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/TrackingModelFF.cpp), [File 2](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/ParticleFilterFF.h)
 Canneal       | **Master-Worker**      | [File 1](parsec-ff/pkgs/kernels/canneal/src/main.cpp)
 Dedup         | **Pipeline of Farms**  | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)

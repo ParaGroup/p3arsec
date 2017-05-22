@@ -53,7 +53,9 @@
 
 using namespace std;
 
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
 void* entry_pt(void*);
+#endif
 
 #ifdef ENABLE_FF
 typedef struct{
@@ -61,8 +63,7 @@ typedef struct{
     int accepted_bad_moves;
 }CTask;
 
-static CTask dummyTask;
-static CTask* allTasks;
+static CTask dummyTask, *allTasks;
 
 class Emitter: public ff::ff_node{
 private:
@@ -74,17 +75,9 @@ private:
     ff::ff_loadbalancer* _lb;
 public:
     Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb):
-        _temp_steps_completed(0),
-        _activeWorkers(maxNumWorkers),
-        _tasksRcvd(_activeWorkers - 1),
-        _number_temp_steps(number_temp_steps),
-        _keep_going_global_flag(true),
-        _lb(lb){
+        _temp_steps_completed(0), _activeWorkers(maxNumWorkers), _tasksRcvd(_activeWorkers - 1),
+        _number_temp_steps(number_temp_steps), _keep_going_global_flag(true), _lb(lb){
         allTasks = new CTask[maxNumWorkers];
-    }
-
-    ~Emitter(){
-        std::cout << "Generated " << _temp_steps_completed << " tasks." << std::endl;
     }
 
     bool keep_going(int temp_steps_completed, int accepted_good_moves, int accepted_bad_moves)
@@ -104,15 +97,12 @@ public:
     }
 
     void* svc(void*){
-        ++_tasksRcvd;
-        if(_tasksRcvd == _activeWorkers){
+        if(++_tasksRcvd == _activeWorkers){
             _tasksRcvd = 0;
             ++_temp_steps_completed;
 
             for(size_t i = 0; i < _activeWorkers; i++){
-                if(!keep_going(_temp_steps_completed,
-                               allTasks[i].accepted_good_moves,
-                               allTasks[i].accepted_bad_moves)){
+                if(!keep_going(_temp_steps_completed, allTasks[i].accepted_good_moves, allTasks[i].accepted_bad_moves)){
                     return EOS;
                 }
             }
@@ -128,7 +118,6 @@ private:
     Rng _rng;
     netlist* _netlist;
     double _T;
-    int _swapsPerTemp;
     int _movesPerThreadTemp;
     long _a_id;
     long _b_id;
@@ -173,15 +162,10 @@ public:
     }
 
     CWorker(netlist* netlist, double startTemp, int swapsPerTemp, int maxNumWorkers):
-        _netlist(netlist), _T(startTemp), _swapsPerTemp(swapsPerTemp),
-        _movesPerThreadTemp(swapsPerTemp/maxNumWorkers),
+        _netlist(netlist), _T(startTemp), _movesPerThreadTemp(swapsPerTemp/maxNumWorkers),
         _a_id(0), _b_id(0){
         _a = _netlist->get_random_element(&_a_id, NO_MATCHING_ELEMENT, &_rng);
         _b = _netlist->get_random_element(&_b_id, NO_MATCHING_ELEMENT, &_rng);
-    }
-
-    void notifyRethreading(size_t oldNumWorkers, size_t newNumWorkers){
-        _movesPerThreadTemp = _swapsPerTemp/newNumWorkers;
     }
 
     void* svc(void* task){
@@ -266,8 +250,10 @@ int main (int argc, char * const argv[]) {
 
 	//now that we've read in the commandline, run the program
 	netlist my_netlist(filename);
-	
+
+#if !defined(ENABLE_FF)	
 	annealer_thread a_thread(&my_netlist,num_threads,swaps_per_temp,start_temp,number_temp_steps);
+#endif
 	
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
@@ -276,21 +262,15 @@ int main (int argc, char * const argv[]) {
 #ifdef ENABLE_THREADS
 #ifdef ENABLE_FF
     ff::ff_farm<> farm;
+    farm.cleanup_all();
     std::vector<ff::ff_node*> workers;
     for(int i = 0; i < num_threads; i++){
         workers.push_back(new CWorker(&my_netlist, start_temp, swaps_per_temp, num_threads));
     }
-    ff::ff_node* emitter = new Emitter(num_threads, number_temp_steps, farm.getlb());
-    farm.add_emitter(emitter);
+    farm.add_emitter(new Emitter(num_threads, number_temp_steps, farm.getlb()));
     farm.add_workers(workers);
     farm.wrap_around();
     farm.run_and_wait_end();
-    farm.ffStats(std::cout);
-    delete emitter;
-    for(int i = 0; i < num_threads; i++){
-        delete workers[i];
-    }
-
 #else
 	std::vector<pthread_t> threads(num_threads);
 	void* thread_in = static_cast<void*>(&a_thread);
@@ -318,9 +298,11 @@ int main (int argc, char * const argv[]) {
 	return 0;
 }
 
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
 void* entry_pt(void* data)
 {
 	annealer_thread* ptr = static_cast<annealer_thread*>(data);
 	ptr->Run();
 	return NULL;
 }
+#endif
