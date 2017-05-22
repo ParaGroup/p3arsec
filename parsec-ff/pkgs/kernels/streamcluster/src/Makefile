@@ -16,6 +16,10 @@ ifdef version
   ifeq "$(version)" "ff"
     CXXFLAGS :=	$(CXXFLAGS) -DFF_VERSION -pthread
   endif
+  ifeq "$(version)" "skepu2"
+    CXXFLAGS :=	$(CXXFLAGS) 
+    OBJS := streamcluster_skepu_omp.o
+  endif
 endif
 
 all: $(OBJS)

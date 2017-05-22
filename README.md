@@ -6,9 +6,9 @@ The structure and modelling of the provided applications is described in the pap
 
 All the applications (except x264) have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) pattern-based parallel programming framework. Some benchmarks have been also implemented with the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) framework. In the following table you can find more details about the pattern used for each benchmark and the file(s) containing the actual implementation, both for **FastFlow** and for **SkePU2**. Some benchmarks can be implemented by using different patterns (**bold** pattern is the one used by default). To use a different pattern refer to the specific [section](#run-alternative-versions) of this document.
 
-Application   | Used Pattern           | FastFlow Files                                                | SkePU2 Files
-------------- | -----------------------|---------------------------------------------------------------|--------------
-Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c) | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu.cpp)
+Application   | Used Pattern           | FastFlow Files                                                       | SkePU2 Files
+------------- | -----------------------|----------------------------------------------------------------------|--------------
+Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c)        | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu.cpp)
 Bodytrack     | **Maps**               | [File 1](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/TrackingModelFF.cpp), [File 2](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/ParticleFilterFF.h)
 Canneal       | **Master-Worker**      | [File 1](parsec-ff/pkgs/kernels/canneal/src/main.cpp)
 Dedup         | **Pipeline of Farms**  | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)
@@ -22,8 +22,8 @@ Ferret        | **Pipeline of Farms**  | [File 1](parsec-ff/pkgs/apps/ferret/src
 Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)
 Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)
 Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)
-Streamcluster | **Maps and MapReduce** | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster.cpp)
-Swaptions     | **Map**                | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)
+Streamcluster | **Maps and MapReduce** | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster.cpp) | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster_skepu.cpp)
+Swaptions     | **Map**                | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)       | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities_skepu.cpp)
 Vips          | **Map**                | [File 1](parsec-ff/pkgs/apps/vips/src/libvips/iofuncs/threadpool.cc)
 x264          | Not available.
 
