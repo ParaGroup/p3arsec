@@ -24,8 +24,11 @@ namespace skepu2
 			res.getParent().invalidateDeviceData();
 			
 			omp_set_num_threads(this->m_selected_spec->CPUThreads());
-			
+#ifdef SKEPU_OPENMP_PARFOR_DYNAMIC
+#pragma omp parallel for schedule(dynamic, 1)
+#else		
 #pragma omp parallel for
+#endif
 			for (size_t i = 0; i < size; ++i)
 			{
 				res(i) = F::forward(MapFunc::OMP, (res + i).getIndex(), get<EI, CallArgs...>(args...)(i)..., get<AI, CallArgs...>(args...).hostProxy()..., get<CI, CallArgs...>(args...)...);

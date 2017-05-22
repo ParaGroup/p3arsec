@@ -57,8 +57,12 @@ namespace skepu2
 			this->m_transpose_matrix->resize(this->m_cols, this->m_rows); // resize it
 		else
 			this->m_transpose_matrix->invalidateDeviceData(); // invalidate any device copies
-		
+
+#ifdef SKEPU_OPENMP_PARFOR_DYNAMIC
+#pragma omp parallel for schedule(dynamic, 1)
+#else				
 #pragma omp parallel for
+#endif
 		for (size_t i = 0; i < m_rows; i++)
 			for (size_t j = 0; j < m_cols; j++)
 				this->m_transpose_matrix->m_data[j * this->m_rows + i] = this->m_data[i * this->m_cols + j];

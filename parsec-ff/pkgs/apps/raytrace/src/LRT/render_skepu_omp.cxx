@@ -27,6 +27,7 @@
 # include "RTTL/Grid/Grid.hxx"
 #endif
 
+#define SKEPU_OPENMP_PARFOR_DYNAMIC
 #include <skepu2.hpp>
 
 #define NORMALIZE_PRIMARY_RAYS
