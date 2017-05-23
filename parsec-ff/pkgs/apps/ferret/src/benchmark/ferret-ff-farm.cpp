@@ -108,12 +108,12 @@ struct rank_data
 /* ------- The Helper Functions ------- */
 int cnt_enqueue;
 int cnt_dequeue;
-char path[BUFSIZ];
 
 
 /* ------ The Stages ------ */
 class Load: public ff::ff_node{
 private:
+    char path[BUFSIZ];
 	int scan_dir (const char *, char *head);
 	int dir_helper (char *dir, char *head)
 	{
@@ -163,11 +163,8 @@ private:
 	}
 
 public:
-	Load(){
-		path[0] = 0;
-	}
-
 	void* svc(void* task){
+		path[0] = 0;
 		if (strcmp(query_dir, ".") == 0){
 			dir_helper(".", path);
 		}else{
@@ -212,141 +209,106 @@ int Load::scan_dir (const char *dir, char *head)
 }
 
 
-class Seg: public ff::ff_node{
-private:
-	struct seg_data *seg;
-	struct load_data *load;
-public:
-	void* svc(void* task){
-		load = (struct load_data*) task;
+struct seg_data* segment(struct load_data *load){
+	assert(load != NULL);
+    struct seg_data *seg = (struct seg_data *)calloc(1, sizeof(struct seg_data));
 
-		assert(load != NULL);
-		seg = (struct seg_data *)calloc(1, sizeof(struct seg_data));
+	seg->name = load->name;
 
-		seg->name = load->name;
+	seg->width = load->width;
+	seg->height = load->height;
+	seg->HSV = load->HSV;
+	image_segment(&seg->mask, &seg->nrgn, load->RGB, load->width, load->height);
 
-		seg->width = load->width;
-		seg->height = load->height;
-		seg->HSV = load->HSV;
-		image_segment(&seg->mask, &seg->nrgn, load->RGB, load->width, load->height);
+	free(load->RGB);
+	free(load);
 
-		free(load->RGB);
-		free(load);
+	return seg;
+}
 
-		return (void*) seg;
-	}
+struct extract_data * extract(struct seg_data *seg){	
+	assert(seg != NULL);
+	struct extract_data *extract = (struct extract_data *)calloc(1, sizeof(struct extract_data));
 
-};
+	extract->name = seg->name;
 
-class Extract: public ff::ff_node{
-private:
-	struct seg_data *seg;
-	struct extract_data *extract;
-public:
-	void* svc(void* task){
-		seg = (struct seg_data*) task;
-		
-		assert(seg != NULL);
-		extract = (struct extract_data *)calloc(1, sizeof(struct extract_data));
+	image_extract_helper(seg->HSV, seg->mask, seg->width, seg->height, seg->nrgn, &extract->ds);
 
-		extract->name = seg->name;
+	free(seg->mask);
+	free(seg->HSV);
+	free(seg);
+	
+	return extract;
+}
 
-		image_extract_helper(seg->HSV, seg->mask, seg->width, seg->height, seg->nrgn, &extract->ds);
+struct vec_query_data * vec(struct extract_data * extract){
+	assert(extract != NULL);
+	struct vec_query_data *	vec = (struct vec_query_data *)calloc(1, sizeof(struct vec_query_data));
+	vec->name = extract->name;
+    
+    cass_query_t query;
+	memset(&query, 0, sizeof query);
+	query.flags = CASS_RESULT_LISTS | CASS_RESULT_USERMEM;
 
-		free(seg->mask);
-		free(seg->HSV);
-		free(seg);
-		
-		return (void*) extract;
-	}
-};
+	vec->ds = query.dataset = &extract->ds;
+	query.vecset_id = 0;
 
-class Vec: public ff::ff_node{
-private:
-	struct extract_data *extract;
-	struct vec_query_data *vec;
-	cass_query_t query;
-public:
-	void* svc(void* task){
-		extract = (struct extract_data*) task;
-		
-		assert(extract != NULL);
-		vec = (struct vec_query_data *)calloc(1, sizeof(struct vec_query_data));
-		vec->name = extract->name;
+	query.vec_dist_id = vec_dist_id;
 
-		memset(&query, 0, sizeof query);
-		query.flags = CASS_RESULT_LISTS | CASS_RESULT_USERMEM;
+	query.vecset_dist_id = vecset_dist_id;
 
-		vec->ds = query.dataset = &extract->ds;
-		query.vecset_id = 0;
+	query.topk = 2*top_K;
 
-		query.vec_dist_id = vec_dist_id;
+	query.extra_params = extra_params;
 
-		query.vecset_dist_id = vecset_dist_id;
+		cass_result_alloc_list(&vec->result, vec->ds->vecset[0].num_regions, query.topk);
 
-		query.topk = 2*top_K;
+//	cass_result_alloc_list(&result_m, 0, T1);
+//	cass_table_query(table, &query, &vec->result);
+	cass_table_query(table, &query, &vec->result);
 
-		query.extra_params = extra_params;
+	return vec;
+}
 
-			cass_result_alloc_list(&vec->result, vec->ds->vecset[0].num_regions, query.topk);
+struct rank_data * rank(struct vec_query_data *vec){		
+    cass_query_t query;
+	assert(vec != NULL);
 
-	//	cass_result_alloc_list(&result_m, 0, T1);
-	//	cass_table_query(table, &query, &vec->result);
-		cass_table_query(table, &query, &vec->result);
+	struct rank_data *rank = (struct rank_data *)calloc(1, sizeof(struct rank_data));
+	rank->name = vec->name;
 
-		return (void*) vec;
-	}
-};
+	query.flags = CASS_RESULT_LIST | CASS_RESULT_USERMEM | CASS_RESULT_SORT;
+	query.dataset = vec->ds;
+	query.vecset_id = 0;
 
-class Rank: public ff::ff_node{
-private:
-	struct vec_query_data *vec;
-	struct rank_data *rank;
-	cass_result_t *candidate;
-	cass_query_t query;
-public:
-	void* svc(void* task){
-		vec = (struct vec_query_data*) task;		
-		assert(vec != NULL);
+	query.vec_dist_id = vec_dist_id;
 
-		rank = (struct rank_data *)calloc(1, sizeof(struct rank_data));
-		rank->name = vec->name;
+	query.vecset_dist_id = vecset_dist_id;
 
-		query.flags = CASS_RESULT_LIST | CASS_RESULT_USERMEM | CASS_RESULT_SORT;
-		query.dataset = vec->ds;
-		query.vecset_id = 0;
+	query.topk = top_K;
 
-		query.vec_dist_id = vec_dist_id;
+	query.extra_params = NULL;
 
-		query.vecset_dist_id = vecset_dist_id;
-
-		query.topk = top_K;
-
-		query.extra_params = NULL;
-
-		candidate = cass_result_merge_lists(&vec->result, (cass_dataset_t *)query_table->__private, 0);
-		query.candidate = candidate;
+    cass_result_t *candidate = cass_result_merge_lists(&vec->result, (cass_dataset_t *)query_table->__private, 0);
+	query.candidate = candidate;
 
 
-		cass_result_alloc_list(&rank->result, 0, top_K);
-		cass_table_query(query_table, &query, &rank->result);
+	cass_result_alloc_list(&rank->result, 0, top_K);
+	cass_table_query(query_table, &query, &rank->result);
 
-		cass_result_free(&vec->result);
-		cass_result_free(candidate);
-		free(candidate);
-		cass_dataset_release(vec->ds);
-		free(vec->ds);
-		free(vec);
-		return (void*) rank;
-	}
-};
+	cass_result_free(&vec->result);
+	cass_result_free(candidate);
+	free(candidate);
+	cass_dataset_release(vec->ds);
+	free(vec->ds);
+	free(vec);
+	return rank;
+}
 
 class Out: public ff::ff_node{
-private:
-	struct rank_data *rank;
 public:
 	void* svc(void* task){
-		rank = (struct rank_data*) task;
+        struct rank_data * rank = (struct rank_data*) task;
 
 		assert(rank != NULL);
 
@@ -375,14 +337,9 @@ public:
 };
 
 class CollapsedPipeline: public ff::ff_node{
-private:
-	Seg s;
-	Extract e;
-	Vec v;
-	Rank r;
 public:
 	void* svc(void* task){
-		return r.svc(v.svc(e.svc(s.svc(task))));
+        return rank(vec(extract(segment((struct load_data *) task))));
 	}
 };
 
@@ -462,19 +419,15 @@ int main (int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
-	ff::ff_farm<> farm;
-	farm.cleanup_all();
 	std::vector<ff::ff_node*> workers;
-#ifdef ENABLE_FF_ONDEMAND
-	farm.set_scheduling_ondemand();
-#endif
 	for(size_t i = 0; i < nthreads; i++){
 		workers.push_back(new CollapsedPipeline());
 	}
-
-	farm.add_emitter(new Load());
-	farm.add_workers(workers);
-	farm.add_collector(new Out());
+	ff::ff_farm<> farm(workers, new Load(), new Out());
+	farm.cleanup_all();
+#ifdef ENABLE_FF_ONDEMAND
+	farm.set_scheduling_ondemand();
+#endif
 	farm.run_and_wait_end();
 	assert(cnt_enqueue == cnt_dequeue);
 #ifdef ENABLE_PARSEC_HOOKS

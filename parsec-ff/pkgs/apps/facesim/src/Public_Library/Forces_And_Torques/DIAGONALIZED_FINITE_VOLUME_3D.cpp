@@ -255,12 +255,15 @@ template<class T> struct UPDATE_POSITION_BASED_STATE_HELPER
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
 Update_Position_Based_State()
 {
+#ifdef ENABLE_FF
+    Update_Position_Based_State_Parallel();
+#else
 	if (PHYSBAM_THREADED_RUN) Update_Position_Based_State_Parallel();
-
 #ifndef NEW_SERIAL_IMPLEMENTATIOM
 	else Update_Position_Based_State_Serial();
 #else
 	else Update_Position_Based_State_Parallel();
+#endif
 #endif
 }
 
@@ -577,6 +580,8 @@ Update_Position_Based_State_Parallel()
 #endif
 #endif
 }
+
+#ifndef ENABLE_FF
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
 Update_Position_Based_State_Serial()
 {
@@ -662,6 +667,7 @@ Update_Position_Based_State_Serial()
 
 	LOG::Stop_Time();
 }
+#endif
 //#####################################################################
 // Function Delete_Position_Based_State
 //#####################################################################
@@ -692,14 +698,15 @@ template<class T> struct ADD_VELOCITY_INDEPENDENT_FORCES_HELPER
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
 Add_Velocity_Independent_Forces (ARRAY<VECTOR_3D<T> >& F) const
 {
+#ifdef ENABLE_FF
+    Add_Velocity_Independent_Forces_Parallel (F);
+#else
 	if (PHYSBAM_THREADED_RUN) Add_Velocity_Independent_Forces_Parallel (F);
-
 #ifndef NEW_SERIAL_IMPLEMENTATIOM
 	else Add_Velocity_Independent_Forces_Serial (F);
-
 #else
 	else Add_Velocity_Independent_Forces_Parallel (F);
-
+#endif
 #endif
 }
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
@@ -908,6 +915,8 @@ Add_Velocity_Independent_Forces_Parallel (ARRAY<VECTOR_3D<T> >& F) const
 #endif
 	LOG::Stop_Time();
 }
+
+#ifndef ENABLE_FF
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
 Add_Velocity_Independent_Forces_Serial (ARRAY<VECTOR_3D<T> >& F) const
 {
@@ -948,6 +957,7 @@ Add_Velocity_Independent_Forces_Serial (ARRAY<VECTOR_3D<T> >& F) const
 
 	LOG::Stop_Time();
 }
+#endif
 //#####################################################################
 // Function Add_Velocity_Dependent_Forces
 //#####################################################################
@@ -978,14 +988,15 @@ template<class T> struct ADD_FORCE_DIFFERENTIAL_HELPER
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
 Add_Force_Differential (const ARRAY<VECTOR_3D<T> >& dX, ARRAY<VECTOR_3D<T> >& dF) const
 {
+#ifdef ENABLE_FF
+    Add_Force_Differential_Parallel (dX, dF);
+#else
 	if (PHYSBAM_THREADED_RUN) Add_Force_Differential_Parallel (dX, dF);
-
 #ifndef NEW_SERIAL_IMPLEMENTATIOM
 	else Add_Force_Differential_Serial (dX, dF);
-
 #else
 	else Add_Force_Differential_Parallel (dX, dF);
-
+#endif
 #endif
 }
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
@@ -1150,6 +1161,8 @@ Add_Force_Differential (const ARRAY<VECTOR_3D<T> >& dX_full, ARRAY<VECTOR_3D<T> 
 		dF_full (m) += external_edge_stiffness (e) * dX_full (n);
 	}
 }
+
+#ifndef ENABLE_FF
 template<class T> void DIAGONALIZED_FINITE_VOLUME_3D<T>::
 Add_Force_Differential_Serial (const ARRAY<VECTOR_3D<T> >& dX, ARRAY<VECTOR_3D<T> >& dF) const
 {
@@ -1190,6 +1203,7 @@ Add_Force_Differential_Serial (const ARRAY<VECTOR_3D<T> >& dX, ARRAY<VECTOR_3D<T
 
 	//LOG::Stop_Time();
 }
+#endif
 //#####################################################################
 // Function Intialize_CFL
 //#####################################################################
