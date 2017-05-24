@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Performs different analysis on the source code of the different P3ARSEC versions,
+# Performs different analysis on the source code of the different P3ARSEC (and parsec-ompss) versions,
 # reporting different metrics.
 #
 # Dependencies:
@@ -8,6 +8,7 @@
 # 2. astyle
 # 3. cloc
 # 4. git > 1.8.4 (for 'git diff')
+# 5. lizard (https://github.com/terryyin/lizard) for cyclomatic complexity calculation ('sudo pip install lizard' should be enough)
 
 import os
 import sys
@@ -15,8 +16,11 @@ import argparse
 from subprocess import PIPE, Popen
 
 # Let the following two variables point to the correct folders.
-p3arsec_root = "/tmp/p3arsec/pkgs/"
-# To download ompss: https://pm.bsc.es/gitlab/benchmarks/parsec-ompss
+
+# ./install.sh must have been called on the P3ARSEC folder.
+p3arsec_root = "/tmp/p3arsec/pkgs/"  
+
+# To download parsec-ompss: https://pm.bsc.es/gitlab/benchmarks/parsec-ompss
 # If the following variable is empty, metrics will not be computed for OMPSS versions.
 parsec_ompss_root = "/home/daniele/Code/parsec-ompss/"
 
@@ -32,11 +36,14 @@ def getFullPath(v, f):
     return "/tmp/" + v + "/src/" + f
 
 def getCorresponding(b, v, f):
+    
     # Blackscholes #
     if 'blackscholes' in b:
         if 'ompss' in v:
             if 'blackscholes-ompss.c' in f:
                 return getFullPath('serial', 'blackscholes.c')
+        if 'skepu' in v and '_skepu' in f:
+            return getFullPath('serial', f.replace('_skepu.cpp', '.c'))
     # Bodytrack #
     elif 'bodytrack' in b:
         if 'ParticleFilter' in f:
@@ -64,9 +71,13 @@ def getCorresponding(b, v, f):
             return getFullPath('serial', 'fp_tree.cpp')
     # Raytrace #
     elif 'raytrace' in b:
+        if 'skepu' in v and '_skepu' in f:
+            return getFullPath('serial', f.replace('_skepu', ''))
         return ''
     # Swaptions #
     elif 'swaptions' in b:
+        if 'skepu' in v and '_skepu' in f:
+            return getFullPath('serial', f.replace('_skepu', ''))
         return ''                        
     # Vips #
     elif 'vips' in b:
@@ -78,19 +89,32 @@ def getCorresponding(b, v, f):
                 return getFullPath('serial', 'annealer_thread.h')
             elif 'annealer_thread_ff.cpp' in f:
                 return getFullPath('serial', 'annealer_thread.cpp')
-
-    return ''
+    # Dedup #
+    elif 'dedup' in b:
+        if 'ff' in v:
+            if 'encoder_ff_' in f:
+                return getFullPath('serial', 'encoder.c')
+    # Streamcluster #
+    elif 'streamcluster' in b:
+        if 'ompss' in v:
+            if 'ompss_streamcluster.cpp' in f:
+                return getFullPath('serial', 'streamcluster.cpp')
+        if 'skepu' in v and '_skepu' in f:
+            return getFullPath('serial', f.replace('_skepu', ''))
+    else:
+        print "FATAL ERROR: Unkown benchmark."
+        sys.exit()
 
 macros = {} # Must be defined if the corresponding version exists (even if empty)
 files = {} # Files that differ for different implementations
 locs = {}
 modifiedlines = {}
+cc = {}
 benchmarktype = {}
 
-#benchmarks = ["blackscholes", "bodytrack", "facesim", "ferret", "fluidanimate", "freqmine", "raytrace", "swaptions", "vips", "canneal", "dedup", "streamcluster"]
-benchmarks = ["canneal"]
+benchmarks = ["blackscholes", "bodytrack", "facesim", "ferret", "fluidanimate", "freqmine", "raytrace", "swaptions", "vips", "canneal", "dedup", "streamcluster"]
 
-versions = ["pthreads", "ff", "openmp", "tbb", "serial"]
+versions = ["serial", "pthreads", "openmp", "tbb", "ff", "skepu"]
 if parsec_ompss_root:
     versions.append("ompss")
 
@@ -100,6 +124,7 @@ for b in benchmarks:
     files[b] = {}
     locs[b] = {}
     modifiedlines[b] = {}
+    cc[b] = {}
 
 ################
 # Blackscholes #
@@ -111,12 +136,14 @@ if 'blackscholes' in benchmarks:
     macros['blackscholes']['tbb'] = "-DENABLE_TBB"
     macros['blackscholes']['serial'] = ""
     macros['blackscholes']['ompss'] = ""
+    macros['blackscholes']['skepu'] = ""
     files['blackscholes']['pthreads'] = ["blackscholes.c"]
     files['blackscholes']['ff'] = ["blackscholes.c"]
     files['blackscholes']['openmp'] = ["blackscholes.c"]
     files['blackscholes']['tbb'] = ["blackscholes.c"]
     files['blackscholes']['serial'] = ["blackscholes.c"]
     files['blackscholes']['ompss'] = ["blackscholes-ompss.c"]
+    files['blackscholes']['skepu'] = ["blackscholes_skepu.cpp"]
     benchmarktype["blackscholes"] = "apps"
 
 #############
@@ -234,9 +261,11 @@ if 'raytrace' in benchmarks:
     macros['raytrace']['pthreads'] = ""
     macros['raytrace']['ff'] = "-DFF_VERSION"
     macros['raytrace']['serial'] = ""
+    macros['raytrace']['skepu'] = ""
     files['raytrace']['pthreads'] = ["LRT/render.cxx", "RTTL/common/RTThread.cxx", "RTTL/common/RTThread.hxx"]
     files['raytrace']['ff'] = ["LRT/render.cxx"]
     files['raytrace']['serial'] = ["LRT/render.cxx"]
+    files['raytrace']['skepu'] = ["LRT/render_skepu.cxx"]
     benchmarktype["raytrace"] = "apps"
 
 #############
@@ -248,11 +277,13 @@ if 'swaptions' in benchmarks:
     macros['swaptions']['tbb'] = "-DENABLE_THREADS -DTBB_VERSION"
     macros['swaptions']['serial'] = ""
     macros['swaptions']['ompss'] = "-DENABLE_OMPSS"
+    macros['swaptions']['skepu'] = ""
     files['swaptions']['pthreads'] = ["HJM_Securities.cpp"]
     files['swaptions']['ff'] = ["HJM_Securities.cpp"]
     files['swaptions']['tbb'] = ["HJM_Securities.cpp"]
     files['swaptions']['serial'] = ["HJM_Securities.cpp"]
     files['swaptions']['ompss'] = ["HJM_Securities.cpp"]
+    files['swaptions']['skepu'] = ["HJM_Securities_skepu.cpp"]
     benchmarktype["swaptions"] = "apps"
 
 #################
@@ -264,11 +295,13 @@ if 'streamcluster' in benchmarks:
     macros['streamcluster']['tbb'] = "-DTBB_VERSION"
     macros['streamcluster']['serial'] = ""
     macros['streamcluster']['ompss'] = "-DENABLE_OMPSS"
+    macros['streamcluster']['skepu'] = ""
     files['streamcluster']['pthreads'] = ["streamcluster.cpp", "parsec_barrier.hpp", "parsec_barrier.cpp"]
     files['streamcluster']['ff'] = ["streamcluster.cpp"]
     files['streamcluster']['tbb'] = ["streamcluster.cpp"]
     files['streamcluster']['serial'] = ["streamcluster.cpp"]
     files['streamcluster']['ompss'] = ["ompss_streamcluster.cpp"]
+    files['streamcluster']['skepu'] = ["streamcluster_skepu.cpp"]
     benchmarktype["streamcluster"] = "kernels"
 
 ########
@@ -286,12 +319,18 @@ if 'vips' in benchmarks:
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Computes metrics over source code.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-m', '--modified', help='Number of modified lines.', action='store_true', required=False, default=False)
-parser.add_argument('-l', '--locs', help='Number of lines of code.', action='store_true', required=False, default=False)
+parser.add_argument('-m', '--modified', help='Prints number of modified lines of code.', action='store_true', required=False, default=False)
+parser.add_argument('-l', '--locs', help='Prints number of lines of code.', action='store_true', required=False, default=False)
+parser.add_argument('-c', '--cyclomatic', help='Prints cyclomatic complexity.', action='store_true', required=False, default=False)
+parser.add_argument('-v', '--verbose', help='Verbose mode.', action='store_true', required=False, default=False)
+parser.add_argument('-b', '--benchmark', help='Computes metrics just for one benchmark.', required=False)
+parser.add_argument('-k', '--keepfiles', help='Do not remove temporary files (just for debugging purposes).', action='store_true', required=False, default=False)
 args = parser.parse_args()
 
 # Compute Metrics
 for benchmark in benchmarks:
+    if args.benchmark and args.benchmark not in benchmark:
+        continue
     for v in versions:
         if not v in macros[benchmark]:
             continue
@@ -310,6 +349,8 @@ for benchmark in benchmarks:
                 locs[benchmark][v] = 0 
             if v not in modifiedlines[benchmark]:
                 modifiedlines[benchmark][v] = 0 
+            if v not in cc[benchmark]:
+                cc[benchmark][v] = 0 
             os.system("grep -v '^#include' " + filepath + "/src/" + f + " | grep -v '^# include' > " + getFullPath(v, f))
             os.system("astyle --style=banner --suffix=none " + getFullPath(v, f) + ">/dev/null")
             os.system("coan source --implicit -ge -gs " + macros[benchmark][v] + " " + getFullPath(v, f) + " | grep -v '^# '> " + getFullPath(v, f) + ".clean.c")
@@ -319,40 +360,53 @@ for benchmark in benchmarks:
             cmdline("mv " + getFullPath(v, f) + ".sc " + getFullPath(v, f))
             # Count LOCs
             locs[benchmark][v] += int(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
+            # Compute Cyclomatic complexity
+            cc[benchmark][v] += float(cmdline("lizard -l cpp " + getFullPath(v, f) + " | tail -n 1 | sed 's/\s\s*/ /g' | cut -d' ' -f4"))
                
     # At this point we have all the cleaned file in the correct folders.
     for v in versions:
-        print "#####"  + v + "####"
+        if args.verbose:
+            print "###################"
+            print "#####"  + v + "####"
+            print "###################"
         if not v in macros[benchmark]:
             continue
         for f in files[benchmark][v]:
-            correspondingFile = getCorresponding(b, v, f)
+            correspondingFile = getCorresponding(benchmark, v, f)
+            if args.verbose and correspondingFile:
+                print "Corresponding of: " + benchmark + " " + v + " " + f + ": " + str(correspondingFile)
             # Compute modified lines
             if v not in 'serial':
                 if f in files[benchmark]['serial']:
                     difflines = int(cmdline("git diff --minimal --no-index --ignore-all-space --ignore-blank-lines " + getFullPath('serial', f) + " " + getFullPath(v, f) + " | diffstat | tail -n 1 | cut -d ',' -f 2 | cut -d ' ' -f 2"))
                     modifiedlines[benchmark][v] += difflines
-                    print f + " differs with " + str(difflines) + " lines"
+                    if args.verbose:
+                        print f + " differs with " + str(difflines) + " lines"
                 # Different file name but 'same' code (e.g. blackscholes-ompss.c vs blackscholes.c)
                 elif correspondingFile:
                     difflines = int(cmdline("git diff --minimal --no-index --ignore-all-space --ignore-blank-lines " + correspondingFile + " " + getFullPath(v, f) + " | diffstat | tail -n 1 | cut -d ',' -f 2 | cut -d ' ' -f 2"))
                     modifiedlines[benchmark][v] += difflines
-                    print f + " differs with " + str(difflines) + " lines"
+                    if args.verbose:
+                        print f + " differs with " + str(difflines) + " lines"
                 else:
                     newlines = int(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
                     modifiedlines[benchmark][v] += newlines
-                    print f + " introduces " + str(newlines) + " lines"
+                    if args.verbose:
+                        print f + " introduces " + str(newlines) + " lines"
 
-            
-#    for v in versions:
-#        os.system("rm -rf /tmp/" + v)
+    if not args.keepfiles:
+        for v in versions:
+            os.system("rm -rf /tmp/" + v)
 
 #Print results
+sys.stdout.write("\t")    
+for v in versions:
+    sys.stdout.write(v + "\t")
+sys.stdout.write("\n")
 for benchmark in benchmarks:
-    print benchmark
-    for v in versions:
-        sys.stdout.write(v + "\t")
-    sys.stdout.write("\n")
+    if args.benchmark and args.benchmark not in benchmark:
+        continue
+    sys.stdout.write(benchmark + "\t")    
     for v in versions:
         if not v in macros[benchmark]:
             sys.stdout.write("N.A.\t")
@@ -361,7 +415,10 @@ for benchmark in benchmarks:
                 sys.stdout.write(str(locs[benchmark][v]) + "\t")
             elif args.modified:
                 if 'serial' in v:
-                    sys.stdout.write("N.A.\t")
+                    sys.stdout.write("0\t")
                 else:
                     sys.stdout.write(str(modifiedlines[benchmark][v]) + "\t")
+            elif args.cyclomatic:
+                sys.stdout.write(str(cc[benchmark][v] / len(files[benchmark][v])) + "\t")
+    
     sys.stdout.write("\n")

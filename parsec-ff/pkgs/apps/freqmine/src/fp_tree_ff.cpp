@@ -112,7 +112,6 @@ int *threadworkloadnum;
 ff::ParallelFor* ffpf;
 //ff::lock_t critical;
 std::mutex critical;
-bool globalinitdone = false;
 
 template <class T> void transform_FPTree_into_FPArray(FP_tree *fptree, int thread, T mark)
 {
@@ -523,10 +522,6 @@ void FP_tree::init(int old_itemno, int new_itemno, int thread)
 		new_data_num[thread][0] = 0;
 	}
 	itemno = new_itemno;
-        if(!globalinitdone){
-            //init_unlocked(critical);
-            globalinitdone = true;
-        }
 }
 
 void FP_tree::database_tiling(int workingthread)
