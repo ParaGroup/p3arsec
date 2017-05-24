@@ -43,162 +43,19 @@
 #endif
 
 #include "annealer_types.h"
+#ifdef ENABLE_FF
+#include "annealer_thread_ff.h"
+#else
 #include "annealer_thread.h"
+#endif
 #include "netlist.h"
 #include "rng.h"
-
-#ifdef ENABLE_FF
-#include <ff/farm.hpp>
-#endif
 
 using namespace std;
 
 #if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
 void* entry_pt(void*);
 #endif
-
-#ifdef ENABLE_FF
-typedef struct{
-    int accepted_good_moves;
-    int accepted_bad_moves;
-}CTask;
-
-static CTask dummyTask, *allTasks;
-
-class Emitter: public ff::ff_node{
-private:
-    int _temp_steps_completed;
-    uint _activeWorkers;
-    size_t _tasksRcvd;
-    int _number_temp_steps;
-    bool _keep_going_global_flag;
-    ff::ff_loadbalancer* _lb;
-public:
-    Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb):
-        _temp_steps_completed(0), _activeWorkers(maxNumWorkers), _tasksRcvd(_activeWorkers - 1),
-        _number_temp_steps(number_temp_steps), _keep_going_global_flag(true), _lb(lb){
-        allTasks = new CTask[maxNumWorkers];
-    }
-
-    bool keep_going(int temp_steps_completed, int accepted_good_moves, int accepted_bad_moves)
-    {
-        bool rv;
-
-        if(_number_temp_steps == -1) {
-            //run until design converges
-            rv = _keep_going_global_flag && (accepted_good_moves > accepted_bad_moves);
-            if(!rv) _keep_going_global_flag = false; // signal we have converged
-        } else {
-            //run a fixed amount of steps
-            rv = temp_steps_completed < _number_temp_steps;
-        }
-
-        return rv;
-    }
-
-    void* svc(void*){
-        if(++_tasksRcvd == _activeWorkers){
-            _tasksRcvd = 0;
-            ++_temp_steps_completed;
-
-            for(size_t i = 0; i < _activeWorkers; i++){
-                if(!keep_going(_temp_steps_completed, allTasks[i].accepted_good_moves, allTasks[i].accepted_bad_moves)){
-                    return EOS;
-                }
-            }
-
-            _lb->broadcast_task((void*) &dummyTask);
-        }
-        return GO_ON;
-    }
-};
-
-class CWorker: public ff::ff_node{
-private:
-    Rng _rng;
-    netlist* _netlist;
-    double _T;
-    int _movesPerThreadTemp;
-    long _a_id;
-    long _b_id;
-    netlist_elem* _a;
-    netlist_elem* _b;
-public:
-    enum move_decision_t{
-        move_decision_accepted_good,
-        move_decision_accepted_bad,
-        move_decision_rejected
-    };
-
-    move_decision_t accept_move(routing_cost_t delta_cost, double T, Rng* rng)
-    {
-        //always accept moves that lower the cost function
-        if (delta_cost < 0){
-            return move_decision_accepted_good;
-        } else {
-            double random_value = rng->drand();
-            double boltzman = exp(- delta_cost/T);
-            if (boltzman > random_value){
-                return move_decision_accepted_bad;
-            } else {
-                return move_decision_rejected;
-            }
-        }
-    }
-
-
-    //*****************************************************************************************
-    //  If get turns out to be expensive, I can reduce the # by passing it into the swap cost fcn
-    //*****************************************************************************************
-    routing_cost_t calculate_delta_routing_cost(netlist_elem* a, netlist_elem* b)
-    {
-        location_t* a_loc = a->present_loc.Get();
-        location_t* b_loc = b->present_loc.Get();
-
-        routing_cost_t delta_cost = a->swap_cost(a_loc, b_loc);
-        delta_cost += b->swap_cost(b_loc, a_loc);
-
-        return delta_cost;
-    }
-
-    CWorker(netlist* netlist, double startTemp, int swapsPerTemp, int maxNumWorkers):
-        _netlist(netlist), _T(startTemp), _movesPerThreadTemp(swapsPerTemp/maxNumWorkers),
-        _a_id(0), _b_id(0){
-        _a = _netlist->get_random_element(&_a_id, NO_MATCHING_ELEMENT, &_rng);
-        _b = _netlist->get_random_element(&_b_id, NO_MATCHING_ELEMENT, &_rng);
-    }
-
-    void* svc(void* task){
-        _T = _T / 1.5;
-        int accepted_good_moves = 0;
-        int accepted_bad_moves = 0;
-
-        for (int i = 0; i < _movesPerThreadTemp; i++){
-            //get a new element. Only get one new element, so that reuse should help the cache
-            _a = _b;
-            _a_id = _b_id;
-            _b = _netlist->get_random_element(&_b_id, _a_id, &_rng);
-
-            routing_cost_t delta_cost = calculate_delta_routing_cost(_a, _b);
-            move_decision_t is_good_move = accept_move(delta_cost, _T, &_rng);
-
-            //make the move, and update stats:
-            if (is_good_move == move_decision_accepted_bad){
-                accepted_bad_moves++;
-                _netlist->swap_locations(_a,_b);
-            } else if (is_good_move == move_decision_accepted_good){
-                accepted_good_moves++;
-                _netlist->swap_locations(_a,_b);
-            } else if (is_good_move == move_decision_rejected){
-                //no need to do anything for a rejected move
-            }
-        }
-        allTasks[get_my_id()].accepted_good_moves = accepted_good_moves;
-        allTasks[get_my_id()].accepted_bad_moves = accepted_bad_moves;
-        return &dummyTask;
-    }
-};
-#endif //ENABLE_FF
 
 int main (int argc, char * const argv[]) {
 #ifdef PARSEC_VERSION
@@ -265,7 +122,7 @@ int main (int argc, char * const argv[]) {
     farm.cleanup_all();
     std::vector<ff::ff_node*> workers;
     for(int i = 0; i < num_threads; i++){
-        workers.push_back(new CWorker(&my_netlist, start_temp, swaps_per_temp, num_threads));
+        workers.push_back(new annealer_thread(&my_netlist, start_temp, swaps_per_temp, num_threads));
     }
     farm.add_emitter(new Emitter(num_threads, number_temp_steps, farm.getlb()));
     farm.add_workers(workers);
