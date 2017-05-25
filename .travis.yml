@@ -1,0 +1,22 @@
+language: cpp
+compiler: 
+  - gcc
+sudo: required
+dist: trusty
+
+script:
+    - ./install.sh --fast
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-ff
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-skepu
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-pthreads
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-openmp
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-tbb
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-serial
+
+notifications:
+  email:
+    recipients:
+      - d.desensi.software@gmail.com
+    on_success: never # default: change
+    on_failure: always # default: always
+  
