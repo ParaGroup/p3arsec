@@ -5,7 +5,7 @@ sudo: required
 dist: trusty
 
 script:
-    - ./install.sh --fast 2>/dev/null
+    - ./install.sh --fast &>/dev/null
     - echo "p3arsec installed"
     - ./bin/parsecmgmt -a build -p parsec -c gcc-ff &>/dev/null
     - echo "p3arsec ff compiled"
