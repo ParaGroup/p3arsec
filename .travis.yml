@@ -5,13 +5,20 @@ sudo: required
 dist: trusty
 
 script:
-    - ./install.sh --fast
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-ff
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-skepu
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-pthreads
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-openmp
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-tbb
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-serial
+    - ./install.sh --fast 2>/dev/null
+    - echo "p3arsec installed"
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-ff 2>/dev/null
+    - echo "p3arsec ff compiled"
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-skepu 2>/dev/null
+    - echo "p3arsec skepu compiled"
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-pthreads 2>/dev/null
+    - echo "p3arsec pthreads compiled"
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-openmp 2>/dev/null
+    - echo "p3arsec openmp compiled"
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-tbb 2>/dev/null
+    - echo "p3arsec tbb compiled"
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-serial 2>/dev/null
+    - echo "p3arsec serial compiled"
 
 notifications:
   email:
