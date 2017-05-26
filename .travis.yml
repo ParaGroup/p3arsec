@@ -7,17 +7,17 @@ dist: trusty
 script:
     - ./install.sh --fast 2>/dev/null
     - echo "p3arsec installed"
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-ff 2>/dev/null
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-ff &>/dev/null
     - echo "p3arsec ff compiled"
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-skepu 2>/dev/null
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-skepu &>/dev/null
     - echo "p3arsec skepu compiled"
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-pthreads 2>/dev/null
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-pthreads &>/dev/null
     - echo "p3arsec pthreads compiled"
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-openmp 2>/dev/null
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-openmp &>/dev/null
     - echo "p3arsec openmp compiled"
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-tbb 2>/dev/null
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-tbb &>/dev/null
     - echo "p3arsec tbb compiled"
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-serial 2>/dev/null
+    - ./bin/parsecmgmt -a build -p parsec -c gcc-serial &>/dev/null
     - echo "p3arsec serial compiled"
 
 notifications:
