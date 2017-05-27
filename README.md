@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ParaGroup/p3arsec.svg?branch=master)](https://travis-ci.org/ParaGroup/p3arsec)
+
 # Description
 This repository contains parallel patterns implementations of some applications contained in the PARSEC benchmark.
 

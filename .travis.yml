@@ -6,17 +6,17 @@ dist: trusty
 
 script:
     - ./install.sh --fast &>/dev/null
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-ff &>./log.txt
+    - ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-skepu &>./log.txt
+    - ./bin/parsecmgmt -a build -p blackscholes raytrace streamcluster swaptions -c gcc-skepu &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-pthreads &>./log.txt
+    - ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate raytrace streamcluster swaptions vips -c gcc-pthreads &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-openmp &>./log.txt
+    - ./bin/parsecmgmt -a build -p blackscholes bodytrack freqmine raytrace streamcluster swaptions vips -c gcc-openmp &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-tbb &>./log.txt
+    - ./bin/parsecmgmt -a build -p blackscholes bodytrack fluidanimate streamcluster swaptions -c gcc-tbb &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p parsec -c gcc-serial &>./log.txt
+    - ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-serial &>./log.txt
     - tail -100 log.txt
 
 notifications:

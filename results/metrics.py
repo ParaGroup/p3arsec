@@ -9,6 +9,11 @@
 # 3. cloc
 # 4. git > 1.8.4 (for 'git diff')
 # 5. lizard (https://github.com/terryyin/lizard) for cyclomatic complexity calculation ('sudo pip install lizard' should be enough)
+#
+# To compute locs relative to pthreads: ./metrics.py --locs -n pthreads
+# To compute modified lines wrt serial: ./metrics.py --modified
+#
+# For other options: ./metrics.py --help
 
 import os
 import sys
@@ -18,7 +23,7 @@ from subprocess import PIPE, Popen
 # Let the following two variables point to the correct folders.
 
 # ./install.sh must have been called on the P3ARSEC folder.
-p3arsec_root = "/tmp/p3arsec/pkgs/"  
+p3arsec_root = "/tmp/p3arsec/"  
 
 # To download parsec-ompss: https://pm.bsc.es/gitlab/benchmarks/parsec-ompss
 # If the following variable is empty, metrics will not be computed for OMPSS versions.
@@ -35,8 +40,8 @@ def cmdline(command):
 def getFullPath(v, f):
     return "/tmp/" + v + "/src/" + f
 
-def getCorresponding(b, v, f):
-    
+# Returns the corresponding file in case of different filenames.
+def getCorresponding(b, v, f):    
     # Blackscholes #
     if 'blackscholes' in b:
         if 'ompss' in v:
@@ -112,9 +117,9 @@ modifiedlines = {}
 cc = {}
 benchmarktype = {}
 
-benchmarks = ["blackscholes", "bodytrack", "facesim", "ferret", "fluidanimate", "freqmine", "raytrace", "swaptions", "vips", "canneal", "dedup", "streamcluster"]
+benchmarks = ["blackscholes", "bodytrack", "canneal", "dedup", "facesim", "ferret", "fluidanimate", "freqmine", "raytrace", "streamcluster", "swaptions", "vips"]
 
-versions = ["serial", "pthreads", "openmp", "tbb", "ff", "skepu"]
+versions = ["serial", "pthreads", "ff" , "tbb", "openmp", "skepu"]
 if parsec_ompss_root:
     versions.append("ompss")
 
@@ -325,6 +330,7 @@ parser.add_argument('-c', '--cyclomatic', help='Prints cyclomatic complexity.', 
 parser.add_argument('-v', '--verbose', help='Verbose mode.', action='store_true', required=False, default=False)
 parser.add_argument('-b', '--benchmark', help='Computes metrics just for one benchmark.', required=False)
 parser.add_argument('-k', '--keepfiles', help='Do not remove temporary files (just for debugging purposes).', action='store_true', required=False, default=False)
+parser.add_argument('-n', '--normalize', help='Normalizes lines of code with respect to a specified version .', required=False)
 args = parser.parse_args()
 
 # Compute Metrics
@@ -339,7 +345,7 @@ for benchmark in benchmarks:
         if "ompss" in v:
             filepath = parsec_ompss_root + "/" + benchmark
         else:
-            filepath = p3arsec_root + benchmarktype[benchmark] + "/" + benchmark
+            filepath = p3arsec_root + "/pkgs/" + benchmarktype[benchmark] + "/" + benchmark
         # Copy original files in appropriate folders (needed for computing different lines).
         os.system("mkdir -p /tmp/" + v + "/src")
         os.system("cp -r " + filepath + "/src/* /tmp/" + v + "/src/")
@@ -359,7 +365,7 @@ for benchmark in benchmarks:
             cmdline("cloc --csv --strip-comments=sc --original-dir --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f))
             cmdline("mv " + getFullPath(v, f) + ".sc " + getFullPath(v, f))
             # Count LOCs
-            locs[benchmark][v] += int(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
+            locs[benchmark][v] += float(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
             # Compute Cyclomatic complexity
             cc[benchmark][v] += float(cmdline("lizard -l cpp " + getFullPath(v, f) + " | tail -n 1 | sed 's/\s\s*/ /g' | cut -d' ' -f4"))
                
@@ -378,18 +384,18 @@ for benchmark in benchmarks:
             # Compute modified lines
             if v not in 'serial':
                 if f in files[benchmark]['serial']:
-                    difflines = int(cmdline("git diff --minimal --no-index --ignore-all-space --ignore-blank-lines " + getFullPath('serial', f) + " " + getFullPath(v, f) + " | diffstat | tail -n 1 | cut -d ',' -f 2 | cut -d ' ' -f 2"))
+                    difflines = float(cmdline("git diff --minimal --no-index --ignore-all-space --ignore-blank-lines " + getFullPath('serial', f) + " " + getFullPath(v, f) + " | diffstat | tail -n 1 | cut -d ',' -f 2 | cut -d ' ' -f 2"))
                     modifiedlines[benchmark][v] += difflines
                     if args.verbose:
                         print f + " differs with " + str(difflines) + " lines"
                 # Different file name but 'same' code (e.g. blackscholes-ompss.c vs blackscholes.c)
                 elif correspondingFile:
-                    difflines = int(cmdline("git diff --minimal --no-index --ignore-all-space --ignore-blank-lines " + correspondingFile + " " + getFullPath(v, f) + " | diffstat | tail -n 1 | cut -d ',' -f 2 | cut -d ' ' -f 2"))
+                    difflines = float(cmdline("git diff --minimal --no-index --ignore-all-space --ignore-blank-lines " + correspondingFile + " " + getFullPath(v, f) + " | diffstat | tail -n 1 | cut -d ',' -f 2 | cut -d ' ' -f 2"))
                     modifiedlines[benchmark][v] += difflines
                     if args.verbose:
                         print f + " differs with " + str(difflines) + " lines"
                 else:
-                    newlines = int(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
+                    newlines = float(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
                     modifiedlines[benchmark][v] += newlines
                     if args.verbose:
                         print f + " introduces " + str(newlines) + " lines"
@@ -398,18 +404,33 @@ for benchmark in benchmarks:
         for v in versions:
             os.system("rm -rf /tmp/" + v)
 
+# Normalization
+if args.normalize:
+    for benchmark in benchmarks:
+        normalizer = args.normalize
+        if args.benchmark and args.benchmark not in benchmark:
+            continue
+        if 'freqmine' in benchmark and 'pthreads' in normalizer:
+            normalizer = "openmp"
+        for v in versions:
+            if not v in macros[benchmark]:
+                continue
+            if not normalizer in v:
+                locs[benchmark][v] = (locs[benchmark][v] / locs[benchmark][normalizer]) 
+        locs[benchmark][normalizer] = 1
+
 #Print results
-sys.stdout.write("\t")    
+sys.stdout.write("#Bench\t")    
 for v in versions:
     sys.stdout.write(v + "\t")
 sys.stdout.write("\n")
 for benchmark in benchmarks:
     if args.benchmark and args.benchmark not in benchmark:
         continue
-    sys.stdout.write(benchmark + "\t")    
+    sys.stdout.write("\"" + benchmark + "\"\t")    
     for v in versions:
         if not v in macros[benchmark]:
-            sys.stdout.write("N.A.\t")
+            sys.stdout.write("-1\t")
         else:
             if args.locs:
                 sys.stdout.write(str(locs[benchmark][v]) + "\t")
