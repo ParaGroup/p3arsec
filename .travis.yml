@@ -5,18 +5,18 @@ sudo: required
 dist: trusty
 
 script:
-    - ./install.sh --fast &>/dev/null
-    - ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff &>./log.txt
+    - travis_wait ./install.sh --fast &>/dev/null
+    - travis_wait ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p blackscholes raytrace streamcluster swaptions -c gcc-skepu &>./log.txt
+    - travis_wait ./bin/parsecmgmt -a build -p blackscholes raytrace streamcluster swaptions -c gcc-skepu &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate raytrace streamcluster swaptions vips -c gcc-pthreads &>./log.txt
+    - travis_wait ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate raytrace streamcluster swaptions vips -c gcc-pthreads &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p blackscholes bodytrack freqmine raytrace streamcluster swaptions vips -c gcc-openmp &>./log.txt
+    - travis_wait ./bin/parsecmgmt -a build -p blackscholes bodytrack freqmine raytrace streamcluster swaptions vips -c gcc-openmp &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p blackscholes bodytrack fluidanimate streamcluster swaptions -c gcc-tbb &>./log.txt
+    - travis_wait ./bin/parsecmgmt -a build -p blackscholes bodytrack fluidanimate streamcluster swaptions -c gcc-tbb &>./log.txt
     - tail -100 log.txt
-    - ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-serial &>./log.txt
+    - travis_wait ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-serial &>./log.txt
     - tail -100 log.txt
 
 notifications:
