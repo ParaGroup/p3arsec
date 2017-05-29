@@ -117,7 +117,8 @@ void ParticleFilterFF<T>::GenerateNewParticles(int k)
 	for(int i = 0; i < (int)mBins.size(); i++)										
 		for(uint j = 0; j < mBins[i]; j++)													//index particles to be regenerated
 			mIndex[p++] = i;
-        parallelFor->parallel_for(0, mNParticles, [&](const long i)            //distribute new particles randomly according to model stdDevs						
+    
+    parallelFor->parallel_for(0, mNParticles, [&](const long i)            //distribute new particles randomly according to model stdDevs						
 	{	mNewParticles[i] = mParticles[mIndex[i]];											//add new particle for each entry in each bin distributed randomly about duplicated particle
 		AddGaussianNoise(mNewParticles[i], mModel->StdDevs()[k], mRnd[i]);
 	},

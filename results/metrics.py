@@ -5,7 +5,7 @@
 #
 # Dependencies:
 # 1. coan (https://sourceforge.net/projects/coan2/)
-# 2. astyle
+# 2. astyle > 3.0
 # 3. cloc
 # 4. git > 1.8.4 (for 'git diff')
 # 5. lizard (https://github.com/terryyin/lizard) for cyclomatic complexity calculation ('sudo pip install lizard' should be enough)
@@ -142,7 +142,7 @@ if 'blackscholes' in benchmarks:
     macros['blackscholes']['serial'] = ""
     macros['blackscholes']['ompss'] = ""
     macros['blackscholes']['skepu'] = ""
-    files['blackscholes']['pthreads'] = ["blackscholes.c"]
+    files['blackscholes']['pthreads'] = ["blackscholes.c", "c.m4.pthreads"]
     files['blackscholes']['ff'] = ["blackscholes.c"]
     files['blackscholes']['openmp'] = ["blackscholes.c"]
     files['blackscholes']['tbb'] = ["blackscholes.c"]
@@ -179,10 +179,10 @@ if 'canneal' in benchmarks:
     macros['canneal']['ff'] = "-DENABLE_THREADS -DENABLE_FF"
     macros['canneal']['serial'] = ""
     macros['canneal']['ompss'] = "-DENABLE_OMPSS"
-    files['canneal']['pthreads'] = ["main.cpp", "annealer_thread.h", "annealer_thread.cpp"]
-    files['canneal']['ff'] = ["main.cpp", "annealer_thread_ff.h", "annealer_thread_ff.cpp"]
-    files['canneal']['serial'] = ["main.cpp", "annealer_thread.h", "annealer_thread.cpp"]
-    files['canneal']['ompss'] = ["main.cpp", "annealer_thread.h", "annealer_thread.cpp"]
+    files['canneal']['pthreads'] = ["main.cpp", "annealer_thread.h", "annealer_thread.cpp", "rng.h", "rng.cpp"]
+    files['canneal']['ff'] = ["main.cpp", "annealer_thread_ff.h", "annealer_thread_ff.cpp", "rng.h", "rng.cpp"]
+    files['canneal']['serial'] = ["main.cpp", "annealer_thread.h", "annealer_thread.cpp", "rng.h", "rng.cpp"]
+    files['canneal']['ompss'] = ["main.cpp", "annealer_thread.h", "annealer_thread.cpp", "rng.h", "rng.cpp"]
     benchmarktype["canneal"] = "kernels"
 
 #########
@@ -222,7 +222,7 @@ if 'ferret' in benchmarks:
     macros['ferret']['tbb'] = ""
     macros['ferret']['serial'] = ""
     macros['ferret']['ompss'] = ""
-    files['ferret']['pthreads'] = ["benchmark/ferret-pthreads.c", "include/tpool.h", "src/tpool.c"]
+    files['ferret']['pthreads'] = ["benchmark/ferret-pthreads.c", "include/tpool.h", "src/tpool.c", "src/queue.c", "include/queue.h"]
     files['ferret']['ff'] = ["benchmark/ferret-ff-farm.cpp"]
     files['ferret']['tbb'] = ["benchmark/ferret-tbb.cpp", "benchmark/ferret-tbb.h"]
     files['ferret']['serial'] = ["benchmark/ferret-serial.c"]
@@ -237,7 +237,7 @@ if 'fluidanimate' in benchmarks:
     macros['fluidanimate']['ff'] = ""
     macros['fluidanimate']['tbb'] = ""
     macros['fluidanimate']['serial'] = ""
-    macros['fluidanimate']['ompss'] = ""
+    macros['fluidanimate']['ompss'] = "-DUSE_ImpeneratableWall" # For some reason, differently from serial and pthreads version, it is not enabled by default (macro in the code is commented)
     files['fluidanimate']['pthreads'] = ["pthreads.cpp", "parsec_barrier.hpp", "parsec_barrier.cpp"]
     files['fluidanimate']['ff'] = ["ff.cpp"]
     files['fluidanimate']['tbb'] = ["tbb.cpp"]
@@ -358,14 +358,17 @@ for benchmark in benchmarks:
             if v not in cc[benchmark]:
                 cc[benchmark][v] = 0 
             os.system("grep -v '^#include' " + filepath + "/src/" + f + " | grep -v '^# include' > " + getFullPath(v, f))
-            os.system("astyle --style=banner --suffix=none " + getFullPath(v, f) + ">/dev/null")
+            os.system("astyle --style=banner --break-one-line-headers  --suffix=none " + getFullPath(v, f) + ">/dev/null")
             os.system("coan source --implicit -ge -gs " + macros[benchmark][v] + " " + getFullPath(v, f) + " | grep -v '^# '> " + getFullPath(v, f) + ".clean.c")
             os.system("mv " + getFullPath(v, f) + ".clean.c " + getFullPath(v, f))
+            langextension = "hxx"
+            if 'blackscholes' in benchmark and 'c.m4.pthreads' in f:
+                langextension = "pthreads"
             # Remove comments
-            cmdline("cloc --csv --strip-comments=sc --original-dir --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f))
+            cmdline("cloc --csv --strip-comments=sc --original-dir --force-lang=\"C++\"," + langextension + " --quiet " + getFullPath(v, f))
             cmdline("mv " + getFullPath(v, f) + ".sc " + getFullPath(v, f))
             # Count LOCs
-            locs[benchmark][v] += float(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
+            locs[benchmark][v] += float(cmdline("cloc --csv --force-lang=\"C++\"," + langextension + " --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
             # Compute Cyclomatic complexity
             cc[benchmark][v] += float(cmdline("lizard -l cpp " + getFullPath(v, f) + " | tail -n 1 | sed 's/\s\s*/ /g' | cut -d' ' -f4"))
                
@@ -395,7 +398,10 @@ for benchmark in benchmarks:
                     if args.verbose:
                         print f + " differs with " + str(difflines) + " lines"
                 else:
-                    newlines = float(cmdline("cloc --csv --force-lang=\"C++\",hxx --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
+                    langextension = "hxx"
+                    if 'blackscholes' in benchmark and 'c.m4.pthreads' in f:
+                        langextension = "pthreads"
+                    newlines = float(cmdline("cloc --csv --force-lang=\"C++\"," + langextension + " --quiet " + getFullPath(v, f) + " | tail -n 1 | cut -d ',' -f 5 | tr -d '\n'"))
                     modifiedlines[benchmark][v] += newlines
                     if args.verbose:
                         print f + " introduces " + str(newlines) + " lines"
