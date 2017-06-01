@@ -3,6 +3,8 @@
 //Authors: Mark Broadie, Jatin Dewanwala
 //Collaborator: Mikhail Smelyanskiy, Jike Chong, Intel
 //Modified by Christian Bienia for the PARSEC Benchmark Suite
+//
+// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,7 +86,7 @@ struct Worker {
 
 #endif //TBB_VERSION
 
-
+#if !defined(FF_VERSION) && !defined(TBB_VERSION)
 void * worker(void *arg){
   int tid = *((int *)arg);
   FTYPE pdSwaptionPrice[2];
@@ -119,6 +121,7 @@ void * worker(void *arg){
 
    return NULL;
 }
+#endif
 
 
 //print a little help message explaining how to use this program
@@ -186,9 +189,7 @@ int main(int argc, char *argv[])
 
 #ifdef TBB_VERSION
 	tbb::task_scheduler_init init(nThreads);
-#elif defined(FF_VERSION)
-	;
-#else
+#elif !defined(FF_VERSION)
 	pthread_t      *threads;
 	pthread_attr_t  pthread_custom_attr;
 	threads = (pthread_t *) malloc(nThreads * sizeof(pthread_t));

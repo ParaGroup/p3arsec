@@ -1,0 +1,202 @@
+diff --git a/include/clang/Basic/Attr.td b/include/clang/Basic/Attr.td
+index 8bc5dfc..7a83f0d 100644
+--- a/include/clang/Basic/Attr.td
++++ b/include/clang/Basic/Attr.td
+@@ -2360,3 +2360,61 @@ def InternalLinkage : InheritableAttr {
+   let Subjects = SubjectList<[Var, Function, CXXRecord]>;
+   let Documentation = [InternalLinkageDocs];
+ }
++
++
++// ---------------  
++//  SkePU attributes
++// ---------------
++
++// [[skepu::userfunction]]
++def SkepuUserFunction : InheritableAttr
++{
++  let Spellings = [CXX11<"skepu", "userfunction">];
++  let Subjects = SubjectList<[Function]>;
++  let Documentation = [Undocumented];
++}
++
++// [[skepu::usertype]]
++def SkepuUserType : InheritableAttr
++{
++  let Spellings = [CXX11<"skepu", "usertype">];
++  let Subjects = SubjectList<[Record, TypedefName], ErrorDiag,
++                             "ExpectedStructOrUnionOrTypedef">;
++  let Documentation = [Undocumented];
++}
++
++// [[skepu::userconstant]]
++def SkepuUserConstant : InheritableAttr
++{
++  let Spellings = [CXX11<"skepu", "userconstant">];
++  let Subjects = SubjectList<[Var]>;
++  let Documentation = [Undocumented];
++}
++
++// [[skepu::out]]
++def SkepuOut : InheritableParamAttr
++{
++  let Spellings = [CXX11<"skepu", "out">];
++  let Subjects = SubjectList<[ParmVar]>;
++  let Documentation = [Undocumented];
++}
++
++// [[skepu::accessmode(...)]]
++def SkepuAccessMode : InheritableParamAttr
++{
++  let Spellings = [CXX11<"skepu", "accessmode">];
++  let Subjects = SubjectList<[ParmVar]>;
++  let Args = [EnumArgument<"Mode", "AccessMode",
++                          ["read", "write", "read_ptr", "write_ptr"],
++                          ["Read", "Write", "ReadPtr", "WritePtr"]>];
++  let Documentation = [Undocumented];
++}
++
++// [[skepu::instance]]
++def SkepuInstance : InheritableAttr
++{
++  let Spellings = [CXX11<"skepu", "instance">];
++  let Subjects = SubjectList<[Var]>;
++  let Documentation = [Undocumented];
++}
++
+diff --git a/include/clang/Basic/DiagnosticASTKinds.td b/include/clang/Basic/DiagnosticASTKinds.td
+index d2b0618..ed8313b 100644
+--- a/include/clang/Basic/DiagnosticASTKinds.td
++++ b/include/clang/Basic/DiagnosticASTKinds.td
+@@ -269,4 +269,19 @@ def err_odr_non_type_parameter_type_inconsistent : Error<
+   "non-type template parameter declared with incompatible types in different "
+   "translation units (%0 vs. %1)">;
+ def err_unsupported_ast_node: Error<"cannot import unsupported AST node %0">;
++  
++// SkePU diagnostics
++def err_skepu_no_userfunction_body : Error<
++  "[SkePU] Declaration of function %0 with skepu::userfunction attribute is not a definition">;
++def err_skepu_arg_not_a_userfunction : Error<
++  "[SkePU] Argument is not a userfunction">;
++def err_skepu_invalid_out_attribute : Error<
++  "[SkePU] Invalid skepu::out attribute on pointer-to-const userfunction parameter %0">;
++def err_skepu_userfunction_call : Error<
++  "[SkePU] Function call inside user function with callee '%0' which is not a user function or an exempted function name">;
++  
++def warn_skepu_no_userfunction_attr : Warning<
++  "[SkePU] Function %0 does not have the skepu::userfunction attribute">;
++def warn_skepu_explicit_function_address_of : Warning<
++  "[SkePU] Explicit addressof-operator on userfunction argument">;
+ }
+diff --git a/lib/Sema/SemaDeclAttr.cpp b/lib/Sema/SemaDeclAttr.cpp
+index f185d9c..6a7ecaa 100644
+--- a/lib/Sema/SemaDeclAttr.cpp
++++ b/lib/Sema/SemaDeclAttr.cpp
+@@ -1898,6 +1898,53 @@ static void handleObjCSuppresProtocolAttr(Sema &S, Decl *D,
+                                        Attr.getAttributeSpellingListIndex()));
+ }
+ 
++// ---------------  
++//  SkePU attributes
++// ---------------
++
++/*
++// [[skepu::userfunction]]
++static void handleSkepuUserFunctionAttr(Sema &S, Decl *D, const AttributeList &Attr)
++{
++	uint32_t numArgs;
++	if (Attr.getNumArgs() && !checkUInt32Argument(S, Attr, Attr.getArgAsExpr(0), numArgs))
++		return;
++	
++	D->addAttr(::new (S.Context)
++		SkepuUserFunctionAttr(Attr.getRange(), S.Context, numArgs,
++			Attr.getAttributeSpellingListIndex()));
++}*/
++
++// [[skepu::accessmode(...)]]
++static void handleSkepuAccessModeAttr(Sema &S, Decl *D, const AttributeList &Attr)
++{
++	// Check the attribute arguments.
++	if (Attr.getNumArgs() > 1)
++	{
++		S.Diag(Attr.getLoc(), diag::err_attribute_too_many_arguments) << Attr.getName() << 1;
++		return;
++	}
++	
++	StringRef Str;
++	SourceLocation ArgLoc;
++	
++	if (Attr.getNumArgs() == 0)
++		Str = "";
++	else if (!S.checkStringLiteralArgumentAttr(Attr, 0, Str, &ArgLoc))
++		return;
++	
++	SkepuAccessModeAttr::AccessMode Mode;
++	if (!SkepuAccessModeAttr::ConvertStrToAccessMode(Str, Mode))
++	{
++		S.Diag(Attr.getLoc(), diag::warn_attribute_type_not_supported) << Attr.getName() << Str << ArgLoc;
++		return;
++	}
++	
++	unsigned Index = Attr.getAttributeSpellingListIndex();
++	D->addAttr(::new (S.Context)
++		SkepuAccessModeAttr(Attr.getLoc(), S.Context, Mode, Index));
++}
++
+ static bool checkAvailabilityAttr(Sema &S, SourceRange Range,
+                                   IdentifierInfo *Platform,
+                                   VersionTuple Introduced,
+@@ -5875,6 +5922,42 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
+   case AttributeList::AT_TypeTagForDatatype:
+     handleTypeTagForDatatypeAttr(S, D, Attr);
+     break;
++  
++  
++  // ---------------  
++  //  SkePU attributes
++  // ---------------
++  
++  // [[skepu::userfunction]]
++  case AttributeList::AT_SkepuUserFunction:
++    handleSimpleAttribute<SkepuUserFunctionAttr>(S, D, Attr);
++    break;
++
++  // [[skepu::usertype]]
++  case AttributeList::AT_SkepuUserType:
++    handleSimpleAttribute<SkepuUserTypeAttr>(S, D, Attr);
++    break;
++ 
++  // [[skepu::userconstant]]
++  case AttributeList::AT_SkepuUserConstant:
++    handleSimpleAttribute<SkepuUserConstantAttr>(S, D, Attr);
++    break;
++    
++  // [[skepu::out]]
++  case AttributeList::AT_SkepuOut:
++    handleSimpleAttribute<SkepuOutAttr>(S, D, Attr);
++    break;
++  
++  // [[skepu::accessmode(...)]]
++  case AttributeList::AT_SkepuAccessMode:
++    handleSkepuAccessModeAttr(S, D, Attr);
++    break;  
++    
++  // [[skepu::instance]]
++  case AttributeList::AT_SkepuInstance:
++    handleSimpleAttribute<SkepuInstanceAttr>(S, D, Attr);
++    break;
++    
+   }
+ }
+ 
+diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
+index d734493..4f72d20 100644
+--- a/tools/CMakeLists.txt
++++ b/tools/CMakeLists.txt
+@@ -28,3 +28,6 @@ add_llvm_external_project(clang-tools-extra extra)
+ 
+ # libclang may require clang-tidy in clang-tools-extra.
+ add_clang_subdirectory(libclang)
++
++add_subdirectory(skepu-tool)
++

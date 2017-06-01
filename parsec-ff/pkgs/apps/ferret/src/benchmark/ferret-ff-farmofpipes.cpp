@@ -16,6 +16,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
+
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +35,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <../image/image.h>
 #include "tpool.h"
 
+#define NO_DEFAULT_MAPPING
 #include <ff/farm.hpp>
 #include <ff/pipeline.hpp>
 #include <iostream>

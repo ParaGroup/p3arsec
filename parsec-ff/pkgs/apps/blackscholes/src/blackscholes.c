@@ -6,6 +6,8 @@
 // 
 // Reference Source: Options, Futures, and Other Derivatives, 3rd Edition, Prentice 
 // Hall, John C. Hull,
+//
+// FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
 
 #include <stdio.h>
 #include <stdlib.h>

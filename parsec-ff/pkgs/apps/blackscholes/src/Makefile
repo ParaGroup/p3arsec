@@ -22,13 +22,18 @@ ifdef version
     CXXFLAGS += -pthread
   endif
   ifeq "$(version)" "openmp"
-    MT        = -DENABLE_OPENMP
+    MT        = -DENABLE_OPENMP -fopenmp
   endif
   ifeq "$(version)" "tbb"
     MT        = -DENABLE_TBB
   endif
   ifeq "$(version)" "ff"
     MT        = -DENABLE_FF
+  endif
+  ifeq "$(version)" "skepu"
+    #./skepu-tool-openmp blackscholes_skepu.cpp -name=blackscholes_skepu_omp -fnames=exp,log -- -std=c++11 -I../lib/Headers -I/tmp/p3arsec/pkgs/libs/skepu2/include -I/usr/include 
+	CSRC = blackscholes_skepu_omp.cpp
+	MT = -fopenmp
   endif
 else
   MT        = 

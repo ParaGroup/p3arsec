@@ -6,7 +6,7 @@
  *
  * Originally written by Minlan Yu.
  * Largely rewritten by Christian Bienia.
- * FastFlow version written by Daniele De Sensi.
+ * FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
  */
 
 /*

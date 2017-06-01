@@ -77,7 +77,6 @@ ifdef version
   ifeq "$(version)" "ff"
     benchmark_base := ferret-ff-pipeoffarms
     LDLIBS += -lpthread
-    CFLAGS += #-DENABLE_FF_ONDEMAND
   endif
 endif
 

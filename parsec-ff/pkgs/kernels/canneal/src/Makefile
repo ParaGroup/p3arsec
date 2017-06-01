@@ -4,6 +4,7 @@ PREFIX=${PARSECDIR}/pkgs/kernels/canneal/inst/${PARSECPLAT}
 
 TARGET=canneal
 LIBS:=$(LIBS) -lm
+THREADFILE:=annealer_thread.cpp
 
 ifdef version
   ifeq "$(version)" "pthreads"
@@ -11,11 +12,12 @@ ifdef version
   endif
   ifeq "$(version)" "ff"
     CXXFLAGS+=-DENABLE_THREADS -DENABLE_FF -pthread
+    THREADFILE:=annealer_thread_ff.cpp
   endif
 endif
 
 all:
-	$(CXX) $(CXXFLAGS) annealer_thread.cpp -c -o annealer_thread.o
+	$(CXX) $(CXXFLAGS) $(THREADFILE) -c -o annealer_thread.o
 	$(CXX) $(CXXFLAGS) rng.cpp -c -o rng.o
 	$(CXX) $(CXXFLAGS) netlist.cpp -c -o netlist.o
 	$(CXX) $(CXXFLAGS) main.cpp -c -o main.o
