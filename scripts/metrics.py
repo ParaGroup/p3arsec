@@ -11,7 +11,7 @@
 # 5. lizard (https://github.com/terryyin/lizard) for cyclomatic complexity calculation ('sudo pip install lizard' should be enough)
 #
 # To compute locs relative to pthreads: ./metrics.py --locs -n pthreads
-# To compute modified lines wrt serial: ./metrics.py --modified
+# To compute code churn: ./metrics.py --churn
 #
 # For other options: ./metrics.py --help
 
@@ -324,14 +324,30 @@ if 'vips' in benchmarks:
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Computes metrics over source code.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-m', '--modified', help='Prints number of modified lines of code.', action='store_true', required=False, default=False)
+parser.add_argument('-r', '--churn', help='Prints code churn with respect to serial version.', action='store_true', required=False, default=False)
 parser.add_argument('-l', '--locs', help='Prints number of lines of code.', action='store_true', required=False, default=False)
-parser.add_argument('-c', '--cyclomatic', help='Prints cyclomatic complexity.', action='store_true', required=False, default=False)
+#parser.add_argument('-c', '--cyclomatic', help='Prints cyclomatic complexity.', action='store_true', required=False, default=False)
 parser.add_argument('-v', '--verbose', help='Verbose mode.', action='store_true', required=False, default=False)
 parser.add_argument('-b', '--benchmark', help='Computes metrics just for one benchmark.', required=False)
 parser.add_argument('-k', '--keepfiles', help='Do not remove temporary files (just for debugging purposes).', action='store_true', required=False, default=False)
-parser.add_argument('-n', '--normalize', help='Normalizes lines of code with respect to a specified version .', required=False)
+parser.add_argument('-n', '--normalize', help='Normalizes lines of code with respect to a specified version.', required=False)
+parser.add_argument('-a', '--alternative', help='Considers an alternative version (only valid for dedup and ferret).', required=False)
 args = parser.parse_args()
+
+
+if args.alternative:
+    if 'pipeoffarms' == args.alternative:
+        files['dedup']['ff'] = ["encoder_ff_pipeoffarms.cpp"]
+        files['ferret']['ff'] = ["benchmark/ferret-ff-pipeoffarms.cpp"]
+    elif 'farmofpipes' == args.alternative:
+        files['dedup']['ff'] = ["encoder_ff_farmofpipes.cpp"]
+        files['ferret']['ff'] = ["benchmark/ferret-ff-farmofpipes.cpp"]
+    elif 'farm' == args.alternative:
+        files['dedup']['ff'] = ["encoder_ff_farm.cpp"]
+        files['ferret']['ff'] = ["benchmark/ferret-ff-farm.cpp"]
+    elif 'ofarm' == args.alternative:
+        files['dedup']['ff'] = ["encoder_ff_ofarm.cpp"]
+
 
 # Compute Metrics
 for benchmark in benchmarks:
@@ -358,7 +374,7 @@ for benchmark in benchmarks:
             if v not in cc[benchmark]:
                 cc[benchmark][v] = 0 
             os.system("grep -v '^#include' " + filepath + "/src/" + f + " | grep -v '^# include' > " + getFullPath(v, f))
-            os.system("astyle --style=banner --break-one-line-headers  --suffix=none " + getFullPath(v, f) + ">/dev/null")
+            os.system("astyle --style=google --break-one-line-headers  --suffix=none --attach-closing-while " + getFullPath(v, f) + ">/dev/null")
             os.system("coan source --implicit -ge -gs " + macros[benchmark][v] + " " + getFullPath(v, f) + " | grep -v '^# '> " + getFullPath(v, f) + ".clean.c")
             os.system("mv " + getFullPath(v, f) + ".clean.c " + getFullPath(v, f))
             langextension = "hxx"
@@ -440,11 +456,11 @@ for benchmark in benchmarks:
         else:
             if args.locs:
                 sys.stdout.write(str(locs[benchmark][v]) + "\t")
-            elif args.modified:
+            elif args.churn:
                 if 'serial' in v:
                     sys.stdout.write("0\t")
                 else:
-                    sys.stdout.write(str(modifiedlines[benchmark][v]) + "\t")
+                    sys.stdout.write(str(float(modifiedlines[benchmark][v])) + "\t")
             elif args.cyclomatic:
                 sys.stdout.write(str(cc[benchmark][v] / len(files[benchmark][v])) + "\t")
     

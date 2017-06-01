@@ -826,14 +826,15 @@ vips_threadpool_create_threads( VipsThreadpool *pool )
 #ifdef HAVE_FF
 #include <ff/farm.hpp>
 
+/**
+ * This emitter is used because FastFlow's farm always require an emitter to
+ * be present. In this specific application is not actually needed so it just
+ * start, starts all the workers and then die.
+ **/
 class Emitter: public ff::ff_node{
-private:
-    ff::ff_loadbalancer* _lb;
 public:
-    Emitter():_lb(NULL){;}
-    void setlb(ff::ff_loadbalancer* lb){
-        _lb = lb;
-    }
+    ff::ff_loadbalancer* _lb;
+
     void* svc(void*){
         _lb->broadcast_task(GO_ON);
         return EOS;
@@ -843,23 +844,18 @@ public:
 class Worker: public ff::ff_node{
 private:
     VipsThreadpool *_pool; 
-    int _dummy_task;
 public:
-    Worker(VipsThreadpool *pool):_pool(pool), _dummy_task(0){
-        ;
-    }
+    Worker(VipsThreadpool *pool):_pool(pool){;}
 
     void* svc(void*){
         VipsThread *thr = _pool->thr[get_my_id()];
 	    g_assert(_pool == thr->pool);
-
-	    while(1){
+	    do{
 		    vips_thread_work_unit(thr);
             // Just send something to collector so it can execute progress routine.
-            ff_send_out((void*) &_dummy_task);
-		    if(_pool->stop || _pool->error)
-			    break;
-	    } 
+            // Any valid pointer is ok, we just use a random global variable.
+            ff_send_out((void*) &im__concurrency);
+	    }while(!_pool->stop && !_pool->error);
         return EOS;
     }
 };
@@ -869,22 +865,13 @@ private:
     VipsThreadpool *_pool; 
 	VipsThreadpoolProgress _progress;
 public:
-    Collector(VipsThreadpool *pool, 
-              VipsThreadpoolProgress progress):
-                _pool(pool), _progress(progress){;}
+    Collector(VipsThreadpool *pool, VipsThreadpoolProgress progress):
+        _pool(pool), _progress(progress){;}
 
     void* svc(void* t){
 		VIPS_DEBUG_MSG( "vips_threadpool_run: tick\n" );
-		if(_pool->stop || _pool->error){
-			return t;
-        }
-
 		if(_progress && _progress(_pool->a)){
 		    _pool->error = TRUE;
-        }
-
-		if(_pool->stop || _pool->error){
-			return t;
         }
         return t;
     }
@@ -898,7 +885,6 @@ vips_threadpool_run( VipsImage *im,
 	VipsThreadpoolProgress progress, 
 	void *a )
 {
-    printf("Fastflow version executing...");
 #ifndef HAVE_THREADS
 #error "FastFlow version requires HAVE_THREADS to be defined."
 #endif
@@ -926,14 +912,12 @@ vips_threadpool_run( VipsImage *im,
 	    vips_threadpool_free(pool);
 	    return(-1);
     }
-    Emitter e;
-    Collector c(pool, progress);
     std::vector<ff::ff_node*> workers;
     for(size_t i = 0; i < im_concurrency_get(); i++){
         workers.push_back(new Worker(pool));
     }
-    ff::ff_farm<> farm(workers, (ff::ff_node*) &e, (ff::ff_node*) &c);
-    e.setlb(farm.getlb());
+    ff::ff_farm<> farm(workers, new Emitter(), new Collector(pool, progress));
+    (Emitter*) farm.getEmitter()->_lb = farm.getlb();
     farm.run_and_wait_end();
 	/* Return 0 for success.
 	 */

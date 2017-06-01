@@ -40,16 +40,13 @@
 using std::cout;
 using std::endl;
 
-static CTask dummyTask, *allTasks;
+#define MAX_NUM_THREADS 1024
+
+static CTask dummyTask, allTasks[MAX_NUM_THREADS];
 
 void* annealer_thread::svc(void* task) {
-    static int accepted_good_moves = 0;
-    static int accepted_bad_moves = -1;
-    static Rng rng; //store of randomness
-    static long a_id;
-    static long b_id;
-    static netlist_elem* a = _netlist->get_random_element(&a_id, NO_MATCHING_ELEMENT, &rng);
-    static netlist_elem* b = _netlist->get_random_element(&b_id, NO_MATCHING_ELEMENT, &rng);
+    int accepted_good_moves = 0;
+    int accepted_bad_moves = -1;
 
     T = T / 1.5;
     accepted_good_moves = 0;
@@ -78,13 +75,10 @@ void* annealer_thread::svc(void* task) {
 
 Emitter::Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb):
     temp_steps_completed(0), activeWorkers(maxNumWorkers), tasksRcvd(activeWorkers - 1),
-    _number_temp_steps(number_temp_steps), _keep_going_global_flag(true), lb(lb) {
-    allTasks = new CTask[maxNumWorkers];
-    }
+    _number_temp_steps(number_temp_steps), _keep_going_global_flag(true), lb(lb){;}
 
 void* Emitter::svc(void*) {
-    if(++tasksRcvd == activeWorkers) {
-        tasksRcvd = 0;
+    if((++tasksRcvd % activeWorkers) == 0) {
         ++temp_steps_completed;
         for(size_t i = 0; i < activeWorkers; i++) {
             if(!keep_going(allTasks[i].accepted_good_moves, allTasks[i].accepted_bad_moves)) {

@@ -42,9 +42,10 @@
 #include <ff/farm.hpp>
 
 
-typedef struct {
+typedef struct CTask{
     int accepted_good_moves;
     int accepted_bad_moves;
+    CTask():accepted_good_moves(0), accepted_bad_moves(-1){;}
 } CTask;
 
 class Emitter: public ff::ff_node {
@@ -74,10 +75,11 @@ class annealer_thread: public ff::ff_node {
                         double start_temp
             )
             :_netlist(netlist), 
-            _moves_per_thread_temp(swaps_per_temp/nthreads),
-             T(start_temp){
-            assert(_netlist != NULL);}
-        ~annealer_thread() {
+             T(start_temp),
+            _moves_per_thread_temp(swaps_per_temp/nthreads){
+                a = _netlist->get_random_element(&a_id, NO_MATCHING_ELEMENT, &rng);
+                b = _netlist->get_random_element(&b_id, NO_MATCHING_ELEMENT, &rng);
+                assert(_netlist != NULL);
             }
         void* svc(void* task);
     protected:
@@ -87,6 +89,11 @@ class annealer_thread: public ff::ff_node {
         netlist* _netlist;
         double T;
         int _moves_per_thread_temp;
+        Rng rng; //store of randomness
+        long a_id;
+        long b_id;
+        netlist_elem* a;
+        netlist_elem* b;
     };
 
 #endif
