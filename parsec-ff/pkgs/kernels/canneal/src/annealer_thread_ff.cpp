@@ -44,7 +44,8 @@ using std::endl;
 
 static CTask dummyTask, allTasks[MAX_NUM_THREADS];
 
-void* annealer_thread::svc(void* task) {
+void* annealer_thread::svc(void* task)
+{
     int accepted_good_moves = 0;
     int accepted_bad_moves = -1;
 
@@ -55,70 +56,93 @@ void* annealer_thread::svc(void* task) {
         a = b;
         a_id = b_id;
         b = _netlist->get_random_element(&b_id, a_id, &rng);
-        routing_cost_t delta_cost = calculate_delta_routing_cost(a,b);
+        routing_cost_t delta_cost = calculate_delta_routing_cost(a, b);
         move_decision_t is_good_move = accept_move(delta_cost, T, &rng);
         if (is_good_move == move_decision_accepted_bad) {
             accepted_bad_moves++;
-            _netlist->swap_locations(a,b);
-            }
+            _netlist->swap_locations(a, b);
+        }
         else if (is_good_move == move_decision_accepted_good) {
             accepted_good_moves++;
-            _netlist->swap_locations(a,b);
-            }
-        else if (is_good_move == move_decision_rejected) {
-            }
+            _netlist->swap_locations(a, b);
         }
+        else if (is_good_move == move_decision_rejected) {
+            //no need to do anything for a rejected move
+        }
+    }
     allTasks[get_my_id()].accepted_good_moves = accepted_good_moves;
     allTasks[get_my_id()].accepted_bad_moves = accepted_bad_moves;
     return &dummyTask;
+}
+
+Emitter::Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb): temp_steps_completed(0), activeWorkers(maxNumWorkers), tasksRcvd(activeWorkers - 1), _number_temp_steps(number_temp_steps), _keep_going_global_flag(true), lb(lb), firstRun(true)
+{
+    ;
+}
+
+void* Emitter::svc(void*)
+{
+    if (firstRun) {
+        firstRun = false;
+        lb->broadcast_task((void*)&dummyTask);
     }
-
-Emitter::Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb):
-    temp_steps_completed(0), activeWorkers(maxNumWorkers), tasksRcvd(activeWorkers - 1),
-    _number_temp_steps(number_temp_steps), _keep_going_global_flag(true), lb(lb){;}
-
-void* Emitter::svc(void*) {
-    if((++tasksRcvd % activeWorkers) == 0) {
+    else if ((++tasksRcvd % activeWorkers) == 0) {
         ++temp_steps_completed;
-        for(size_t i = 0; i < activeWorkers; i++) {
-            if(!keep_going(allTasks[i].accepted_good_moves, allTasks[i].accepted_bad_moves)) {
+        for (size_t i = 0; i < activeWorkers; i++) {
+            if (!keep_going(allTasks[i].accepted_good_moves,
+                    allTasks[i].accepted_bad_moves)) {
                 return EOS;
-                }
             }
-        lb->broadcast_task((void*) &dummyTask);
         }
-    return GO_ON;
+        lb->broadcast_task((void*)&dummyTask);
     }
-annealer_thread::move_decision_t annealer_thread::accept_move(routing_cost_t delta_cost, double T, Rng* rng) {
+    return GO_ON;
+}
+
+annealer_thread::move_decision_t annealer_thread::
+    accept_move(routing_cost_t delta_cost, double T, Rng* rng)
+{
     if (delta_cost < 0) {
         return move_decision_accepted_good;
-        }
+    }
     else {
-        double random_value = rng->drand();
-        double boltzman = exp(- delta_cost/T);
+        double
+            random_value
+            = rng->drand();
+        double
+            boltzman
+            = exp(-delta_cost / T);
         if (boltzman > random_value) {
             return move_decision_accepted_bad;
-            }
+        }
         else {
             return move_decision_rejected;
-            }
         }
     }
-routing_cost_t annealer_thread::calculate_delta_routing_cost(netlist_elem* a, netlist_elem* b) {
+}
+
+routing_cost_t
+annealer_thread::calculate_delta_routing_cost(netlist_elem* a,
+    netlist_elem* b)
+{
     location_t* a_loc = a->present_loc.Get();
     location_t* b_loc = b->present_loc.Get();
     routing_cost_t delta_cost = a->swap_cost(a_loc, b_loc);
     delta_cost += b->swap_cost(b_loc, a_loc);
     return delta_cost;
-    }
-bool Emitter::keep_going(int accepted_good_moves, int accepted_bad_moves) {
+}
+
+bool Emitter::keep_going(int accepted_good_moves, int accepted_bad_moves)
+{
     bool rv;
-    if(_number_temp_steps == -1) {
-        rv = _keep_going_global_flag && (accepted_good_moves > accepted_bad_moves);
-        if(!rv) _keep_going_global_flag = false; // signal we have converged
-        }
+    if (_number_temp_steps == -1) {
+        rv = _keep_going_global_flag
+            && (accepted_good_moves > accepted_bad_moves);
+        if (!rv)
+            _keep_going_global_flag = false; // signal we have converged
+    }
     else {
         rv = temp_steps_completed < _number_temp_steps;
-        }
-    return rv;
     }
+    return rv;
+}

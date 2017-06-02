@@ -5,21 +5,15 @@ sudo: required
 dist: trusty
 
 script:
-    - apt-get install x11 xmu xi
+    - sudo apt-get install x11 xmu xi
     - echo "\$@ &>log.txt" > run.sh
     - travis_wait bash run.sh ./install.sh --fast
-    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff 
-    - tail -100 log.txt
-    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes raytrace streamcluster swaptions -c gcc-skepu 
-    - tail -100 log.txt
-    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate raytrace streamcluster swaptions vips -c gcc-pthreads 
-    - tail -100 log.txt
-    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack freqmine -c gcc-openmp 
-    - tail -100 log.txt
-    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack fluidanimate streamcluster swaptions -c gcc-tbb
-    - tail -100 log.txt
-    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-serial 
-    - tail -100 log.txt
+    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff || tail -100 log.txt
+    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes raytrace streamcluster swaptions -c gcc-skepu || tail -100 log.txt
+    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate raytrace streamcluster swaptions vips -c gcc-pthreads || tail -100 log.txt
+    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack freqmine -c gcc-openmp || tail -100 log.txt
+    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack fluidanimate streamcluster swaptions -c gcc-tbb || tail -100 log.txt
+    - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-serial || tail -100 log.txt
 
 notifications:
   email:
