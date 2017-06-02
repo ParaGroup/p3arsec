@@ -5,7 +5,7 @@ sudo: required
 dist: trusty
 
 script:
-    - sudo apt-get install x11 xmu xi
+    - sudo apt-get install libx11-dev libxmu-dev libxi-dev 
     - echo "\$@ &>log.txt" > run.sh
     - travis_wait bash run.sh ./install.sh --fast
     - travis_wait bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff || tail -100 log.txt
