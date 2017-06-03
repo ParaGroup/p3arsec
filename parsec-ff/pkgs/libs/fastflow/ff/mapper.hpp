@@ -34,7 +34,9 @@
 #include <ff/utils.hpp>
 #include <ff/mapping_utils.hpp>
 #include <vector>
+#ifdef ENABLE_FF_MAMMUT_MAPPING
 #include <mammut/mammut.hpp>
+#endif
 
 #if defined(FF_CUDA) 
 #include <cuda.h>
@@ -111,7 +113,7 @@ public:
 
 		mask = size - 1;
 
-
+#ifdef ENABLE_FF_MAMMUT_MAPPING
         mammut::Mammut m;
         std::vector<mammut::topology::Cpu*> cpus = m.getInstanceTopology()->getCpus();
         size_t virtualPerPhysical = cpus[0]->getPhysicalCores()[0]->getVirtualCores().size();
@@ -124,6 +126,10 @@ public:
                 }
             }
         }
+#else
+		for (int i = 0; i < nc; ++i)
+			CList.push_back(i);
+#endif
 		for (unsigned int i = nc, j = 0; i < size; ++i, j++)
 			CList.push_back(j);
 

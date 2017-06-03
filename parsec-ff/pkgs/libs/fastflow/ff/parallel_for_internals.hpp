@@ -618,6 +618,7 @@ public:
         return true;
 #else
         error("To use nextTaskConcurrentNoStealing you need to define macro FF_PARFOR_PASSIVE_NOSTEALING\n");
+        return false;
 #endif
     }
 

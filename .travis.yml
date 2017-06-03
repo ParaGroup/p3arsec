@@ -7,9 +7,7 @@ dist: trusty
 script:
     - sudo apt-get install libx11-dev libxmu-dev libxi-dev 
     - echo "\$@ &>log.txt" > run.sh
-    - travis_wait 100 bash run.sh ./install.sh --fast
-    - travis_wait 100 bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff || tail -100 log.txt
-    - travis_wait 100 bash run.sh ./bin/parsecmgmt -a build -p blackscholes raytrace streamcluster swaptions -c gcc-skepu || tail -100 log.txt
+    - travis_wait 100 bash run.sh ./install.sh --fast && (travis_wait 100 bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate freqmine raytrace streamcluster swaptions vips -c gcc-ff || tail -100 log.txt) && (travis_wait 100 bash run.sh ./bin/parsecmgmt -a build -p blackscholes raytrace streamcluster swaptions -c gcc-skepu || tail -100 log.txt)
 # On TravisCI we can run builds running at most for 50 minutes. For this reason, we build only gcc-ff and gcc-skepu versions.
 #    - travis_wait 100 bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack canneal dedup facesim ferret fluidanimate raytrace streamcluster swaptions vips -c gcc-pthreads || tail -100 log.txt
 #    - travis_wait 100 bash run.sh ./bin/parsecmgmt -a build -p blackscholes bodytrack freqmine -c gcc-openmp || tail -100 log.txt
