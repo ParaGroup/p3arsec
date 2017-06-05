@@ -65,7 +65,7 @@ extern "C" {
 
 
 //The configuration block defined in main
-config_t * conf;
+extern config_t * conf;
 
 //Hash table data structure & utility functions
 struct hashtable *cache;
@@ -381,7 +381,7 @@ public:
 #endif //ENABLE_STATISTICS
 
         send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
-        r=0;
+        r = 0;
         r += ringbuffer_init(send_buf, ITEM_PER_INSERT);
         assert(r==0);
     }
@@ -575,17 +575,16 @@ public:
  */
 class FragmentRefine{
 private:
-    ringbuffer_t* recv_buf, *send_buf;
+    ringbuffer_t *send_buf;
     int r;
 
-    chunk_t *temp;
     u32int * rabintab;
     u32int * rabinwintab;
 #ifdef ENABLE_STATISTICS
     stats_t *thread_stats;
 #endif
 public:
-    FragmentRefine(): recv_buf(NULL), temp(NULL){
+    FragmentRefine(){
         rabintab = (u32int*) malloc(256*sizeof rabintab[0]);
         rabinwintab = (u32int*) malloc(256*sizeof rabintab[0]);
         if(rabintab == NULL || rabinwintab == NULL) {
@@ -634,7 +633,7 @@ public:
                 //Can we split the buffer?
                 if(offset < chunk->uncompressed_data.n) {
                     //Allocate a new chunk and create a new memory buffer
-                    temp = (chunk_t *)malloc(sizeof(chunk_t));
+                    chunk_t *temp = (chunk_t *)malloc(sizeof(chunk_t));
                     if(temp==NULL) EXIT_TRACE("Memory allocation failed.\n");
                     temp->header.state = chunk->header.state;
                     temp->sequence.l1num = chunk->sequence.l1num;

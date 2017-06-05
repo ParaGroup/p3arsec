@@ -65,7 +65,7 @@ extern "C" {
 
 
 //The configuration block defined in main
-config_t * conf;
+extern config_t * conf;
 
 //Hash table data structure & utility functions
 struct hashtable *cache;
@@ -81,8 +81,6 @@ static int keys_equal_fn ( void *key1, void *key2 ) {
 
 //Arguments to pass to each thread
 struct thread_args {
-  //thread id, unique within a thread pool (i.e. unique for a pipeline stage)
-  int tid;
   //file descriptor, first pipeline stage only
   int fd;
   //input file buffer, first pipeline stage & preloading only
@@ -367,18 +365,15 @@ static void sub_Compress(chunk_t *chunk) {
  *  - Execute compression kernel for each item
  *  - Enqueue each item into send queue
  */
-class Compress: public ff::ff_node{
+class Compress{
 private:
-    bool sendOut;
-    std::vector<ringbuffer_t*> dataOut;
-    chunk_t * chunk;
     int r;
-    ringbuffer_t *recv_buf, *send_buf;
+    ringbuffer_t *send_buf;
 #ifdef ENABLE_STATISTICS
     stats_t *thread_stats;
 #endif
 public:
-    Compress(bool send):sendOut(send), chunk(NULL), recv_buf(NULL){
+    Compress(){
 #ifdef ENABLE_STATISTICS
         thread_stats = (stats_t*) malloc(sizeof(stats_t));
         if(thread_stats == NULL) EXIT_TRACE("Memory allocation failed.\n");
@@ -386,64 +381,62 @@ public:
 #endif //ENABLE_STATISTICS
 
         send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
-        r=0;
+        r = 0;
         r += ringbuffer_init(send_buf, ITEM_PER_INSERT);
         assert(r==0);
     }
 
-    std::vector<ringbuffer_t*> getDataOut() const{return dataOut;}
+#ifdef ENABLE_STATISTICS
     stats_t* getStats() const{return thread_stats;}
+#endif
 
-    void *svc(void * task) {
-        dataOut.clear();
-        recv_buf = (ringbuffer_t*) task;
-        if(ringbuffer_isBypassCompress(recv_buf)){
-            if(sendOut){
-                while(!ff_send_out((void*) recv_buf));
-            }else{
-                dataOut.push_back(recv_buf);
-            }
-            return GO_ON;
-        }
-        bool isLast = ringbuffer_isLast(recv_buf);
-        while(!ringbuffer_isEmpty(recv_buf)){
-            //fetch one item
-            chunk = (chunk_t *)ringbuffer_remove(recv_buf);
-            assert(chunk!=NULL);
-  
-            sub_Compress(chunk);
+    std::vector<ringbuffer_t*> compute(std::vector<ringbuffer_t*> recv_buf_v) {
+        std::vector<ringbuffer_t*> dataOut;
+        for(ringbuffer_t* recv_buf : recv_buf_v){
+            bool isLast = ringbuffer_isLast(recv_buf);
+            while(!ringbuffer_isEmpty(recv_buf)){
+                //fetch one item
+                chunk_t * chunk = (chunk_t *)ringbuffer_remove(recv_buf);
+                assert(chunk!=NULL);
+                if(chunk->header.isDuplicate){
+		        r = ringbuffer_insert(send_buf, chunk);
+		        assert(r==0);
+
+		        //put the item in the next queue for the write thread
+		        if (ringbuffer_isFull(send_buf)) {
+                    dataOut.push_back(send_buf);
+		            send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
+		            ringbuffer_init(send_buf, ITEM_PER_INSERT);
+		        }
+                  continue;
+                }
+      
+                sub_Compress(chunk);
 
 #ifdef ENABLE_STATISTICS
-            thread_stats->total_compressed += chunk->compressed_data.n;
+                thread_stats->total_compressed += chunk->compressed_data.n;
 #endif //ENABLE_STATISTICS
 
-            r = ringbuffer_insert(send_buf, chunk);
-            assert(r==0);
+                r = ringbuffer_insert(send_buf, chunk);
+                assert(r==0);
 
-            //put the item in the next queue for the write thread
-            if (ringbuffer_isFull(send_buf)) {
-                if(sendOut){
-                    while(!ff_send_out((void*) send_buf));
-                }else{
+                //put the item in the next queue for the write thread
+                if (ringbuffer_isFull(send_buf)) {
                     dataOut.push_back(send_buf);
+                    send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
+                    ringbuffer_init(send_buf, ITEM_PER_INSERT);
                 }
-                send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
-                ringbuffer_init(send_buf, ITEM_PER_INSERT);
             }
-        }
 
-        ringbuffer_destroy(recv_buf);
-        free(recv_buf);
-        if(isLast){
-            //empty buffers
-            ringbuffer_setLast(send_buf);
-            if(sendOut){
-                while(!ff_send_out((void*) send_buf));
-            }else{
+            ringbuffer_destroy(recv_buf);
+            free(recv_buf);
+            if(isLast){
+                //empty buffers
+                ringbuffer_setLast(send_buf);
                 dataOut.push_back(send_buf);
             }
         }
-        return GO_ON;
+        return dataOut;
     }
 };
 
@@ -498,19 +491,15 @@ static int sub_Deduplicate(chunk_t *chunk) {
  *  - Route resulting package either to compression stage or to reorder stage, depending on deduplication status
  */
 
-class Deduplicate: public ff::ff_node{
+class Deduplicate{
 private:
-    bool sendOut;
-    std::vector<ringbuffer_t*> dataOut;
-    chunk_t *chunk;
     int r;
-    ringbuffer_t *recv_buf, *send_buf_reorder, *send_buf_compress;
+    ringbuffer_t *send_buf;
 #ifdef ENABLE_STATISTICS
     stats_t *thread_stats;
 #endif //ENABLE_STATISTICS
 public:
-    Deduplicate(bool send):
-                sendOut(send), chunk(NULL), recv_buf(NULL){
+    Deduplicate(){
 #ifdef ENABLE_STATISTICS
         thread_stats = (stats_t*) malloc(sizeof(stats_t));
         if(thread_stats == NULL) {
@@ -518,88 +507,58 @@ public:
         }
         init_stats(thread_stats);
 #endif //ENABLE_STATISTICS
-        send_buf_reorder = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
-        send_buf_compress = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
+        send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
 
         r=0;
 
-        r += ringbuffer_init(send_buf_reorder, ITEM_PER_INSERT);
-        r += ringbuffer_init(send_buf_compress, ITEM_PER_INSERT);
+        r += ringbuffer_init(send_buf, ITEM_PER_INSERT);
         assert(r==0);
     }
 
+#ifdef ENABLE_STATISTICS
     stats_t* getStats() const{return thread_stats;}
+#endif
 
-    std::vector<ringbuffer_t*> getDataOut() const{
-        return dataOut;
-    }
+    std::vector<ringbuffer_t*> compute(std::vector<ringbuffer_t*> recv_buf_v) {
+        std::vector<ringbuffer_t*> dataOut;
+        for(ringbuffer_t* recv_buf : recv_buf_v){
+            bool isLast = ringbuffer_isLast(recv_buf);
+            while(!ringbuffer_isEmpty(recv_buf)){
+                //get one chunk
+                chunk_t *chunk = (chunk_t *)ringbuffer_remove(recv_buf);
+                assert(chunk!=NULL);
 
-    void * svc(void * task) {
-        dataOut.clear();
-        recv_buf = (ringbuffer_t*) task;
-        bool isLast = ringbuffer_isLast(recv_buf);
-        while(!ringbuffer_isEmpty(recv_buf)){
-            //get one chunk
-            chunk = (chunk_t *)ringbuffer_remove(recv_buf);
-            assert(chunk!=NULL);
-
-            //Do the processing
-            int isDuplicate = sub_Deduplicate(chunk);
+                //Do the processing
+                int isDuplicate = sub_Deduplicate(chunk);
 
 #ifdef ENABLE_STATISTICS
-            if(isDuplicate) {
-                thread_stats->nDuplicates++;
-            } else {
-                thread_stats->total_dedup += chunk->uncompressed_data.n;
-            }
+                if(isDuplicate) {
+                    thread_stats->nDuplicates++;
+                } else {
+                    thread_stats->total_dedup += chunk->uncompressed_data.n;
+                }
 #endif //ENABLE_STATISTICS
 
-            //Enqueue chunk either into compression queue or into send queue
-            if(!isDuplicate) {
-                r = ringbuffer_insert(send_buf_compress, chunk);
-                assert(r==0);
-                if (ringbuffer_isFull(send_buf_compress)) {
-                    if(sendOut){
-                        while(!ff_send_out((void*) send_buf_compress));
-                    }else{
-                        dataOut.push_back(send_buf_compress);
-                    }
-                    send_buf_compress = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
-                    ringbuffer_init(send_buf_compress, ITEM_PER_INSERT);
-                }
-            } else {
-                r = ringbuffer_insert(send_buf_reorder, chunk);
-                assert(r==0);
-                if (ringbuffer_isFull(send_buf_reorder)) {
-                    ringbuffer_setBypassCompress(send_buf_reorder);
-                    if(sendOut){
-                        while(!ff_send_out((void*) send_buf_reorder));
-                    }else{
-                        dataOut.push_back(send_buf_reorder);
-                    }
-                    send_buf_reorder = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
-                    ringbuffer_init(send_buf_reorder, ITEM_PER_INSERT);
-                }
+	      r = ringbuffer_insert(send_buf, chunk);
+	      assert(r==0);
+	      if (ringbuffer_isFull(send_buf)) {
+            dataOut.push_back(send_buf);
+	        send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
+	        ringbuffer_init(send_buf, ITEM_PER_INSERT);
+	      }
             }
-        }
 
-        ringbuffer_destroy(recv_buf);
-        free(recv_buf);
-        if(isLast){
-            //empty buffers
-            // Is sufficient to set as last the buffer to compress. 
-            // Compress will generate the buffer marked as last for reorder stage.
-            ringbuffer_setLast(send_buf_compress);
-            ringbuffer_setBypassCompress(send_buf_reorder);
-            if(sendOut){
-                while(!ff_send_out((void*) send_buf_reorder));
-                while(!ff_send_out((void*) send_buf_compress));
-            }else{
-                dataOut.push_back(send_buf_reorder);
-                dataOut.push_back(send_buf_compress);
+            ringbuffer_destroy(recv_buf);
+            free(recv_buf);
+            if(isLast){
+                //empty buffers
+                // Is sufficient to set as last the buffer to compress. 
+                // Compress will generate the buffer marked as last for reorder stage.
+                ringbuffer_setLast(send_buf);
+                dataOut.push_back(send_buf);
             }
         }
-        return GO_ON;
+        return dataOut;
     }
 };
 
@@ -614,22 +573,18 @@ public:
  * Notes:
  *  - Allocates mbuffers for fine-granular chunks
  */
-class FragmentRefine: public ff::ff_node{
+class FragmentRefine{
 private:
-    bool sendOut;
-    std::vector<ringbuffer_t*> dataOut;
-    ringbuffer_t* recv_buf, *send_buf;
+    ringbuffer_t *send_buf;
     int r;
 
-    chunk_t *temp;
-    chunk_t *chunk;
     u32int * rabintab;
     u32int * rabinwintab;
 #ifdef ENABLE_STATISTICS
     stats_t *thread_stats;
 #endif
 public:
-    FragmentRefine(bool send): sendOut(send), recv_buf(NULL), temp(NULL), chunk(NULL){
+    FragmentRefine(){
         rabintab = (u32int*) malloc(256*sizeof rabintab[0]);
         rabinwintab = (u32int*) malloc(256*sizeof rabintab[0]);
         if(rabintab == NULL || rabinwintab == NULL) {
@@ -655,20 +610,17 @@ public:
         free(rabinwintab);
     }
 
+#ifdef ENABLE_STATISTICS
     stats_t* getStats() const{return thread_stats;}
+#endif
 
-    std::vector<ringbuffer_t*> getDataOut() const{
-        return dataOut;
-    }
-
-    void *svc(void * task) {
-        dataOut.clear();
-        recv_buf = (ringbuffer_t*) task;
+    std::vector<ringbuffer_t*> compute(ringbuffer_t* recv_buf) {
+        std::vector<ringbuffer_t*> dataOut;
         bool isLast = ringbuffer_isLast(recv_buf);
 
         while(!ringbuffer_isEmpty(recv_buf)){
             //get one item
-            chunk = (chunk_t *)ringbuffer_remove(recv_buf);
+            chunk_t *chunk = (chunk_t *)ringbuffer_remove(recv_buf);
             assert(chunk!=NULL);
 
             rabininit(rf_win, rabintab, rabinwintab);
@@ -681,7 +633,7 @@ public:
                 //Can we split the buffer?
                 if(offset < chunk->uncompressed_data.n) {
                     //Allocate a new chunk and create a new memory buffer
-                    temp = (chunk_t *)malloc(sizeof(chunk_t));
+                    chunk_t *temp = (chunk_t *)malloc(sizeof(chunk_t));
                     if(temp==NULL) EXIT_TRACE("Memory allocation failed.\n");
                     temp->header.state = chunk->header.state;
                     temp->sequence.l1num = chunk->sequence.l1num;
@@ -704,11 +656,7 @@ public:
                     r = ringbuffer_insert(send_buf, chunk);
                     assert(r==0);
                     if (ringbuffer_isFull(send_buf)) {
-                        if(sendOut){
-                            while(!ff_send_out((void*) send_buf));
-                        }else{
-                            dataOut.push_back(send_buf);
-                        }
+                        dataOut.push_back(send_buf);
                         send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
                         ringbuffer_init(send_buf, CHUNK_ANCHOR_PER_INSERT);
                     }
@@ -731,11 +679,7 @@ public:
                     r = ringbuffer_insert(send_buf, chunk);
                     assert(r==0);
                     if (ringbuffer_isFull(send_buf)) {
-                        if(sendOut){
-                            while(!ff_send_out((void*) send_buf));
-                        }else{
-                            dataOut.push_back(send_buf);
-                        }
+                        dataOut.push_back(send_buf);
                         send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
                         ringbuffer_init(send_buf, CHUNK_ANCHOR_PER_INSERT);
                     }
@@ -750,13 +694,9 @@ public:
         //drain buffer
         if(isLast) {
             ringbuffer_setLast(send_buf);
-            if(sendOut){
-                while(!ff_send_out((void*) send_buf));
-            }else{
-                dataOut.push_back(send_buf);
-            }
+            dataOut.push_back(send_buf);
         }
-        return GO_ON;
+        return dataOut;
     }
 };
 
@@ -963,21 +903,13 @@ public:
         }
         //drain buffer
         ringbuffer_setLast(send_buf);
-        if(lb){
-            while(!lb->ff_send_out_to((void*) send_buf, 0)){;}
-        }else{
-            while(!ff_send_out((void*) send_buf)){;}
-        }
+        while(!lb->ff_send_out_to((void*) send_buf, 0)){;}
         // Send the last buffer also to the other workers (nw - 1)
         for(size_t i = 1; i < nw; i++){
             send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
             r = ringbuffer_init(send_buf, ANCHOR_DATA_PER_INSERT);
             ringbuffer_setLast(send_buf);
-            if(lb){
-                while(!lb->ff_send_out_to((void*) send_buf, i)){;}
-            }else{
-                while(!ff_send_out((void*) send_buf)){;}
-            }
+            while(!lb->ff_send_out_to((void*) send_buf, i)){;}
         }
 
         free(rabintab);
@@ -985,7 +917,6 @@ public:
         return EOS;
     }
 };
-
 
 /*
  * Pipeline stage function of reorder stage
@@ -1017,8 +948,7 @@ private:
     size_t nw;
     size_t terminated_w;
 public:
-    Reorder(struct thread_args* targs, size_t n):
-            args(targs), fd(0), recv_buf(NULL), chunk(NULL), r(0), i(0),
+    Reorder(size_t n):fd(0), recv_buf(NULL), chunk(NULL), r(0), i(0),
             nw(n), terminated_w(0){
         T = TreeMakeEmpty(NULL);
         pos = NULL;
@@ -1156,62 +1086,43 @@ public:
         return GO_ON;
     }
 };
+#if GRAIN != 1
+#error "To use ofarm version, GRAIN must be set to 1."
+#endif
 
 class CollapsedPipeline: public ff::ff_node{
 private:
-    FragmentRefine* fr;
-    Deduplicate* d;
-    Compress* c;
+    FragmentRefine fr;
+    Deduplicate d;
+    Compress c;
 public:
-    CollapsedPipeline():fr(new FragmentRefine(false)), d(new Deduplicate(false)), c(new Compress(false)){
-		;
-    }
 
-    ~CollapsedPipeline(){
-        delete fr;
-        delete d;
-        delete c;
-    }
-
-    FragmentRefine* getFragmentRefine() const{return fr;}
-    Deduplicate* getDeduplicate() const{return d;}
-    Compress* getCompress() const{return c;}
+#ifdef ENABLE_STATISTICS
+    stats_t* getFragmentRefineStats() const{return fr.getStats();}
+    stats_t* getDeduplicateStats() const{return d.getStats();}
+    stats_t* getCompressStats() const{return c.getStats();}
+#endif
 
     void* svc(void* task){
-        fr->svc(task);
-        std::vector<ringbuffer_t*> toD = fr->getDataOut();
-        std::vector<ringbuffer_t*> toCompressor;
-        std::vector<ringbuffer_t*> toReorder;
-        for(size_t i = 0; i < toD.size(); i++){
-            std::vector<ringbuffer_t*> fromD;
-            d->svc(toD[i]);
-            fromD = d->getDataOut();
-            for(size_t j = 0; j < fromD.size(); j++){
-                toCompressor.push_back(fromD[j]);
-            }
-        }
-
-        for(size_t i = 0; i < toCompressor.size(); i++){
-            std::vector<ringbuffer_t*> fromC;
-            c->svc(toCompressor[i]);
-            fromC = c->getDataOut();
-            for(size_t j = 0; j < fromC.size(); j++){
-                toReorder.push_back(fromC[j]);
-            }
-        }
-
+        std::vector<ringbuffer_t*> toReorder = c.compute(d.compute(fr.compute((ringbuffer_t*) task)));
+		size_t numChunks = toReorder.size() * CHUNK_ANCHOR_PER_INSERT;
+		ringbuffer_t* send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
+		ringbuffer_init(send_buf, numChunks);
+		chunk_t* chunk = NULL;
         for(size_t i = 0; i < toReorder.size(); i++){
-            while(!ff_send_out((void*) toReorder[i]));
+			while(!ringbuffer_isEmpty(toReorder[i]) &&
+                 (chunk = (chunk_t*)ringbuffer_remove(toReorder[i]))) {
+			    ringbuffer_insert(send_buf, chunk);
+			}
+			free(toReorder[i]);
         }
-        return GO_ON;
+        return send_buf;
     }
 };
 
 static void runSingleFarm(config_t * conf, struct thread_args* data_process_args,
-        struct thread_args* send_block_args, stats_t **threads_anchor_rv,
-        stats_t **threads_chunk_rv, stats_t **threads_compress_rv){
-    ff::ff_farm<> farm;
-	
+        stats_t **threads_anchor_rv, stats_t **threads_chunk_rv, stats_t **threads_compress_rv){
+    ff::ff_farm<> farm;	
 #ifdef ENABLE_FF_ONDEMAND
 	farm.set_scheduling_ondemand();
 #endif
@@ -1220,18 +1131,18 @@ static void runSingleFarm(config_t * conf, struct thread_args* data_process_args
 
     farm.add_emitter(new Fragment(data_process_args, conf->nthreads, farm.getlb()));
     farm.add_workers(workers);
-    farm.add_collector(new Reorder(send_block_args, conf->nthreads));
+    farm.add_collector(new Reorder(conf->nthreads));
 	farm.cleanup_all();
     farm.run_and_wait_end();
 
+#ifdef ENABLE_STATISTICS
     for(size_t i = 0; i < conf->nthreads; i++){
         CollapsedPipeline* p = (CollapsedPipeline*) workers.at(i);
-#ifdef ENABLE_STATISTICS
-        threads_anchor_rv[i] = p->getFragmentRefine()->getStats();
-        threads_chunk_rv[i] = p->getDeduplicate()->getStats();
-        threads_compress_rv[i] = p->getCompress()->getStats();
-#endif
+        threads_anchor_rv[i] = p->getFragmentRefineStats();
+        threads_chunk_rv[i] = p->getDeduplicateStats();
+        threads_compress_rv[i] = p->getCompressStats();
     }
+#endif
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1316,37 +1227,32 @@ void EncodeFF(config_t * _conf) {
     data_process_args.input_file.buffer = preloading_buffer;
   }
 
-  data_process_args.tid = 0;
   data_process_args.fd = fd;
 
-  struct thread_args send_block_args;
-  send_block_args.tid = 0;
-
   // Statistics
-  int nthreadsstats = conf->nthreads;
-  stats_t *threads_anchor_rv[nthreadsstats];
-  stats_t *threads_chunk_rv[nthreadsstats];
-  stats_t *threads_compress_rv[nthreadsstats];
+  stats_t *threads_anchor_rv[conf->nthreads];
+  stats_t *threads_chunk_rv[conf->nthreads];
+  stats_t *threads_compress_rv[conf->nthreads];
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
-	runSingleFarm(conf, &data_process_args, &send_block_args, threads_anchor_rv, threads_chunk_rv, threads_compress_rv);
+    runSingleFarm(conf, &data_process_args, threads_anchor_rv, threads_chunk_rv, threads_compress_rv);
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
 
 #ifdef ENABLE_STATISTICS
   //Merge everything into global `stats' structure
-  for(i=0; i<nthreadsstats; i++) {
+  for(i=0; i<conf->nthreads; i++) {
     merge_stats(&stats, threads_anchor_rv[i]);
     free(threads_anchor_rv[i]);
   }
-  for(i=0; i<nthreadsstats; i++) {
+  for(i=0; i<conf->nthreads; i++) {
     merge_stats(&stats, threads_chunk_rv[i]);
     free(threads_chunk_rv[i]);
   }
-  for(i=0; i<nthreadsstats; i++) {
+  for(i=0; i<conf->nthreads; i++) {
     merge_stats(&stats, threads_compress_rv[i]);
     free(threads_compress_rv[i]);
   }

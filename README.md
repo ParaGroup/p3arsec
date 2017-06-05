@@ -64,9 +64,9 @@ be able to measure execution time and energy consumption for all the benchmarks
 and some small test inputs. You can download the input datasets later by running `./install.sh --inputs`
 * `--inputs`: This parameter will **only** download the PARSEC input files. It should be used
 only if `./install.sh --fast` has already been run.
-* `--skepu`: This parameter compiles and install the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) 
+* `--skeputools`: This parameter compiles and install the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) 
 source to source compiler. This is not mandatory and you only need it if you want to modify the 
-`*_skepu.cpp` files.
+`*_skepu.cpp` files. This parameter is mainly intended for developers.
 
 
 # Compile
@@ -94,13 +94,18 @@ To compile the parallel patterns version of a specific benchmark, is sufficient 
 
 If you also want to compile the other existing versions of the benchmark, just replace `gcc-ff` with one of the following:
 
+* *gcc-skepu* for the SkePU2 parallel pattern-based implementation.
 * *gcc-pthreads* for the Pthreads implementation.
 * *gcc-openmp* for the OpenMP implementation.
 * *gcc-tbb* for the Intel TBB implementation.
-* *gcc-skepu* for the SkePU2 implementation. Only available if `--skepu` flag has been used during installation.
 
 Note that not all these implementations are available for all the benchmarks. For more details on supported 
-implementations, please refer to the original [PARSEC documentation](http://wiki.cs.princeton.edu/index.php/PARSEC).
+implementations, please refer to the original [PARSEC documentation](http://wiki.cs.princeton.edu/index.php/PARSEC) 
+(and to the top table in this file for the SkePU2 versions).
+
+**ATTENTION: If you plan to execute the benchmark with more than 1024 threads, you need to modify the following MACROS:**
+* `MAX_THREADS` in `pkgs/apps/blackscholes/src/c.m4.pthreads` file.
+* `MAX_NUM_THREADS` in `pkgs/libs/fastflow/ff/config.hpp` file.
 
 # Run
 Once you compiled a benchmark, you can run it with:
@@ -200,4 +205,4 @@ At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace 
 After that, build and run *ferret* as usual.
 
 # Contributors
-P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto:d.desensi.software@gmail.com) and [Tiziano De Matteis](dematteis@di.unipi.it).
+P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto:d.desensi.software@gmail.com) and [Tiziano De Matteis](mailto:dematteis@di.unipi.it).

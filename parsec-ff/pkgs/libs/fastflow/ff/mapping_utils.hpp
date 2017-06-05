@@ -499,5 +499,6 @@ static inline size_t cache_line_size() {
 #error Unrecognized platform
 #endif
 
+#undef gettid
 
 #endif /* FF_MAPPING_UTILS_HPP */

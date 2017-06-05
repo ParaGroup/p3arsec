@@ -26,7 +26,7 @@ case $key in
     -i|--inputs)
     ONLYINPUT=true
     ;;
-    -s|--skepu)
+    -s|--skeputools)
     SKEPU=true
     ;;
     *)

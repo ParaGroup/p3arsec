@@ -65,7 +65,7 @@ extern "C" {
 
 
 //The configuration block defined in main
-config_t * conf;
+extern config_t * conf;
 
 //Hash table data structure & utility functions
 struct hashtable *cache;
@@ -81,8 +81,6 @@ static int keys_equal_fn ( void *key1, void *key2 ) {
 
 //Arguments to pass to each thread
 struct thread_args {
-  //thread id, unique within a thread pool (i.e. unique for a pipeline stage)
-  int tid;
   //file descriptor, first pipeline stage only
   int fd;
   //input file buffer, first pipeline stage & preloading only
@@ -393,7 +391,7 @@ public:
 #endif
 
     void *svc(void * task) {
-        ringbuffer_t * recv_buf = (ringbuffer_t*) task;
+        ringbuffer_t* recv_buf = (ringbuffer_t*) task;
         if(ringbuffer_isBypassCompress(recv_buf)){
             while(!ff_send_out((void*) recv_buf));
             return GO_ON;
@@ -485,14 +483,13 @@ static int sub_Deduplicate(chunk_t *chunk) {
 
 class Deduplicate: public ff::ff_node{
 private:
-    chunk_t *chunk;
     int r;
-    ringbuffer_t *recv_buf, *send_buf_reorder, *send_buf_compress;
+    ringbuffer_t *send_buf_reorder, *send_buf_compress;
 #ifdef ENABLE_STATISTICS
     stats_t *thread_stats;
 #endif //ENABLE_STATISTICS
 public:
-    Deduplicate():chunk(NULL), recv_buf(NULL){
+    Deduplicate(){
 #ifdef ENABLE_STATISTICS
         thread_stats = (stats_t*) malloc(sizeof(stats_t));
         if(thread_stats == NULL) {
@@ -515,11 +512,11 @@ public:
 #endif
 
     void * svc(void * task) {
-        recv_buf = (ringbuffer_t*) task;
+        ringbuffer_t *recv_buf = (ringbuffer_t*) task;
         bool isLast = ringbuffer_isLast(recv_buf);
         while(!ringbuffer_isEmpty(recv_buf)){
             //get one chunk
-            chunk = (chunk_t *)ringbuffer_remove(recv_buf);
+            chunk_t *chunk = (chunk_t *)ringbuffer_remove(recv_buf);
             assert(chunk!=NULL);
 
             //Do the processing
@@ -582,18 +579,16 @@ public:
  */
 class FragmentRefine: public ff::ff_node{
 private:
-    ringbuffer_t* recv_buf, *send_buf;
+    ringbuffer_t *send_buf;
     int r;
 
-    chunk_t *temp;
-    chunk_t *chunk;
     u32int * rabintab;
     u32int * rabinwintab;
 #ifdef ENABLE_STATISTICS
     stats_t *thread_stats;
 #endif
 public:
-    FragmentRefine(): recv_buf(NULL), temp(NULL), chunk(NULL){
+    FragmentRefine(){
         rabintab = (u32int*) malloc(256*sizeof rabintab[0]);
         rabinwintab = (u32int*) malloc(256*sizeof rabintab[0]);
         if(rabintab == NULL || rabinwintab == NULL) {
@@ -624,12 +619,12 @@ public:
 #endif
 
     void *svc(void * task) {
-        recv_buf = (ringbuffer_t*) task;
+        ringbuffer_t* recv_buf = (ringbuffer_t*) task;
         bool isLast = ringbuffer_isLast(recv_buf);
 
         while(!ringbuffer_isEmpty(recv_buf)){
             //get one item
-            chunk = (chunk_t *)ringbuffer_remove(recv_buf);
+            chunk_t *chunk = (chunk_t *)ringbuffer_remove(recv_buf);
             assert(chunk!=NULL);
 
             rabininit(rf_win, rabintab, rabinwintab);
@@ -642,7 +637,7 @@ public:
                 //Can we split the buffer?
                 if(offset < chunk->uncompressed_data.n) {
                     //Allocate a new chunk and create a new memory buffer
-                    temp = (chunk_t *)malloc(sizeof(chunk_t));
+                    chunk_t *temp = (chunk_t *)malloc(sizeof(chunk_t));
                     if(temp==NULL) EXIT_TRACE("Memory allocation failed.\n");
                     temp->header.state = chunk->header.state;
                     temp->sequence.l1num = chunk->sequence.l1num;
@@ -1113,8 +1108,7 @@ public:
 
     void* svc(void* task){
         ringbuffer_t* recv_buf = (ringbuffer_t*) task;
-        bool isLast = ringbuffer_isLast(recv_buf);
-        if(isLast){
+        if(ringbuffer_isLast(recv_buf)){
             while(!_lb->ff_send_out_to((void*) recv_buf, 0)){;}
 
             // Send the last buffer also to the other workers (nw - 1)
@@ -1134,16 +1128,14 @@ public:
 class POFCollector: public ff::ff_node{
 private:
     ff::ff_gatherer* _gt;
-    size_t _nw;
-    size_t _rcvd;
+    size_t _nw, _rcvd;
 public:
     POFCollector(ff::ff_gatherer* gt, size_t nw):_gt(gt), _nw(nw), _rcvd(0){;}
 
     void* svc(void* task){
         ringbuffer_t* recv_buf = (ringbuffer_t*) task;
         if(ringbuffer_isLast(recv_buf)){
-            ++_rcvd;
-            if(_rcvd == _nw){
+            if(++_rcvd == _nw){
                 _rcvd = 0;
             }else{
                 ringbuffer_resetLast(recv_buf);
@@ -1190,13 +1182,13 @@ static void runPipeOfFarms(config_t * conf, struct thread_args* data_process_arg
     p.add_stage(&cmpFarm);
     p.run_and_wait_end();
 
-    for(size_t i = 0; i < conf->nthreads; i++){
 #ifdef ENABLE_STATISTICS
+    for(size_t i = 0; i < conf->nthreads; i++){
         threads_anchor_rv[i] = ((FragmentRefine*)fraW[i])->getStats();
         threads_chunk_rv[i] = ((Deduplicate*)dedW[i])->getStats();
         threads_compress_rv[i] = ((Compress*)cmpW[i])->getStats();
-#endif
     }
+#endif
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1281,35 +1273,32 @@ void EncodeFF(config_t * _conf) {
     data_process_args.input_file.buffer = preloading_buffer;
   }
 
-  data_process_args.tid = 0;
   data_process_args.fd = fd;
 
   // Statistics
-  int nthreadsstats = conf->nthreads;
-  stats_t *threads_anchor_rv[nthreadsstats];
-  stats_t *threads_chunk_rv[nthreadsstats];
-  stats_t *threads_compress_rv[nthreadsstats];
+  stats_t *threads_anchor_rv[conf->nthreads];
+  stats_t *threads_chunk_rv[conf->nthreads];
+  stats_t *threads_compress_rv[conf->nthreads];
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
-     runPipeOfFarms(conf, &data_process_args, 
-                    threads_anchor_rv, threads_chunk_rv, threads_compress_rv);
+     runPipeOfFarms(conf, &data_process_args, threads_anchor_rv, threads_chunk_rv, threads_compress_rv);
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
 
 #ifdef ENABLE_STATISTICS
   //Merge everything into global `stats' structure
-  for(i=0; i<nthreadsstats; i++) {
+  for(i=0; i<conf->nthreads; i++) {
     merge_stats(&stats, threads_anchor_rv[i]);
     free(threads_anchor_rv[i]);
   }
-  for(i=0; i<nthreadsstats; i++) {
+  for(i=0; i<conf->nthreads; i++) {
     merge_stats(&stats, threads_chunk_rv[i]);
     free(threads_chunk_rv[i]);
   }
-  for(i=0; i<nthreadsstats; i++) {
+  for(i=0; i<conf->nthreads; i++) {
     merge_stats(&stats, threads_compress_rv[i]);
     free(threads_compress_rv[i]);
   }
