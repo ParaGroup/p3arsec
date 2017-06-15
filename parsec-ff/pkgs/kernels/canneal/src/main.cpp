@@ -122,7 +122,7 @@ int main (int argc, char * const argv[]) {
     farm.cleanup_all();
     std::vector<ff::ff_node*> workers;
     for(int i = 0; i < num_threads; i++){
-        workers.push_back(new annealer_thread(&my_netlist, start_temp, swaps_per_temp, num_threads));
+        workers.push_back(new annealer_thread(&my_netlist, num_threads, swaps_per_temp, start_temp));
     }
     farm.add_emitter(new Emitter(num_threads, number_temp_steps, farm.getlb()));
     farm.add_workers(workers);
