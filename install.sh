@@ -3,6 +3,7 @@
 MEASURE=true
 INPUT=true
 ONLYINPUT=false
+NORNIR=false
 SKEPU=false
 APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips"
 KERNELS="canneal dedup streamcluster"
@@ -25,6 +26,9 @@ case $key in
     ;;
     -i|--inputs)
     ONLYINPUT=true
+    ;;
+    -n|--nornir)
+    NORNIR=true
     ;;
     -s|--skeputools)
     SKEPU=true
@@ -101,9 +105,28 @@ else
 		done
 	fi
 
+	rootdir=$(pwd)
+	# Install Nornir
+	if [ "$NORNIR" = true ]; then
+		# TODO: Maybe better to integrate directly in FastFlow patterns?
+		cd ./pkgs/libs && git clone https://github.com/DanieleDeSensi/nornir.git
+		# TODO link already downloaded mammut.
+		cd nornir && make
+		cd $rootdir
+		for CONFIG in $VERSIONS
+		do
+			if [ "$CONFIG" != "gcc-serial" ]
+			then
+				echo CXXFLAGS=\"\${CXXFLAGS} -DENABLE_NORNIR -I\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
+				echo CFLAGS=\"\${CFLAGS} -DENABLE_NORNIR -I\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
+				echo LIBS=\"\${LIBS} -lnornir\" >> "./config/"$CONFIG".bldconf"				
+				echo LDFLAGS=\"\${LDFLAGS} -L\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
+			fi
+		done
+	fi
+
 	# Install SkePU2
 	if [ "$SKEPU" = true ]; then
-		rootdir=$(pwd)
 		# Change LLVM_TARGETS_TO_BUILD value according to the specific architecture
 		cd ./pkgs/libs/skepu2 && mkdir external
 		cd external && git clone http://llvm.org/git/llvm.git && cd llvm && git checkout d3d1bf00  && cd tools 
