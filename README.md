@@ -13,14 +13,15 @@ Application   | Used Pattern           | FastFlow Files                         
 Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c)        | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu.cpp)
 Bodytrack     | **Maps**               | [File 1](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/TrackingModelFF.cpp), [File 2](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/ParticleFilterFF.h)
 Canneal       | **Master-Worker**      | [File 1](parsec-ff/pkgs/kernels/canneal/src/main.cpp)
-Dedup         | **Pipeline of Farms**  | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)
+Dedup         | Pipeline of Farms      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)
 "             | Farm                   | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farm.cpp)
 "             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farmofpipes.cpp)
-"             | Ordering Farm          | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)
+"             | **Ordering Farm**      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)
 Facesim       | **Maps**               | [File 1](parsec-ff/pkgs/apps/facesim/src/Benchmarks/facesim/FACE_EXAMPLE.h), [File 2](parsec-ff/pkgs/apps/facesim/src/Public_Library/Forces_And_Torques/DIAGONALIZED_FINITE_VOLUME_3D.cpp), [File 3](parsec-ff/pkgs/apps/facesim/src/Public_Library/Deformable_Objects/DEFORMABLE_OBJECT.cpp), [File 4](parsec-ff/pkgs/apps/facesim/src/Public_Library/Arrays/ARRAY_PARALLEL_OPERATIONS.cpp)
-Ferret        | **Pipeline of Farms**  | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)
+Ferret        | Pipeline of Farms      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)
 "             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp)
 "             | Farm                   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
+"             | **Farm (Optimized)     | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm-optimized.cpp)
 Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)
 Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)
 Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu_omp.cxx)
@@ -124,16 +125,16 @@ the parallel patterns implementation of the *Canneal* benchmark on the *native* 
 All the datasets are present if you ran `./install.sh` (or `./install.sh --fast` plus `./install.sh --inputs`).
 
 *ConcurrencyLevel* has the same meaning it has in the original PARSEC benchmarks. It represents the concurrency level 
-and it is the *minimum* number of threads that will be activated by the application. We try to kept the same number 
-of threads activated in the original PARSEC versions. Accordingly, we have the following values:
+and it is the *minimum* number of threads that will be activated by the application. 
+Accordingly, we have the following values:
 
 * *blackscholes*: n+1 threads.
 * *canneal*: n+1 threads.
-* *dedup*: n threads for each pipeline stage (3n + 3 threads).
-* *ferret*:  n threads for each pipeline stage (4n + 4 threads).
+* *dedup*: n threads for each pipeline stage (3n + 3 threads). (For the *pipe of farms* version.)
+* *ferret*:  n threads for each pipeline stage (4n + 4 threads). (For the *pipe of farms* version.)
 * *swaptions*: n+1 threads.
 
-The *non-default* parallel patterns implementations may not follow this rule. For example, the *ordered farm* implementation
+Some parallel patterns implementations may not follow this rule. For example, the *ordered farm* implementation
 of the *dedup* benchmark will activate n+2 threads.
 
 ## Measuring time and energy consumption
@@ -191,6 +192,7 @@ To compile and run the other versions, please refer to the following sections.
 At line 33 of the [Makefile](p3arsec/pkgs/kernels/dedup/src/Makefile), replace `encoder_ff_pipeoffarms.o` with:
 
 * `encoder_ff_farm.o` if you want to run the *farm* version.
+* `encoder_ff_pipeoffarms.o` if you want to run the *pipeline of farms* version.
 * `encoder_ff_farmofpipes.o` if you want to run the *farm of pipelines* version.
 * `encoder_ff_ofarm.o` if you want to run the *ordered farm* version.
 
@@ -200,7 +202,9 @@ After that, build and run *dedup* as usual.
 At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace `ferret-ff-pipeoffarms` with:
 
 * `ferret-ff-farm` if you want to run the *farm* version.
+* `ferret-ff-farm-optimized` if you want to run the *farm (optimized)* version.
 * `ferret-ff-farmofpipes` if you want to run the *farm of pipelines* version.
+* `ferret-ff-pipeoffarms` if you want to run the *pipelines of farms* version.
 
 After that, build and run *ferret* as usual.
 

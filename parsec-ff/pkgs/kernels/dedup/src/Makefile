@@ -30,7 +30,7 @@ ifdef version
     DEDUP_OBJ += queue.o binheap.o tree.o
   else ifeq "$(version)" "ff"
     CFLAGS += -DENABLE_FF -DENABLE_FF_ONDEMAND
-    DEDUP_OBJ += queue.o binheap.o tree.o encoder_ff_pipeoffarms.o
+    DEDUP_OBJ += queue.o binheap.o tree.o encoder_ff_ofarm.o
   endif
 endif
 

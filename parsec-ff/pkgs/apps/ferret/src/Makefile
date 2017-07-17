@@ -75,7 +75,7 @@ ifdef version
     LDLIBS += -ltbb -ltbbmalloc
   endif
   ifeq "$(version)" "ff"
-    benchmark_base := ferret-ff-pipeoffarms
+    benchmark_base := ferret-ff-farm-optimized
     LDLIBS += -lpthread
   endif
 endif
