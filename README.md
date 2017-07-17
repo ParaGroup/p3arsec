@@ -21,7 +21,7 @@ Facesim       | **Maps**               | [File 1](parsec-ff/pkgs/apps/facesim/sr
 Ferret        | Pipeline of Farms      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)
 "             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp)
 "             | Farm                   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
-"             | **Farm (Optimized)     | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm-optimized.cpp)
+"             | **Farm (Optimized)**   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm-optimized.cpp)
 Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)
 Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)
 Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu_omp.cxx)
