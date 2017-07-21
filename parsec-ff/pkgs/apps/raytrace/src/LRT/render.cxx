@@ -25,6 +25,10 @@
 # include "RTTL/Grid/Grid.hxx"
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#endif
+
 #ifdef FF_VERSION
 #undef _INLINE
 #define FF_PARFOR_PASSIVE_NOSTEALING
@@ -154,6 +158,11 @@ protected:
 	ff::ParallelFor* pf;
 #endif
 
+  // Nornir: Create instrumenter
+#ifdef ENABLE_NORNIR
+    nornir::Instrumenter* instr;
+#endif
+
   /* textures */
 
   _INLINE void initSharedThreadData(Camera *camera,
@@ -212,6 +221,16 @@ public:
 #ifdef FF_VERSION
 	pf = NULL;
 #endif
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter("parameters.xml");
+#endif
+  }
+
+  ~Context(){
+#ifdef ENABLE_NORNIR
+    instr->terminate(); // TODO: Probably could be done earlier.
+    delete instr;
+#endif 
   }
 
   /* ------------------------------------ */
@@ -646,16 +665,21 @@ void Context::renderFrame(Camera *camera,
 			 LRT::FrameBuffer *frameBuffer,
                          const int resX,const int resY)
 {
+#ifdef ENABLE_NORNIR
+  instr->begin();
+#endif
     assert(camera);
   if (m_threadsCreated == false)
     {
       if (m_threads > 1)
 	{
 	  cout << "-> starting " << m_threads << " threads..." << flush;
+    // FastFlow: Create threads
 #ifdef FF_VERSION
       pf = new ff::ParallelFor(m_threads, false, true);
       pf->disableScheduler();
 #else
+    // Pthreads: Create threads
 	  createThreads(m_threads);
 #endif
 	  cout << "done" << endl << flush;
@@ -667,7 +691,6 @@ void Context::renderFrame(Camera *camera,
   initSharedThreadData(camera,resX,resY,frameBuffer);
 
   BVH_STAT_COLLECTOR(BVHStatCollector::global.reset());
-
   if (m_threads>1)
     {
 #ifdef FF_VERSION
@@ -706,6 +729,9 @@ void Context::renderFrame(Camera *camera,
     
   BVH_STAT_COLLECTOR(BVHStatCollector::global.print());
   frameBuffer->doneWithFrame();
+#ifdef ENABLE_NORNIR
+  instr->end();
+#endif
 }
 
 #define SHADE( SHADERNAME ) Shade_##SHADERNAME <SIMD_VECTORS_PER_PACKET, LAYOUT, MULTIPLE_ORIGINS, SHADOW_RAYS, MESH>(packet,mesh,mat,texture,rgb32)

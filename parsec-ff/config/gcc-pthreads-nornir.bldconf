@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# gcc-ff.bldconf - file containing global information necessary to build
+#                  PARSEC with gcc, pthreads and nornir
+#
+# Copyright (C) 2008 Princeton University
+# Written by Christian Bienia
+
+source ${PARSECDIR}/config/gcc-pthreads.bldconf
+
+NORNIRDIR=${PARSECDIR}/pkgs/libs/nornir/src
+# Enable FastFlow
+CFLAGS="${CFLAGS} -I${NORNIRDIR}"
+CXXFLAGS="--std=c++11 ${CXXFLAGS} -I${NORNIRDIR}"
+LIBS="${LIBS} -pthread -lnornir"
+LDFLAGS="${LDFLAGS} -L${NORNIRDIR}"

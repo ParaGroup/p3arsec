@@ -49,6 +49,10 @@ using namespace tbb;
 using namespace ff;
 #endif //ENABLE_FF
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#endif //ENABLE_NORNIR
+
 // Multi-threaded header for Windows
 #ifdef WIN32
 #pragma warning(disable : 4305)
@@ -86,6 +90,11 @@ fptype * volatility;
 fptype * otime;
 int numError = 0;
 int nThreads;
+
+#ifdef ENABLE_NORNIR
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
+
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,6 +344,9 @@ int bs_thread(void *tid_ptr) {
             /* Calling main function to calculate option value based on 
              * Black & Scholes's equation.
              */
+#ifdef ENABLE_NORNIR
+			instr->begin(tid);
+#endif //ENABLE_NORNIR
             price = BlkSchlsEqEuroNoDiv( sptprice[i], strike[i],
                                          rate[i], volatility[i], otime[i], 
                                          otype[i], 0);
@@ -348,6 +360,9 @@ int bs_thread(void *tid_ptr) {
                 numError ++;
             }
 #endif
+#ifdef ENABLE_NORNIR
+			instr->end(tid);
+#endif //ENABLE_NORNIR
         }
     }
 
@@ -462,6 +477,9 @@ int main (int argc, char **argv)
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
+#ifdef ENABLE_NORNIR
+	instr = new nornir::Instrumenter("parameters.xml", nThreads);
+#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_THREADS
 #ifdef WIN32
@@ -514,6 +532,10 @@ int main (int argc, char **argv)
 #endif //ENABLE_TBB
 #endif //ENABLE_OPENMP
 #endif //ENABLE_THREADS
+
+#ifdef ENABLE_NORNIR
+	instr->terminate();
+#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();

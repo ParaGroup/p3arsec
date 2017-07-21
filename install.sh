@@ -8,7 +8,7 @@ SKEPU=false
 APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips"
 KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
-VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu"
+VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu gcc-pthreads-nornir"
 
 while [[ $# -gt 0 ]]
 do
@@ -108,21 +108,10 @@ else
 	rootdir=$(pwd)
 	# Install Nornir
 	if [ "$NORNIR" = true ]; then
-		# TODO: Maybe better to integrate directly in FastFlow patterns?
 		cd ./pkgs/libs && git clone https://github.com/DanieleDeSensi/nornir.git
 		# TODO link already downloaded mammut.
 		cd nornir && make
 		cd $rootdir
-		for CONFIG in $VERSIONS
-		do
-			if [ "$CONFIG" != "gcc-serial" ]
-			then
-				echo CXXFLAGS=\"\${CXXFLAGS} -DENABLE_NORNIR -I\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
-				echo CFLAGS=\"\${CFLAGS} -DENABLE_NORNIR -I\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
-				echo LIBS=\"\${LIBS} -lnornir\" >> "./config/"$CONFIG".bldconf"				
-				echo LDFLAGS=\"\${LDFLAGS} -L\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
-			fi
-		done
 	fi
 
 	# Install SkePU2
