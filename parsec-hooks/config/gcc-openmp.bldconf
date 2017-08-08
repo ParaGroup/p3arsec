@@ -10,4 +10,4 @@ source ${PARSECDIR}/config/gcc-hooks.bldconf
 
 # Enable OpenMP
 CFLAGS="${CFLAGS} -fopenmp"
-CXXFLAGS="${CXXFLAGS} -fopenmp
+CXXFLAGS="${CXXFLAGS} -fopenmp"
