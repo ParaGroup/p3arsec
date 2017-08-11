@@ -51,6 +51,10 @@ using namespace ff;
 
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
 #endif //ENABLE_NORNIR
 
 // Multi-threaded header for Windows
@@ -334,6 +338,13 @@ int bs_thread(void *tid_ptr) {
     int start = tid * (numOptions / nThreads);
     int end = start + (numOptions / nThreads);
 
+#ifdef ENABLE_NORNIR
+    uint threadId;
+#ifdef ENABLE_THREADS
+    threadId = tid;
+#endif
+#endif // ENABLE_NORNIR
+
     for (j=0; j<NUM_RUNS; j++) {
 #ifdef ENABLE_OPENMP
 #pragma omp parallel for private(i, price, priceDelta)
@@ -345,7 +356,10 @@ int bs_thread(void *tid_ptr) {
              * Black & Scholes's equation.
              */
 #ifdef ENABLE_NORNIR
-			instr->begin(tid);
+#ifdef ENABLE_OPENMP
+            threadId = omp_get_thread_num();
+#endif
+			instr->begin(threadId);
 #endif //ENABLE_NORNIR
             price = BlkSchlsEqEuroNoDiv( sptprice[i], strike[i],
                                          rate[i], volatility[i], otime[i], 
@@ -361,7 +375,7 @@ int bs_thread(void *tid_ptr) {
             }
 #endif
 #ifdef ENABLE_NORNIR
-			instr->end(tid);
+			instr->end(threadId);
 #endif //ENABLE_NORNIR
         }
     }
@@ -478,7 +492,7 @@ int main (int argc, char **argv)
     __parsec_roi_begin();
 #endif
 #ifdef ENABLE_NORNIR
-	instr = new nornir::Instrumenter("parameters.xml", nThreads);
+	instr = new nornir::Instrumenter(getParametersPath(), nThreads);
 #endif //ENABLE_NORNIR
 
 #ifdef ENABLE_THREADS
@@ -535,6 +549,7 @@ int main (int argc, char **argv)
 
 #ifdef ENABLE_NORNIR
 	instr->terminate();
+    delete instr;
 #endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS

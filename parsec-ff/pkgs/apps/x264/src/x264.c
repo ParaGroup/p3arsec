@@ -47,6 +47,18 @@
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <nornir.h>
+#include <stdlib.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+#endif //ENABLE_NORNIR
+
 uint8_t *mux_buffer = NULL;
 int mux_buffer_size = 0;
 
@@ -67,6 +79,10 @@ typedef struct {
     hnd_t hout;
     FILE *qpfile;
 } cli_opt_t;
+
+#ifdef ENABLE_NORNIR
+NornirInstrumenter* instr;
+#endif //ENABLE_NORNIR
 
 /* input file operation function pointers */
 int (*p_open_infile)( char *psz_filename, hnd_t *p_handle, x264_param_t *p_param );
@@ -852,12 +868,19 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     __parsec_roi_begin();
 #endif
 
+#ifdef ENABLE_NORNIR
+    instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
+
     /* Encode frames */
     for( i_frame = 0, i_file = 0; b_ctrl_c == 0 && (i_frame < i_frame_total || i_frame_total == 0); )
     {
         if( p_read_frame( &pic, opt->hin, i_frame + opt->i_seek ) )
             break;
 
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
         pic.i_pts = (int64_t)i_frame * param->i_fps_den;
 
         if( opt->qpfile )
@@ -894,12 +917,28 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
             SetConsoleTitle( buf );
             fflush( stderr ); // needed in windows
         }
+
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
     }
     /* Flush delayed B-frames */
-    do {
+    do {        
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
         i_file +=
         i_frame_size = Encode_frame( h, opt->hout, NULL );
+
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
     } while( i_frame_size );
+
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();

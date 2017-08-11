@@ -41,6 +41,14 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 int NUM_TRIALS = DEFAULT_NUM_TRIALS;
 int nThreads = 1;
 int nSwaptions = 1;
@@ -57,6 +65,9 @@ FTYPE *dSumSimSwaptionPrice_global_ptr;
 FTYPE *dSumSquareSimSwaptionPrice_global_ptr;
 int chunksize;
 
+#ifdef ENABLE_NORNIR
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
 
 #ifdef TBB_VERSION
 struct Worker {
@@ -108,6 +119,9 @@ void * worker(void *arg){
     end = nSwaptions;
 
   for(int i=beg; i < end; i++) {
+#ifdef ENABLE_NORNIR
+    instr->begin(tid);
+#endif //ENABLE_NORNIR
      int iSuccess = HJM_Swaption_Blocking(pdSwaptionPrice,  swaptions[i].dStrike, 
                                        swaptions[i].dCompounding, swaptions[i].dMaturity, 
                                        swaptions[i].dTenor, swaptions[i].dPaymentInterval,
@@ -117,6 +131,9 @@ void * worker(void *arg){
      assert(iSuccess == 1);
      swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
      swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
+#ifdef ENABLE_NORNIR
+      instr->end(tid);
+#endif //ENABLE_NORNIR
    }
 
    return NULL;
@@ -287,6 +304,10 @@ int main(int argc, char *argv[])
 
 #ifdef ENABLE_THREADS
 
+#ifdef ENABLE_NORNIR
+  instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif //ENABLE_NORNIR
+
 #ifdef TBB_VERSION
 	Worker w;
 	tbb::parallel_for(tbb::blocked_range<int>(0,nSwaptions,TBB_GRAINSIZE),w);
@@ -317,6 +338,11 @@ int main(int argc, char *argv[])
 	free(threads);
 
 #endif // TBB_VERSION	
+
+#ifdef ENABLE_NORNIR
+  instr->terminate();
+  delete instr;
+#endif //ENABLE_NORNIR
 
 #else
 	int threadID=0;

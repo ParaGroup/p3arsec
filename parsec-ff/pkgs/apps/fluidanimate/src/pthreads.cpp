@@ -29,6 +29,14 @@
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 //Uncomment to add code to check that Courant–Friedrichs–Lewy condition is satisfied at runtime
 //#define ENABLE_CFL_CHECK
 
@@ -83,6 +91,11 @@ typedef struct __thread_args {
   int tid;      //thread id, determines work partition
   int frames;      //number of frames to compute
 } thread_args;      //arguments for threads
+
+
+#ifdef ENABLE_NORNIR
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1118,6 +1131,10 @@ void AdvanceParticlesMT(int tid)
 
 void AdvanceFrameMT(int tid)
 {
+#ifdef ENABLE_NORNIR
+  instr->begin(tid);
+#endif //ENABLE_NORNIR
+
   //swap src and dest arrays with particles
   if(tid==0) {
     std::swap(cells, cells2);
@@ -1148,6 +1165,11 @@ void AdvanceFrameMT(int tid)
   ProcessCollisions2MT(tid);
   pthread_barrier_wait(&barrier);
 #endif
+
+#ifdef ENABLE_NORNIR
+  instr->end(tid);
+#endif //ENABLE_NORNIR
+
 }
 
 #ifndef ENABLE_VISUALIZATION
@@ -1250,6 +1272,9 @@ int main(int argc, char *argv[])
     targs[i].frames = framenum;
     pthread_create(&thread[i], &attr, AdvanceFramesMT, &targs[i]);
   }
+#ifdef ENABLE_NORNIR
+  instr = new nornir::Instrumenter(getParametersPath(), threadnum);
+#endif //ENABLE_NORNIR
 
   // *** PARALLEL PHASE *** //
 #ifdef ENABLE_VISUALIZATION
@@ -1259,6 +1284,12 @@ int main(int argc, char *argv[])
   for(int i = 0; i < threadnum; ++i) {
     pthread_join(thread[i], NULL);
   }
+
+#ifdef ENABLE_NORNIR
+  instr->terminate();
+  delete instr;
+#endif //ENABLE_NORNIR
+
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif

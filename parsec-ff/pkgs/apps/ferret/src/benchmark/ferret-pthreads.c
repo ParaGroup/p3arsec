@@ -37,6 +37,18 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <nornir.h>
+#include <stdlib.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+#endif //ENABLE_NORNIR
+
 #define DEFAULT_DEPTH	25
 #define MAXR	100
 #define IMAGE_DIM	14
@@ -374,12 +386,18 @@ void *t_rank (void *dummy)
 
 void *t_out (void *dummy)
 {
+#ifdef ENABLE_NORNIR
+	NornirInstrumenter* instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
 	struct rank_data *rank;
 	while (1)
 	{
 		if(dequeue(&q_rank_out, &rank) < 0)
 		    break;
-		
+
+#ifdef ENABLE_NORNIR
+		nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
 		assert(rank != NULL);
 
 		fprintf(fout, "%s", rank->name);
@@ -402,7 +420,14 @@ void *t_out (void *dummy)
 		cnt_dequeue++;
 		
 		fprintf(stderr, "(%d,%d)\n", cnt_enqueue, cnt_dequeue);
+#ifdef ENABLE_NORNIR
+		nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
 	}
+#ifdef ENABLE_NORNIR
+	nornir_instrumenter_terminate(instr);
+	nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
 	assert(cnt_enqueue == cnt_dequeue);
 	return NULL;

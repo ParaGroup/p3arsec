@@ -1,0 +1,6 @@
+#!/bin/bash
+# gcc-pthreads.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/kernels/canneal/parsec/gcc-pthreads.bldconf
+
+build_env="${build_env} CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR\""

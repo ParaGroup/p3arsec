@@ -73,6 +73,14 @@
 #include <dmalloc.h>
 #endif /*WITH_DMALLOC*/
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 /**
  * SECTION: threadpool
  * @short_description: pools of worker threads 
@@ -105,6 +113,10 @@ int im__thinstrip_height = IM__THINSTRIP_HEIGHT;
 /* Default n threads ... 0 means get from environment.
  */
 int im__concurrency = 0;
+
+#ifdef ENABLE_NORNIR
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
 
 #ifndef HAVE_THREADS
 /* If we're building without gthread, we need stubs for the g_thread_*() and
@@ -344,6 +356,9 @@ typedef struct {
 	double *btime, *etime;
 	int tpos;
 #endif /*TIME_THREAD*/
+#ifdef ENABLE_NORNIR
+	uint tid;
+#endif
 } VipsThread;
 
 /* What we track for a group of threads working together.
@@ -503,6 +518,10 @@ vips_thread_work_unit( VipsThread *thr )
 {
 	VipsThreadpool *pool = thr->pool;
 
+#ifdef ENABLE_NORNIR
+	instr->begin(thr->tid);
+#endif //ENABLE_NORNIR
+
 	if( thr->error )
 		return;
 
@@ -512,12 +531,18 @@ vips_thread_work_unit( VipsThread *thr )
 	 */
 	if( pool->stop ) {
 		g_mutex_unlock( pool->allocate_lock );
+#ifdef ENABLE_NORNIR
+		instr->end(thr->tid);
+#endif //ENABLE_NORNIR
 		return;
 	}
 
 	if( vips_thread_allocate( thr ) ) {
 		thr->error = TRUE;
 		g_mutex_unlock( pool->allocate_lock );
+#ifdef ENABLE_NORNIR
+		instr->end(thr->tid);
+#endif //ENABLE_NORNIR
 		return;
 	}
 
@@ -525,6 +550,9 @@ vips_thread_work_unit( VipsThread *thr )
 	 */
 	if( pool->stop ) {
 		g_mutex_unlock( pool->allocate_lock );
+#ifdef ENABLE_NORNIR
+		instr->end(thr->tid);
+#endif //ENABLE_NORNIR
 		return;
 	}
 
@@ -534,6 +562,9 @@ vips_thread_work_unit( VipsThread *thr )
 	 */
 	if( vips_thread_work( thr ) )
 		thr->error = TRUE;
+#ifdef ENABLE_NORNIR
+	instr->end(thr->tid);
+#endif //ENABLE_NORNIR
 }
 
 #if defined(HAVE_THREADS) && !defined(HAVE_FF)
@@ -568,7 +599,11 @@ vips_thread_main_loop( void *a )
 /* Attach another thread to a threadpool.
  */
 static VipsThread *
-vips_thread_new( VipsThreadpool *pool )
+vips_thread_new( VipsThreadpool *pool 
+#ifdef ENABLE_NORNIR
+			, uint tid
+#endif
+	)
 {
 	VipsThread *thr;
 
@@ -586,6 +621,10 @@ vips_thread_new( VipsThreadpool *pool )
 	thr->etime = NULL;
 	thr->tpos = 0;
 #endif /*TIME_THREAD*/
+
+#ifdef ENABLE_NORNIR
+	thr->tid = tid;
+#endif
 
 	/* We can't build the state here, it has to be done by the worker
 	 * itself the first time that allocate runs so that any regions are 
@@ -710,7 +749,11 @@ vips_threadpool_create_threads( VipsThreadpool *pool )
 	/* Attach threads and start them working.
 	 */
 	for( i = 0; i < pool->nthr; i++ )
-		if( !(pool->thr[i] = vips_thread_new( pool )) ) {
+		if( !(pool->thr[i] = vips_thread_new( pool
+#ifdef ENABLE_NORNIR
+			, i
+#endif
+			 )) ) {
 			vips_threadpool_kill_threads( pool );
 			return( -1 );
 		}
@@ -951,6 +994,10 @@ vips_threadpool_run( VipsImage *im,
 	pool->work = work;
 	pool->a = a;
 
+#ifdef ENABLE_NORNIR
+	instr = new nornir::Instrumenter(getParametersPath(), pool->nthr);
+#endif //ENABLE_NORNIR
+
 	/* Attach workers and set them going.
 	 */
 	if( vips_threadpool_create_threads( pool ) ) {
@@ -991,6 +1038,10 @@ vips_threadpool_run( VipsImage *im,
 	result = pool->error ? -1 : 0;
 
 	vips_threadpool_free( pool );
+#ifdef ENABLE_NORNIR
+	instr->terminate();
+	delete instr;
+#endif //ENABLE_NORNIR
 
 	return( result );
 }

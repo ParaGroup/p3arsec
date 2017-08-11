@@ -67,6 +67,14 @@ using namespace tbb;
 #include <hooks.h>
 #endif //ENABLE_PARSEC_HOOKS
 
+#ifdef USE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //USE_NORNIR
+
 #include "ParticleFilter.h"
 #include "TrackingModel.h"
 #include "system.h"
@@ -251,8 +259,15 @@ int mainOMP(string path, int cameras, int frames, int particles, int layers, int
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_begin();
 #endif
+#ifdef USE_NORNIR
+	nornir::Instrumenter instr(getParametersPath());
+#endif //USE_NORNIR
 	for(int i = 0; i < frames; i++)														//process each set of frames
-	{	cout << "Processing frame " << i << endl;
+	{	
+#ifdef USE_NORNIR
+		instr.begin();
+#endif //USE_NORNIR
+		cout << "Processing frame " << i << endl;
 		if(!pf.Update((float)i))														//Run particle filter step
 		{	cout << "Error loading observation data" << endl;
 			return 0;
@@ -261,7 +276,13 @@ int mainOMP(string path, int cameras, int frames, int particles, int layers, int
 		WritePose(outputFileAvg, estimate);
 		if(OutputBMP)
 			pf.Model().OutputBMP(estimate, i);											//save output bitmap file
+#ifdef USE_NORNIR
+		instr.end();
+#endif //USE_NORNIR
 	}
+#ifdef USE_NORNIR
+	instr.terminate();
+#endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_end();
 #endif
@@ -312,8 +333,15 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_begin();
 #endif
+#ifdef USE_NORNIR
+	nornir::Instrumenter instr(getParametersPath());
+#endif //USE_NORNIR
 	for(int i = 0; i < frames; i++)														//process each set of frames
-	{	cout << "Processing frame " << i << endl;
+	{	
+#ifdef USE_NORNIR
+		instr.begin();
+#endif //USE_NORNIR
+		cout << "Processing frame " << i << endl;
 		if(!pf.Update((float)i))														//Run particle filter step
 		{	cout << "Error loading observation data" << endl;
 			workers.JoinAll();
@@ -322,10 +350,16 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 		pf.Estimate(estimate);															//get average pose of the particle distribution
 		WritePose(outputFileAvg, estimate);
 		if(OutputBMP)
-			pf.Model().OutputBMP(estimate, i);											//save output bitmap file
+			pf.Model().OutputBMP(estimate, i);                                          //save output bitmap file
+#ifdef USE_NORNIR
+		instr.end();
+#endif //USE_NORNIR
 	}
 	model.close();
 	workers.JoinAll();
+#ifdef USE_NORNIR
+	instr.terminate();
+#endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_end();
 #endif

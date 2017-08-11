@@ -84,6 +84,9 @@
 /* Define to 1 to enable FastFlow threading */
 #undef USE_FF
 
+/* Define to 1 to enable Nornir support */
+#undef USE_NORNIR
+
 /* Version number of package */
 #undef VERSION
 

@@ -51,6 +51,17 @@
 #include "netlist.h"
 #include "rng.h"
 
+
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
+
 using namespace std;
 
 #if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
@@ -115,7 +126,9 @@ int main (int argc, char * const argv[]) {
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
-
+#ifdef ENABLE_NORNIR
+	instr = new nornir::Instrumenter(getParametersPath(), num_threads);
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_THREADS
 #ifdef ENABLE_FF
     ff::ff_farm<> farm;
@@ -140,7 +153,11 @@ int main (int argc, char * const argv[]) {
 #endif
 #else
 	a_thread.Run();
-#endif
+#endif	
+#ifdef ENABLE_NORNIR
+	instr->terminate();
+    delete instr;
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif

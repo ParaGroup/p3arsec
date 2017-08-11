@@ -27,6 +27,10 @@
 
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
 #endif
 
 #ifdef FF_VERSION
@@ -222,7 +226,7 @@ public:
 	pf = NULL;
 #endif
 #ifdef ENABLE_NORNIR
-    instr = new nornir::Instrumenter("parameters.xml");
+    instr = new nornir::Instrumenter(getParametersPath());
 #endif
   }
 

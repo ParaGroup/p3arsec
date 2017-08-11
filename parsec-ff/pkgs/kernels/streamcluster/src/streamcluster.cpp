@@ -44,6 +44,14 @@ using namespace tbb;
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 using namespace std;
 
 #define MAXNAMESIZE 1024 // max filename length
@@ -2286,6 +2294,10 @@ void streamCluster( PStream* stream,
 			long chunksize, long centersize, char* outfile )
 {
 
+#ifdef ENABLE_NORNIR
+  nornir::Instrumenter instr(getParametersPath());
+#endif //ENABLE_NORNIR
+
 #ifdef TBB_VERSION
   float* block = (float*)memoryFloat.allocate( chunksize*dim*sizeof(float) );
   float* centerBlock = (float*)memoryFloat.allocate(centersize*dim*sizeof(float) );
@@ -2333,7 +2345,9 @@ void streamCluster( PStream* stream,
   long IDoffset = 0;
   long kfinal;
   while(1) {
-
+#ifdef ENABLE_NORNIR
+    instr.begin();
+#endif //ENABLE_NORNIR
     size_t numRead  = stream->read(block, dim, chunksize ); 
     fprintf(stderr,"read %d points\n",numRead);
 
@@ -2383,7 +2397,9 @@ void streamCluster( PStream* stream,
     free(switch_membership);
     free(center_table);
 #endif
-
+#ifdef ENABLE_NORNIR
+    instr.end();
+#endif //ENABLE_NORNIR
     if( stream->feof() ) {
       break;
     }
@@ -2404,6 +2420,9 @@ void streamCluster( PStream* stream,
   localSearch( &centers, kmin, kmax ,&kfinal ); // parallel
   contcenters(&centers);
   outcenterIDs( &centers, centerIDs, outfile);
+#ifdef ENABLE_NORNIR
+  instr.terminate();
+#endif //ENABLE_NORNIR
 }
 
 int main(int argc, char **argv)

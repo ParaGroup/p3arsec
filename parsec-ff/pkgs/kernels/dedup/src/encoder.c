@@ -58,6 +58,19 @@
 #endif //ENABLE_PARSEC_HOOKS
 
 
+#ifdef ENABLE_NORNIR
+#include <nornir.h>
+#include <stdlib.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+#endif //ENABLE_NORNIR
+
+
 #define INITIAL_SEARCH_TREE_SIZE 4096
 
 
@@ -1221,7 +1234,9 @@ void *Reorder(void * targs) {
   assert(r==0);
 
   fd = create_output_file(conf->outfile);
-
+#ifdef ENABLE_NORNIR
+  NornirInstrumenter* instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
   while(1) {
     //get a group of items
     if (ringbuffer_isEmpty(&recv_buf)) {
@@ -1234,6 +1249,9 @@ void *Reorder(void * targs) {
     }
     chunk = (chunk_t *)ringbuffer_remove(&recv_buf);
     if (chunk == NULL) break;
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
 
     //Double size of sequence number array if necessary
     if(chunk->sequence.l1num >= chunks_per_anchor_max) {
@@ -1261,6 +1279,9 @@ void *Reorder(void * targs) {
       } else {
         Insert(chunk, pos->Element.queue);
       }
+#ifdef ENABLE_NORNIR
+      nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
       continue;
     }
 
@@ -1295,11 +1316,18 @@ void *Reorder(void * targs) {
         chunk = NULL;
       }
     } while(chunk != NULL);
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
   }
+
 
   //flush the blocks left in the cache to file
   pos = TreeFindMin(T);
   while(pos !=NULL) {
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
     if(pos->Element.l1num == next.l1num) {
       chunk = FindMin(pos->Element.queue);
       if(sequence_eq(chunk->sequence, next)) {
@@ -1325,14 +1353,19 @@ void *Reorder(void * targs) {
     }
     sequence_inc_l2(&next);
     if(chunks_per_anchor[next.l1num]!=0 && next.l2num==chunks_per_anchor[next.l1num]) sequence_inc_l1(&next);
-
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
   }
 
   close(fd);
 
   ringbuffer_destroy(&recv_buf);
   free(chunks_per_anchor);
-
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
   return NULL;
 }
 #endif //ENABLE_PTHREADS

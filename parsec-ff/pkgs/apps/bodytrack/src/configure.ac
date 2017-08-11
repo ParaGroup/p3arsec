@@ -9,6 +9,7 @@ AC_ARG_ENABLE([threads], AC_HELP_STRING([--enable-threads], [enable conventional
 AC_ARG_ENABLE([openmp], AC_HELP_STRING([--enable-openmp], [enable OpenMP threading @<:@default=no@:>@]), [], [enable_openmp=no])
 AC_ARG_ENABLE([tbb], AC_HELP_STRING([--enable-tbb], [enable Intel TBB threading @<:@default=no@:>@]), [], [enable_tbb=no])
 AC_ARG_ENABLE([ff], AC_HELP_STRING([--enable-ff], [enable FastFlow threading @<:@default=no@:>@]), [], [enable_ff=no])
+AC_ARG_ENABLE([nornir], AC_HELP_STRING([--enable-nornir], [enable Nornir support @<:@default=no@:>@]), [], [enable_nornir=no])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
@@ -73,6 +74,14 @@ if test "x$enable_ff" == "xyes"; then
 fi
 AM_CONDITIONAL([ENABLE_FF], [test "x$enable_ff" == "xyes"])
 AC_SUBST([ENABLE_FF])
+
+if test "x$enable_nornir" == "xyes"; then
+  AC_DEFINE([USE_NORNIR], [1], [Define to 1 to enable Nornir])
+  CXXFLAGS="$CXXFLAGS"
+fi
+AM_CONDITIONAL([ENABLE_NORNIR], [test "x$enable_nornir" == "xyes"])
+AC_SUBST([ENABLE_NORNIR])
+
 
 # Extra arguments
 CXXFLAGS="$CXXFLAGS -Wall"
