@@ -48,7 +48,7 @@ To download the last version of P<sup>3</sup>RSEC, run the
 following commands:
 
 ```
-wget https://github.com/ParaGroup/p3arsec/archive/v1.0.tar.gz -O p3arsec.tar.gz
+wget https://github.com/ParaGroup/p3arsec/archive/v1.0.tar.gz
 ```
 
 ```
