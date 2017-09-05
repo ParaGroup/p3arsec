@@ -40,6 +40,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #ifdef ENABLE_NORNIR
 #include <nornir.h>
 #include <stdlib.h>
+#include <stdio.h>
 char* getParametersPath(){
     char* tmp = malloc(sizeof(char)*1024);
     tmp[0] = 0;
@@ -426,6 +427,8 @@ void *t_out (void *dummy)
 	}
 #ifdef ENABLE_NORNIR
 	nornir_instrumenter_terminate(instr);
+    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));	
 	nornir_instrumenter_destroy(instr);
 #endif //ENABLE_NORNIR
 

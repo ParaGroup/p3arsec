@@ -47,6 +47,7 @@ using namespace tbb;
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -2422,6 +2423,8 @@ void streamCluster( PStream* stream,
   outcenterIDs( &centers, centerIDs, outfile);
 #ifdef ENABLE_NORNIR
   instr.terminate();
+  std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
+  std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
 #endif //ENABLE_NORNIR
 }
 

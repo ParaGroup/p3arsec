@@ -61,6 +61,7 @@
 #ifdef ENABLE_NORNIR
 #include <nornir.h>
 #include <stdlib.h>
+#include <stdio.h>
 char* getParametersPath(){
     char* tmp = malloc(sizeof(char)*1024);
     tmp[0] = 0;
@@ -1364,6 +1365,8 @@ void *Reorder(void * targs) {
   free(chunks_per_anchor);
 #ifdef ENABLE_NORNIR
     nornir_instrumenter_terminate(instr);
+    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
     nornir_instrumenter_destroy(instr);
 #endif //ENABLE_NORNIR
   return NULL;

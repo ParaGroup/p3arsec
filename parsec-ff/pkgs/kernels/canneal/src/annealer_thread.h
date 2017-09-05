@@ -75,7 +75,11 @@ public:
 		pthread_barrier_destroy(&_barrier);
 #endif
 	}					
-	void Run();
+	void Run(
+#ifdef ENABLE_NORNIR
+		size_t tid
+#endif
+	);
 					
 protected:
 	move_decision_t accept_move(routing_cost_t delta_cost, double T, Rng* rng);

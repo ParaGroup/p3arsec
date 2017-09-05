@@ -55,6 +55,7 @@
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -66,6 +67,13 @@ using namespace std;
 
 #if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
 void* entry_pt(void*);
+#endif
+
+#ifdef ENABLE_NORNIR
+typedef struct{
+    void* a_thread;
+    size_t tid;
+}ThreadData;
 #endif
 
 int main (int argc, char * const argv[]) {
@@ -123,12 +131,12 @@ int main (int argc, char * const argv[]) {
 	annealer_thread a_thread(&my_netlist,num_threads,swaps_per_temp,start_temp,number_temp_steps);
 #endif
 	
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter(getParametersPath(), num_threads);
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
-#ifdef ENABLE_NORNIR
-	instr = new nornir::Instrumenter(getParametersPath(), num_threads);
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_THREADS
 #ifdef ENABLE_FF
     ff::ff_farm<> farm;
@@ -145,7 +153,14 @@ int main (int argc, char * const argv[]) {
 	std::vector<pthread_t> threads(num_threads);
 	void* thread_in = static_cast<void*>(&a_thread);
 	for(int i=0; i<num_threads; i++){
+#ifdef ENABLE_NORNIR
+        ThreadData* td = new ThreadData();
+        td->a_thread = thread_in;
+        td->tid = (size_t) i;
+        pthread_create(&threads[i], NULL, entry_pt, static_cast<void*>(td));
+#else
 		pthread_create(&threads[i], NULL, entry_pt, thread_in);
+#endif
 	}
 	for (int i=0; i<num_threads; i++){
 		pthread_join(threads[i], NULL);
@@ -154,13 +169,15 @@ int main (int argc, char * const argv[]) {
 #else
 	a_thread.Run();
 #endif	
-#ifdef ENABLE_NORNIR
-	instr->terminate();
-    delete instr;
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    instr->terminate();
+    std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+    delete instr;
+#endif //ENABLE_NORNIR
 	
 	cout << "Final routing is: " << my_netlist.total_routing_cost() << endl;
     cout << "Terminated" << endl;
@@ -175,8 +192,14 @@ int main (int argc, char * const argv[]) {
 #if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
 void* entry_pt(void* data)
 {
+#ifdef ENABLE_NORNIR
+    ThreadData* td = static_cast<ThreadData*>(data);
+    annealer_thread* ptr = static_cast<annealer_thread*>(data->a_thread);
+    ptr->Run(data->tid);
+#else
 	annealer_thread* ptr = static_cast<annealer_thread*>(data);
 	ptr->Run();
+#endif
 	return NULL;
 }
 #endif

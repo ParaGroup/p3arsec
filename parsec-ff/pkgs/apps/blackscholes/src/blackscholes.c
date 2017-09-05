@@ -52,6 +52,7 @@ using namespace ff;
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -488,12 +489,12 @@ int main (int argc, char **argv)
 
     printf("Size of data: %d\n", numOptions * (sizeof(OptionData) + sizeof(int)));
 
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
-#ifdef ENABLE_NORNIR
-	instr = new nornir::Instrumenter(getParametersPath(), nThreads);
-#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_THREADS
 #ifdef WIN32
@@ -547,14 +548,16 @@ int main (int argc, char **argv)
 #endif //ENABLE_OPENMP
 #endif //ENABLE_THREADS
 
-#ifdef ENABLE_NORNIR
-	instr->terminate();
-    delete instr;
-#endif //ENABLE_NORNIR
-
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();
 #endif
+
+#ifdef ENABLE_NORNIR
+    instr->terminate();
+    std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+    delete instr;
+#endif //ENABLE_NORNIR
 
     //Write prices to output file
     file = fopen(outputFile, "w");

@@ -32,6 +32,7 @@
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -1259,6 +1260,9 @@ int main(int argc, char *argv[])
   InitVisualizationMode(&argc, argv, &AdvanceFrameVisualization, &numCells, &cells, &cnumPars);
 #endif
 
+#ifdef ENABLE_NORNIR
+  instr = new nornir::Instrumenter(getParametersPath(), threadnum);
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_begin();
 #endif
@@ -1272,9 +1276,6 @@ int main(int argc, char *argv[])
     targs[i].frames = framenum;
     pthread_create(&thread[i], &attr, AdvanceFramesMT, &targs[i]);
   }
-#ifdef ENABLE_NORNIR
-  instr = new nornir::Instrumenter(getParametersPath(), threadnum);
-#endif //ENABLE_NORNIR
 
   // *** PARALLEL PHASE *** //
 #ifdef ENABLE_VISUALIZATION
@@ -1285,14 +1286,15 @@ int main(int argc, char *argv[])
     pthread_join(thread[i], NULL);
   }
 
-#ifdef ENABLE_NORNIR
-  instr->terminate();
-  delete instr;
-#endif //ENABLE_NORNIR
-
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+  instr->terminate();
+  std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
+  std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+  delete instr;
+#endif //ENABLE_NORNIR
 
   if(argc > 4)
     SaveFile(argv[4]);

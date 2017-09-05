@@ -45,6 +45,7 @@ using std::endl;
 
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
+#include <iostream>
 extern nornir::Instrumenter* instr;
 #endif // ENABLE_NORNIR
 
@@ -52,7 +53,11 @@ extern nornir::Instrumenter* instr;
 //*****************************************************************************************
 //
 //*****************************************************************************************
-void annealer_thread::Run()
+void annealer_thread::Run(
+#ifdef ENABLE_NORNIR
+	size_t tid
+#endif
+)
 {
 	int accepted_good_moves=0;
 	int accepted_bad_moves=-1;
@@ -65,9 +70,6 @@ void annealer_thread::Run()
 	netlist_elem* b = _netlist->get_random_element(&b_id, NO_MATCHING_ELEMENT, &rng);
 
 	int temp_steps_completed=0; 
-#ifdef ENABLE_NORNIR
-	uint tid = mammut::utils::gettid();
-#endif // ENABLE_NORNIR
 	while(keep_going(temp_steps_completed, accepted_good_moves, accepted_bad_moves)){
 		T = T / 1.5;
 		accepted_good_moves = 0;

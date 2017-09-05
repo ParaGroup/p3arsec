@@ -76,6 +76,7 @@
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -1040,6 +1041,8 @@ vips_threadpool_run( VipsImage *im,
 	vips_threadpool_free( pool );
 #ifdef ENABLE_NORNIR
 	instr->terminate();
+    std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
 	delete instr;
 #endif //ENABLE_NORNIR
 

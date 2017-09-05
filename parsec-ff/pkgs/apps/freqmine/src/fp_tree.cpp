@@ -52,6 +52,7 @@ static int omp_get_thread_num() {return 0;}
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -1329,7 +1330,7 @@ int FP_tree::FP_growth_first(FSout* fout)
 		lowerbound = itemno;
 
 #ifdef ENABLE_NORNIR
-	nornir::Instrumenter instr(getParametersPath());
+	nornir::Instrumenter instr(getParametersPath(), omp_get_max_threads());
 #endif //ENABLE_NORNIR
 	for (int t = 0; t < 3; t ++) {
 		upperbound = lowerbound;
@@ -1356,7 +1357,7 @@ int FP_tree::FP_growth_first(FSout* fout)
 		for(sequence=upperbound - 1; sequence>=lowerbound; sequence--)
 		{	
 #ifdef ENABLE_NORNIR
-			instr.begin();
+			instr.begin(omp_get_thread_num());
 #endif //ENABLE_NORNIR
 			int current, new_item_no, listlen;
 			int MC2=0;			
@@ -1438,12 +1439,14 @@ int FP_tree::FP_growth_first(FSout* fout)
 			}
 			release_node_array_after_mining(sequence, thread, workingthread);
 #ifdef ENABLE_NORNIR
-			instr.end();
+			instr.end(omp_get_thread_num());
 #endif //ENABLE_NORNIR
 		}
 
 #ifdef ENABLE_NORNIR
 		instr.terminate();
+		std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
+    	std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
 #endif //ENABLE_NORNIR
 	}
 	 wtime(&tend);

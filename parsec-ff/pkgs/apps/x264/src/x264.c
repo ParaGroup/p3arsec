@@ -50,6 +50,7 @@
 #ifdef ENABLE_NORNIR
 #include <nornir.h>
 #include <stdlib.h>
+#include <stdio.h>
 char* getParametersPath(){
     char* tmp = malloc(sizeof(char)*1024);
     tmp[0] = 0;
@@ -864,13 +865,13 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
 
     i_start = x264_mdate();
 
-#ifdef ENABLE_PARSEC_HOOKS
-    __parsec_roi_begin();
-#endif
-
 #ifdef ENABLE_NORNIR
     instr = nornir_instrumenter_create(getParametersPath());
 #endif //ENABLE_NORNIR
+
+#ifdef ENABLE_PARSEC_HOOKS
+    __parsec_roi_begin();
+#endif
 
     /* Encode frames */
     for( i_frame = 0, i_file = 0; b_ctrl_c == 0 && (i_frame < i_frame_total || i_frame_total == 0); )
@@ -935,14 +936,16 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
 #endif //ENABLE_NORNIR
     } while( i_frame_size );
 
-#ifdef ENABLE_NORNIR
-    nornir_instrumenter_terminate(instr);
-    nornir_instrumenter_destroy(instr);
-#endif //ENABLE_NORNIR
-
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();
 #endif
+
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
     i_end = x264_mdate();
     x264_picture_clean( &pic );

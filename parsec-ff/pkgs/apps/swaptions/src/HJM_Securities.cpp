@@ -44,6 +44,7 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -298,15 +299,15 @@ int main(int argc, char *argv[])
 
 
 	// **********Calling the Swaption Pricing Routine*****************
+#ifdef ENABLE_NORNIR
+  instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif //ENABLE_NORNIR
+
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
 
 #ifdef ENABLE_THREADS
-
-#ifdef ENABLE_NORNIR
-  instr = new nornir::Instrumenter(getParametersPath(), nThreads);
-#endif //ENABLE_NORNIR
 
 #ifdef TBB_VERSION
 	Worker w;
@@ -339,11 +340,6 @@ int main(int argc, char *argv[])
 
 #endif // TBB_VERSION	
 
-#ifdef ENABLE_NORNIR
-  instr->terminate();
-  delete instr;
-#endif //ENABLE_NORNIR
-
 #else
 	int threadID=0;
 	worker(&threadID);
@@ -352,6 +348,12 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+  instr->terminate();
+  std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
+  std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+  delete instr;
+#endif //ENABLE_NORNIR
 
         for (i = 0; i < nSwaptions; i++) {
           fprintf(stderr,"Swaption %d: [SwaptionPrice: %.10lf StdError: %.10lf] \n", 

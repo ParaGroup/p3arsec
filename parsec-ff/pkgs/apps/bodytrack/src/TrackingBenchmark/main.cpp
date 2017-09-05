@@ -70,6 +70,7 @@ using namespace tbb;
 #ifdef USE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
+#include <iostream>
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -256,12 +257,12 @@ int mainOMP(string path, int cameras, int frames, int particles, int layers, int
 
 	vector<float> estimate;																//expected pose from particle distribution
 
-#if defined(ENABLE_PARSEC_HOOKS)
-        __parsec_roi_begin();
-#endif
 #ifdef USE_NORNIR
 	nornir::Instrumenter instr(getParametersPath());
 #endif //USE_NORNIR
+#if defined(ENABLE_PARSEC_HOOKS)
+        __parsec_roi_begin();
+#endif
 	for(int i = 0; i < frames; i++)														//process each set of frames
 	{	
 #ifdef USE_NORNIR
@@ -280,12 +281,14 @@ int mainOMP(string path, int cameras, int frames, int particles, int layers, int
 		instr.end();
 #endif //USE_NORNIR
 	}
-#ifdef USE_NORNIR
-	instr.terminate();
-#endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_end();
 #endif
+#ifdef USE_NORNIR
+	instr.terminate();
+	std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
+    std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+#endif //USE_NORNIR
 
 	return 1;
 }
