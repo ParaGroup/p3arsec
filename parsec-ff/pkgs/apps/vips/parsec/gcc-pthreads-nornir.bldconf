@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# gcc-ff.bldconf - file containing information necessary to build a
-#                  specific program of the PARSEC benchmark suite with
-#                  gcc and FastFlow
+# gcc-pthreads.bldconf - file containing information necessary to build a
+#                        specific program of the PARSEC benchmark suite with
+#                        gcc and pthreads
 #
 # Copyright (C) 2007-2008 Princeton University
 # Written by Christian Bienia
@@ -13,8 +13,7 @@
 # global configuration. All variables set in the global configuration files can
 # be referenced here.
 
-
 source ${PARSECDIR}/pkgs/apps/vips/parsec/gcc-pthreads.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="${build_env} CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR\""
+build_env="CXXFLAGS=\"-DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/glib/inst/${PARSECPLAT}/include -I${PARSECDIR}/pkgs/libs/zlib/inst/${PARSECPLAT}/include ${CXXFLAGS} -fexceptions\" LDFLAGS=\"-L${PARSECDIR}/pkgs/libs/glib/inst/${PARSECPLAT}/lib -L${PARSECDIR}/pkgs/libs/zlib/inst/${PARSECPLAT}/lib ${LDFLAGS}\" PKG_CONFIG_PATH=\"${PARSECDIR}/pkgs/libs/glib/inst/${PARSECPLAT}/lib/pkgconfig:${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/lib/pkgconfig:${PKG_CONFIG_PATH}\" LIBS=\"${LIBS} -lstdc++\""

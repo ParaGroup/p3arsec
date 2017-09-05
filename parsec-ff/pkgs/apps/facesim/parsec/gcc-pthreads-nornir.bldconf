@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# gcc-pthreads-nornir.bldconf - file containing information necessary to build a
-#                  specific program of the PARSEC benchmark suite with
-#                  gcc, Pthreads and Nornir
+# gcc-pthreads.bldconf - file containing information necessary to build a
+#                        specific program of the PARSEC benchmark suite with
+#                        gcc and pthreads
 #
 # Copyright (C) 2007-2008 Princeton University
 # Written by Christian Bienia
@@ -16,4 +16,4 @@
 source ${PARSECDIR}/pkgs/apps/facesim/parsec/gcc-pthreads.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="${build_env} CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR\""
+build_env="version=pthreads PHYSBAM=${PARSECDIR}/pkgs/apps/facesim/obj/${PARSECPLAT} CXXFLAGS=\"${CXXFLAGS} -fexceptions -DENABLE_NORNIR\""

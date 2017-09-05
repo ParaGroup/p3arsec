@@ -13,8 +13,7 @@
 # global configuration. All variables set in the global configuration files can
 # be referenced here.
 
-source ${PARSECDIR}/pkgs/kernels/dedup/parsec/gcc.bldconf
+source ${PARSECDIR}/pkgs/kernels/dedup/parsec/gcc-pthreads.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="${build_env} CFLAGS=\"${CFLAGS} -DENABLE_NORNIR\""
-
+build_env="version=pthreads CFLAGS=\"-I${PARSECDIR}/pkgs/libs/ssl/inst/${PARSECPLAT}/include -I${PARSECDIR}/pkgs/libs/zlib/inst/${PARSECPLAT}/include -DENABLE_NORNIR ${CFLAGS}\" LDFLAGS=\"-L${PARSECDIR}/pkgs/libs/ssl/inst/${PARSECPLAT}/lib -L${PARSECDIR}/pkgs/libs/zlib/inst/${PARSECPLAT}/lib  ${LDFLAGS}\""

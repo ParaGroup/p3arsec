@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# gcc-pthreads-nornir.bldconf - file containing information necessary to build a
+# gcc-pthreads.bldconf - file containing information necessary to build a
 #                        specific program of the PARSEC benchmark suite with
 #                        gcc and pthreads
 #
@@ -13,8 +13,7 @@
 # global configuration. All variables set in the global configuration files can
 # be referenced here.
 
-
 source ${PARSECDIR}/pkgs/apps/x264/parsec/gcc-pthreads.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="${build_env} CFLAGS=\"${CFLAGS} -DENABLE_NORNIR\""
+build_env="PATH=\"${PARSECDIR}/pkgs/tools/yasm/inst/${PARSECPLAT}/bin:${PATH}\""

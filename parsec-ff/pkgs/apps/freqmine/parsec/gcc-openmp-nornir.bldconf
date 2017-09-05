@@ -16,4 +16,4 @@
 source ${PARSECDIR}/pkgs/apps/freqmine/parsec/gcc-openmp.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="${build_env} CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR\""
+build_env="CXXFLAGS=\"${CXXFLAGS} -fopenmp -DENABLE_NORNIR\" version=openmp"
