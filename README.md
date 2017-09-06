@@ -31,7 +31,7 @@ Ferret        | Pipeline of Farms      | [File 1](parsec-ff/pkgs/apps/ferret/src
 "             | **Farm (Optimized)**   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm-optimized.cpp)
 Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)
 Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)
-Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu_omp.cxx)
+Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu.cxx)
 Streamcluster | **Maps and MapReduce** | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster.cpp) | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster_skepu.cpp)
 Swaptions     | **Map**                | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)       | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities_skepu.cpp)
 Vips          | **Farm**               | [File 1](parsec-ff/pkgs/apps/vips/src/libvips/iofuncs/threadpool.cc)
