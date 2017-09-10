@@ -347,6 +347,15 @@ int bs_thread(void *tid_ptr) {
 #endif // ENABLE_NORNIR
 
     for (j=0; j<NUM_RUNS; j++) {
+
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+        instr->begin();
+#else
+        instr->begin(tid);
+#endif
+#endif //ENABLE_NORNIR   
+
 #ifdef ENABLE_OPENMP
 #pragma omp parallel for private(i, price, priceDelta)
         for (i=0; i<numOptions; i++) {
@@ -356,12 +365,6 @@ int bs_thread(void *tid_ptr) {
             /* Calling main function to calculate option value based on 
              * Black & Scholes's equation.
              */
-#ifdef ENABLE_NORNIR
-#ifdef ENABLE_OPENMP
-            threadId = omp_get_thread_num();
-#endif
-			instr->begin(threadId);
-#endif //ENABLE_NORNIR
             price = BlkSchlsEqEuroNoDiv( sptprice[i], strike[i],
                                          rate[i], volatility[i], otime[i], 
                                          otype[i], 0);
@@ -375,10 +378,14 @@ int bs_thread(void *tid_ptr) {
                 numError ++;
             }
 #endif
-#ifdef ENABLE_NORNIR
-			instr->end(threadId);
-#endif //ENABLE_NORNIR
         }
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+        instr->end();
+#else
+        instr->end(tid);
+#endif
+#endif //ENABLE_NORNIR 
     }
 
     return 0;
@@ -490,7 +497,11 @@ int main (int argc, char **argv)
     printf("Size of data: %d\n", numOptions * (sizeof(OptionData) + sizeof(int)));
 
 #ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+    instr = new nornir::Instrumenter(getParametersPath());
+#else
     instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif
 #endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
