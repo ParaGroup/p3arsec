@@ -489,7 +489,11 @@ int main (int argc, char **argv)
     printf("Size of data: %d\n", numOptions * (sizeof(OptionData) + sizeof(int)));
 
 #ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+    instr = new nornir::Instrumenter(getParametersPath());
+#else
     instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif
 #endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
