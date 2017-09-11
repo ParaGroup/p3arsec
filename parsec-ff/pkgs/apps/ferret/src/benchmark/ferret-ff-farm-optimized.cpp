@@ -48,6 +48,21 @@ by the emitter (i.e. file loading) is moved to the farm's workers.
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <nornir.h>
+#include <stdlib.h>
+#include <stdio.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+
+NornirInstrumenter* instr;
+#endif //ENABLE_NORNIR
+
 #define DEFAULT_DEPTH	25
 #define MAXR	100
 #define IMAGE_DIM	14
@@ -308,6 +323,9 @@ struct rank_data * rank(struct vec_query_data *vec){
 class Out: public ff::ff_node{
 public:
 	void* svc(void* task){
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
         struct rank_data * rank = (struct rank_data*) task;
 
 		assert(rank != NULL);
@@ -332,6 +350,9 @@ public:
 		cnt_dequeue++;
 		
 		fprintf(stderr, "(%d,%d)\n", cnt_enqueue, cnt_dequeue);
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
 		return GO_ON;
 	}
 };
@@ -416,6 +437,9 @@ int main (int argc, char *argv[])
 
 	cnt_enqueue = cnt_dequeue = 0;
 
+#ifdef ENABLE_NORNIR
+    instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
@@ -433,6 +457,12 @@ int main (int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
 	stimer_tuck(&tmr, "QUERY TIME");
 

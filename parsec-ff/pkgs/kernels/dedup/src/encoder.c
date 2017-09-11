@@ -69,6 +69,8 @@ char* getParametersPath(){
     strcat(tmp, "/parameters.xml");
     return tmp;
 }
+
+NornirInstrumenter* instr;
 #endif //ENABLE_NORNIR
 
 
@@ -1235,9 +1237,6 @@ void *Reorder(void * targs) {
   assert(r==0);
 
   fd = create_output_file(conf->outfile);
-#ifdef ENABLE_NORNIR
-  NornirInstrumenter* instr = nornir_instrumenter_create(getParametersPath());
-#endif //ENABLE_NORNIR
   while(1) {
     //get a group of items
     if (ringbuffer_isEmpty(&recv_buf)) {
@@ -1326,9 +1325,6 @@ void *Reorder(void * targs) {
   //flush the blocks left in the cache to file
   pos = TreeFindMin(T);
   while(pos !=NULL) {
-#ifdef ENABLE_NORNIR
-    nornir_instrumenter_begin(instr);
-#endif //ENABLE_NORNIR
     if(pos->Element.l1num == next.l1num) {
       chunk = FindMin(pos->Element.queue);
       if(sequence_eq(chunk->sequence, next)) {
@@ -1354,21 +1350,12 @@ void *Reorder(void * targs) {
     }
     sequence_inc_l2(&next);
     if(chunks_per_anchor[next.l1num]!=0 && next.l2num==chunks_per_anchor[next.l1num]) sequence_inc_l1(&next);
-#ifdef ENABLE_NORNIR
-    nornir_instrumenter_end(instr);
-#endif //ENABLE_NORNIR
   }
 
   close(fd);
 
   ringbuffer_destroy(&recv_buf);
   free(chunks_per_anchor);
-#ifdef ENABLE_NORNIR
-    nornir_instrumenter_terminate(instr);
-    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
-    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
-    nornir_instrumenter_destroy(instr);
-#endif //ENABLE_NORNIR
   return NULL;
 }
 #endif //ENABLE_PTHREADS
@@ -1507,6 +1494,10 @@ void Encode(config_t * _conf) {
   data_process_args.nqueues = nqueues;
   data_process_args.fd = fd;
 
+#ifdef ENABLE_NORNIR
+  instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
+
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
@@ -1559,6 +1550,12 @@ void Encode(config_t * _conf) {
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
   /* free queues */
   for(i=0; i<nqueues; i++) {

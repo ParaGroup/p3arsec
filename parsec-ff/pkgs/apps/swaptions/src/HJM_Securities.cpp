@@ -314,7 +314,10 @@ int main(int argc, char *argv[])
 	tbb::parallel_for(tbb::blocked_range<int>(0,nSwaptions,TBB_GRAINSIZE),w);
 #elif defined(FF_VERSION)
         ff::ParallelFor pf;
-	pf.parallel_for(0, nSwaptions, [](const long i) {
+	pf.parallel_for_thid(0, nSwaptions, 1, PARFOR_STATIC(0), [](const long i, const int thid) {
+#ifdef ENABLE_NORNIR
+        instr->begin(thid);
+#endif //ENABLE_NORNIR
 		FTYPE pdSwaptionPrice[2];
 		int iSuccess = HJM_Swaption_Blocking(pdSwaptionPrice,  swaptions[i].dStrike, 
 					   swaptions[i].dCompounding, swaptions[i].dMaturity, 
@@ -325,6 +328,9 @@ int main(int argc, char *argv[])
 		assert(iSuccess == 1);
 		swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
 		swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
+#ifdef ENABLE_NORNIR
+        instr->end(thid);
+#endif //ENABLE_NORNIR
 	}, nThreads);
 #else
 	int threadIDs[nThreads];

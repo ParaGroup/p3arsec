@@ -41,14 +41,6 @@ using namespace std;
 using namespace tbb;
 #endif //ENABLE_TBB
 
-#ifdef ENABLE_FF
-#include <iostream>
-#include <ff/farm.hpp>
-#include <ff/map.hpp>
-
-using namespace ff;
-#endif //ENABLE_FF
-
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
@@ -57,6 +49,14 @@ std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
 #endif //ENABLE_NORNIR
+
+#ifdef ENABLE_FF
+#include <iostream>
+#include <ff/farm.hpp>
+#include <ff/map.hpp>
+
+using namespace ff;
+#endif //ENABLE_FF
 
 // Multi-threaded header for Windows
 #ifdef WIN32
@@ -339,14 +339,15 @@ int bs_thread(void *tid_ptr) {
     int start = tid * (numOptions / nThreads);
     int end = start + (numOptions / nThreads);
 
-#ifdef ENABLE_NORNIR
-    uint threadId;
-#ifdef ENABLE_THREADS
-    threadId = tid;
-#endif
-#endif // ENABLE_NORNIR
-
     for (j=0; j<NUM_RUNS; j++) {
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+        instr->begin();
+#else
+        instr->begin(tid);
+#endif
+#endif //ENABLE_NORNIR  
+
 #ifdef ENABLE_OPENMP
 #pragma omp parallel for private(i, price, priceDelta)
         for (i=0; i<numOptions; i++) {
@@ -356,12 +357,6 @@ int bs_thread(void *tid_ptr) {
             /* Calling main function to calculate option value based on 
              * Black & Scholes's equation.
              */
-#ifdef ENABLE_NORNIR
-#ifdef ENABLE_OPENMP
-            threadId = omp_get_thread_num();
-#endif
-			instr->begin(threadId);
-#endif //ENABLE_NORNIR
             price = BlkSchlsEqEuroNoDiv( sptprice[i], strike[i],
                                          rate[i], volatility[i], otime[i], 
                                          otype[i], 0);
@@ -375,10 +370,14 @@ int bs_thread(void *tid_ptr) {
                 numError ++;
             }
 #endif
-#ifdef ENABLE_NORNIR
-			instr->end(threadId);
-#endif //ENABLE_NORNIR
         }
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+        instr->end();
+#else
+        instr->end(tid);
+#endif
+#endif //ENABLE_NORNIR 
     }
 
     return 0;

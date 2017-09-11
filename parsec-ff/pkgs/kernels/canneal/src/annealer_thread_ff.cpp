@@ -40,6 +40,12 @@
 using std::cout;
 using std::endl;
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <iostream>
+extern nornir::Instrumenter* instr;
+#endif // ENABLE_NORNIR
+
 static CTask dummyTask, *allTasks;
 
 void* annealer_thread::svc(void* task) {
@@ -47,6 +53,9 @@ void* annealer_thread::svc(void* task) {
     int accepted_good_moves = 0;
     int accepted_bad_moves = 0;
     for (int i = 0; i < _moves_per_thread_temp; i++) {
+#ifdef ENABLE_NORNIR
+        instr->begin(get_my_id());
+#endif // ENABLE_NORNIR
         a = b;
         a_id = b_id;
         b = _netlist->get_random_element(&b_id, a_id, &rng);
@@ -62,11 +71,14 @@ void* annealer_thread::svc(void* task) {
             }
         else if (is_good_move == move_decision_rejected) {
             }
-        }
+#ifdef ENABLE_NORNIR
+        instr->end(get_my_id());
+#endif // ENABLE_NORNIR
+    }
     allTasks[get_my_id()].accepted_good_moves = accepted_good_moves;
     allTasks[get_my_id()].accepted_bad_moves = accepted_bad_moves;
     return &dummyTask;
-    }
+}
 
 Emitter::Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb):
     temp_steps_completed(0), activeWorkers(maxNumWorkers), tasksRcvd(activeWorkers - 1),

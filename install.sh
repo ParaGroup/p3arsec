@@ -8,7 +8,7 @@ SKEPU=false
 APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips x264"
 KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
-VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu gcc-pthreads-nornir gcc-openmp-nornir"
+VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu gcc-pthreads-nornir gcc-openmp-nornir gcc-ff-nornir"
 
 while [[ $# -gt 0 ]]
 do

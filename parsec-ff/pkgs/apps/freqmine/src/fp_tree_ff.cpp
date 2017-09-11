@@ -52,6 +52,15 @@ static int omp_get_max_threads() {return 1;}
 static int omp_get_thread_num() {return 0;}
 #endif //_OPENMP
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 #define FF_PARFOR_PASSIVE_NOSTEALING
 #include <ff/parallel_for.hpp>
 #include <ff/spin-lock.hpp>
@@ -1321,6 +1330,9 @@ int FP_tree::FP_growth_first(FSout* fout)
 	int upperbound;
 	if (lowerbound > itemno)
 		lowerbound = itemno;
+#ifdef ENABLE_NORNIR
+    nornir::Instrumenter instr(getParametersPath(), omp_get_max_threads());
+#endif //ENABLE_NORNIR
 	for (int t = 0; t < 3; t ++) {
 		upperbound = lowerbound;
 		if (upperbound > itemno)
@@ -1345,6 +1357,9 @@ int FP_tree::FP_growth_first(FSout* fout)
 		if(upperbound > lowerbound){
             ffpf->disableScheduler();
   			ffpf->parallel_for_thid(1, upperbound - lowerbound + 1, 1, 1, [&](const int index, const int thid) { 
+#ifdef ENABLE_NORNIR
+                instr.begin(thid);
+#endif //ENABLE_NORNIR
 				int sequence = upperbound - index;
 				int current, new_item_no, listlen;
 				int MC2=0;			
@@ -1427,10 +1442,18 @@ int FP_tree::FP_growth_first(FSout* fout)
 						local_list->top = listlen-1;
 					}
 					release_node_array_after_mining(sequence, thread, workingthread);
+#ifdef ENABLE_NORNIR
+                    instr.end(thid);
+#endif //ENABLE_NORNIR
 				}
 			}, workingthread);
 			ffpf->disableScheduler(false);
 		}
+#ifdef ENABLE_NORNIR
+        instr.terminate();
+        std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
+        std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+#endif //ENABLE_NORNIR
 	}
 	 wtime(&tend);
 //	 printf("the major FP_growth cost %f vs %f seconds\n", tend - tstart, temp_time - tstart);

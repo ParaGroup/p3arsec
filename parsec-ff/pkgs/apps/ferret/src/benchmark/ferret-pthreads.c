@@ -48,6 +48,8 @@ char* getParametersPath(){
     strcat(tmp, "/parameters.xml");
     return tmp;
 }
+
+NornirInstrumenter* instr;
 #endif //ENABLE_NORNIR
 
 #define DEFAULT_DEPTH	25
@@ -387,17 +389,13 @@ void *t_rank (void *dummy)
 
 void *t_out (void *dummy)
 {
-#ifdef ENABLE_NORNIR
-	NornirInstrumenter* instr = nornir_instrumenter_create(getParametersPath());
-#endif //ENABLE_NORNIR
 	struct rank_data *rank;
 	while (1)
 	{
 		if(dequeue(&q_rank_out, &rank) < 0)
 		    break;
-
 #ifdef ENABLE_NORNIR
-		nornir_instrumenter_begin(instr);
+    nornir_instrumenter_begin(instr);
 #endif //ENABLE_NORNIR
 		assert(rank != NULL);
 
@@ -425,13 +423,6 @@ void *t_out (void *dummy)
 		nornir_instrumenter_end(instr);
 #endif //ENABLE_NORNIR
 	}
-#ifdef ENABLE_NORNIR
-	nornir_instrumenter_terminate(instr);
-    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
-    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));	
-	nornir_instrumenter_destroy(instr);
-#endif //ENABLE_NORNIR
-
 	assert(cnt_enqueue == cnt_dequeue);
 	return NULL;
 }
@@ -572,6 +563,9 @@ int main (int argc, char *argv[])
 
 	cnt_enqueue = cnt_dequeue = 0;
 
+#ifdef ENABLE_NORNIR
+    instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
@@ -592,6 +586,12 @@ int main (int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));    
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
 	tpool_destroy(p_load);
 	tpool_destroy(p_seg);

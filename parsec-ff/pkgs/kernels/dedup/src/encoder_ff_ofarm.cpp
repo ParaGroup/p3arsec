@@ -60,6 +60,20 @@ extern "C" {
 #include <hooks.h>
 #endif //ENABLE_PARSEC_HOOKS
 
+#ifdef ENABLE_NORNIR
+#include <nornir.h>
+#include <stdlib.h>
+#include <stdio.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+
+NornirInstrumenter* instr;
+#endif //ENABLE_NORNIR
 
 #define INITIAL_SEARCH_TREE_SIZE 4096
 
@@ -942,6 +956,9 @@ public:
     }
 
     void *svc(void * task) {
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
         ringbuffer_t* recv_buf = (ringbuffer_t*) task;
         while(!ringbuffer_isEmpty(recv_buf)) {
             chunk_t * chunk = (chunk_t*)ringbuffer_remove(recv_buf);
@@ -950,6 +967,9 @@ public:
         }
         ringbuffer_destroy(recv_buf);
         free(recv_buf);
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
         return GO_ON;
     }
 };
@@ -1097,6 +1117,9 @@ void EncodeFF(config_t * _conf) {
   stats_t *threads_chunk_rv[conf->nthreads];
   stats_t *threads_compress_rv[conf->nthreads];
 
+#ifdef ENABLE_NORNIR
+  instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
@@ -1104,6 +1127,12 @@ void EncodeFF(config_t * _conf) {
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_STATISTICS
   //Merge everything into global `stats' structure

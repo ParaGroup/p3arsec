@@ -207,11 +207,18 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 
 	vector<float> estimate;																//expected pose from particle distribution
 
+#ifdef USE_NORNIR
+    nornir::Instrumenter instr(getParametersPath());
+#endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_begin();
 #endif
 	for(int i = 0; i < frames; i++)														//process each set of frames
-	{	cout << "Processing frame " << i << endl;
+	{	
+#ifdef USE_NORNIR
+        instr.begin();
+#endif //USE_NORNIR
+        cout << "Processing frame " << i << endl;
 		if(!pf.Update((float)i))														//Run particle filter step
 		{	cout << "Error loading observation data" << endl;
 			return 0;
@@ -220,10 +227,18 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 		WritePose(outputFileAvg, estimate);
 		if(OutputBMP)
 			pf.Model().OutputBMP(estimate, i);											//save output bitmap file
+#ifdef USE_NORNIR
+        instr.end();
+#endif //USE_NORNIR
 	}
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_end();
 #endif
+#ifdef USE_NORNIR
+    instr.terminate();
+    std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
+    std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+#endif //USE_NORNIR
 
 	return 1;
 }
@@ -333,12 +348,12 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 
 	vector<float> estimate;																//expected pose from particle distribution
 
+#ifdef USE_NORNIR
+    nornir::Instrumenter instr(getParametersPath());
+#endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_begin();
 #endif
-#ifdef USE_NORNIR
-	nornir::Instrumenter instr(getParametersPath());
-#endif //USE_NORNIR
 	for(int i = 0; i < frames; i++)														//process each set of frames
 	{	
 #ifdef USE_NORNIR
@@ -360,13 +375,14 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 	}
 	model.close();
 	workers.JoinAll();
-#ifdef USE_NORNIR
-	instr.terminate();
-#endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_end();
 #endif
-
+#ifdef USE_NORNIR
+    instr.terminate();
+    std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
+    std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+#endif //USE_NORNIR
 	return 1;
 }
 #endif

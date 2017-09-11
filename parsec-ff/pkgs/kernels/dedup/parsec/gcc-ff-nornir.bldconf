@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# gcc-pthreads-nornir.bldconf - file containing information necessary to build a
+# gcc-ff.bldconf - file containing information necessary to build a
 #                   specific program of the PARSEC benchmark suite with
-#                   gcc, pthreads and nornir
+#                   gcc and FastFlow
 #
 # Copyright (C) 2007-2010 Princeton University
 # Written by Christian Bienia
@@ -13,11 +13,7 @@
 # global configuration. All variables set in the global configuration files can
 # be referenced here.
 
-source ${PARSECDIR}/pkgs/apps/blackscholes/parsec/gcc-pthreads.bldconf
+source ${PARSECDIR}/pkgs/kernels/dedup/parsec/gcc-ff.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="${build_env} CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2\""
-
-build_deps="libxml2 ${build_deps}"
-
-
+build_env="version=ff CFLAGS=\"-I${PARSECDIR}/pkgs/libs/ssl/inst/${PARSECPLAT}/include -I${PARSECDIR}/pkgs/libs/zlib/inst/${PARSECPLAT}/include -DENABLE_NORNIR ${CFLAGS}\" LDFLAGS=\"-L${PARSECDIR}/pkgs/libs/ssl/inst/${PARSECPLAT}/lib -L${PARSECDIR}/pkgs/libs/zlib/inst/${PARSECPLAT}/lib  ${LDFLAGS}\""

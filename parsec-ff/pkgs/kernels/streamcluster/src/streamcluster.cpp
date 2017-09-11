@@ -2405,7 +2405,11 @@ void streamCluster( PStream* stream,
       break;
     }
   }
-
+#ifdef ENABLE_NORNIR
+  instr.terminate();
+  std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
+  std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+#endif //ENABLE_NORNIR
   //finally cluster all temp centers
 #ifdef TBB_VERSION
   switch_membership = (bool*)memoryBool.allocate(centers.num*sizeof(bool));
@@ -2421,11 +2425,6 @@ void streamCluster( PStream* stream,
   localSearch( &centers, kmin, kmax ,&kfinal ); // parallel
   contcenters(&centers);
   outcenterIDs( &centers, centerIDs, outfile);
-#ifdef ENABLE_NORNIR
-  instr.terminate();
-  std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
-  std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
-#endif //ENABLE_NORNIR
 }
 
 int main(int argc, char **argv)
