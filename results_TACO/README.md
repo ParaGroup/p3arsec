@@ -2,9 +2,9 @@
 
 This folder contains the speedup results for the different benchmarks and architectures used in the paper
 
-**P<sup>3</sup>ARSEC: Towards Parallel Patterns Benchmarking**</br>
+**Bringing Parallel Patterns out of the Corner: the P<sup>3</sup>ARSEC Benchmark Suite**</br>
 Daniele De Sensi, Tiziano De Matteis, Massimo Torquati, Gabriele Mencagli, Marco Danelutto</br>
-*ACM Transactions on Architecture and Code Optimization (TACO)*</br>
+*ACM Transactions on Architecture and Code Optimization (TACO)* **[To Appear]**</br>
 
 Results have been collected by using [![Release v1.0](http://github-release-version.herokuapp.com/github/paragroup/p3arsec/release.svg?style=flat)](https://github.com/paragroup/p3arsec/releases/tag/v1.0).
 
