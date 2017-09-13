@@ -27,6 +27,12 @@
 // OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <iostream>
+extern nornir::Instrumenter* instr;
+#endif // ENABLE_NORNIR
+
 #include <cassert>
 #include "annealer_thread_ff.h"
 #include "location_t.h"
@@ -39,12 +45,6 @@
 
 using std::cout;
 using std::endl;
-
-#ifdef ENABLE_NORNIR
-#include <nornir.hpp>
-#include <iostream>
-extern nornir::Instrumenter* instr;
-#endif // ENABLE_NORNIR
 
 static CTask dummyTask, *allTasks;
 

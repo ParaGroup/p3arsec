@@ -1127,7 +1127,7 @@ void AdvanceParticlesMT()
 void AdvanceFrameMT()
 {
 #ifdef ENABLE_NORNIR
-  instr->begin(tid);
+  instr->begin();
 #endif //ENABLE_NORNIR
 
   std::swap(cells, cells2);
@@ -1148,7 +1148,7 @@ void AdvanceFrameMT()
   ProcessCollisions2MT();
 #endif
 #ifdef ENABLE_NORNIR
-  instr->end(tid);
+  instr->end();
 #endif //ENABLE_NORNIR
 }
 

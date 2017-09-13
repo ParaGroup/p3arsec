@@ -42,16 +42,6 @@
 #include <hooks.h>
 #endif
 
-#include "annealer_types.h"
-#ifdef ENABLE_FF
-#include "annealer_thread_ff.h"
-#else
-#include "annealer_thread.h"
-#endif
-#include "netlist.h"
-#include "rng.h"
-
-
 #ifdef ENABLE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
@@ -62,6 +52,15 @@ std::string getParametersPath(){
 
 nornir::Instrumenter* instr;
 #endif //ENABLE_NORNIR
+
+#include "annealer_types.h"
+#ifdef ENABLE_FF
+#include "annealer_thread_ff.h"
+#else
+#include "annealer_thread.h"
+#endif
+#include "netlist.h"
+#include "rng.h"
 
 using namespace std;
 
@@ -194,8 +193,8 @@ void* entry_pt(void* data)
 {
 #ifdef ENABLE_NORNIR
     ThreadData* td = static_cast<ThreadData*>(data);
-    annealer_thread* ptr = static_cast<annealer_thread*>(data->a_thread);
-    ptr->Run(data->tid);
+    annealer_thread* ptr = static_cast<annealer_thread*>(td->a_thread);
+    ptr->Run(td->tid);
 #else
 	annealer_thread* ptr = static_cast<annealer_thread*>(data);
 	ptr->Run();

@@ -19,5 +19,3 @@ source ${PARSECDIR}/pkgs/apps/blackscholes/parsec/gcc-ff.bldconf
 build_env="${build_env} version=ff CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2 \""
 
 build_deps="libxml2 ${build_deps}"
-
-

@@ -13,6 +13,6 @@ FFDIR=${NORNIRDIR}/external/fastflow
 BLOCKING=-DBLOCKING_MODE
 # Enable FastFlow
 CFLAGS="${CFLAGS} -I${FFDIR} ${BLOCKING} -I${NORNIRDIR}"
-CXXFLAGS="--std=c++11 ${CXXFLAGS} -I${FFDIR} ${BLOCKING} -I${NORNIRDIR}"
+CXXFLAGS="--std=c++11 ${CXXFLAGS} -I${FFDIR} ${BLOCKING} -I${NORNIRDIR} -fexceptions"
 LIBS="${LIBS} -pthread -lnornir  -lrt -lm -lmlpack -llapack -lblas -lgsl -lgslcblas -larmadillo -lknarr -lanl"
 LDFLAGS="${LDFLAGS} -L${NORNIRDIR} -L${NORNIRDIR}/external/knarr/src"

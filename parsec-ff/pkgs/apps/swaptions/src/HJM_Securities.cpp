@@ -30,6 +30,15 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #define TBB_GRAINSIZE 1
 #endif // TBB_VERSION
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 #ifdef FF_VERSION
 #include <ff/parallel_for.hpp>
 #endif
@@ -40,15 +49,6 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
 #endif
-
-#ifdef ENABLE_NORNIR
-#include <nornir.hpp>
-#include <stdlib.h>
-#include <iostream>
-std::string getParametersPath(){
-    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
-}
-#endif //ENABLE_NORNIR
 
 int NUM_TRIALS = DEFAULT_NUM_TRIALS;
 int nThreads = 1;

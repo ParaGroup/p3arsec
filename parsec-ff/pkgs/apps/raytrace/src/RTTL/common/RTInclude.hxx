@@ -8,6 +8,7 @@
 //To avoid inclusion of headers containing functions with the same signature of those specified in RTEmulatedSSE.hxx 
 #define _XMMINTRIN_H_INCLUDED
 #define _X86INTRIN_H_INCLUDED
+#define BOOST_MATH_SPECIAL_FUNCTIONS_LANCZOS_SSE2
 #endif
 
 

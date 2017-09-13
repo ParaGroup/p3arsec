@@ -19,4 +19,6 @@ source ${PARSECDIR}/pkgs/apps/raytrace/parsec/gcc-pthreads.bldconf
 # NOTE: By default PARSEC links raytrace to mesa with Xlib driver so that all
 #       computations are done by the CPU. This requires to also link to the X
 #       libraries and the pthreads library.
-build_env="version=pthreads CXXFLAGS=\"-DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/include ${CXXFLAGS} -fexceptions -fno-strict-aliasing -fno-align-labels -DNDEBUG -D_MM_NO_ALIGN_CHECK\" LDFLAGS=\"-L${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/lib ${LDFLAGS}\" LIBS=\"${LIBS} -lGL -lGLU -lXmu -lXext -lXau -lX11 -ldl -lpthread\""
+build_env="version=pthreads CXXFLAGS=\"-DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/include -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2 ${CXXFLAGS} -fexceptions -fno-strict-aliasing -fno-align-labels -DNDEBUG -D_MM_NO_ALIGN_CHECK\" LDFLAGS=\"-L${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/lib ${LDFLAGS}\" LIBS=\"${LIBS} -lGL -lGLU -lXmu -lXext -lXau -lX11 -ldl -lpthread\""
+
+build_deps="libxml2 ${build_deps}"

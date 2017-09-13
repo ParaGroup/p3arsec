@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# gcc-openmp-nornir.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/libs/libxml2/parsec/gcc-openmp.bldconf
+

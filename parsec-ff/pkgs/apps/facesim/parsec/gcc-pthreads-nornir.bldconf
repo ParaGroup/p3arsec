@@ -16,4 +16,6 @@
 source ${PARSECDIR}/pkgs/apps/facesim/parsec/gcc-pthreads.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="version=pthreads PHYSBAM=${PARSECDIR}/pkgs/apps/facesim/obj/${PARSECPLAT} CXXFLAGS=\"${CXXFLAGS} -fexceptions -DENABLE_NORNIR\""
+build_env="version=pthreads PHYSBAM=${PARSECDIR}/pkgs/apps/facesim/obj/${PARSECPLAT} CXXFLAGS=\"${CXXFLAGS} -fexceptions -DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2 \""
+build_deps="libxml2 ${build_deps}"
+

@@ -58,15 +58,6 @@
 using namespace tbb;
 #endif //USE_TBB
 
-#if defined(USE_FF)
-#include "ParticleFilterFF.h"
-#include "TrackingModelFF.h"
-#endif //USE_FF
-
-#if defined(ENABLE_PARSEC_HOOKS)
-#include <hooks.h>
-#endif //ENABLE_PARSEC_HOOKS
-
 #ifdef USE_NORNIR
 #include <nornir.hpp>
 #include <stdlib.h>
@@ -75,6 +66,15 @@ std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
 #endif //USE_NORNIR
+
+#if defined(USE_FF)
+#include "ParticleFilterFF.h"
+#include "TrackingModelFF.h"
+#endif //USE_FF
+
+#if defined(ENABLE_PARSEC_HOOKS)
+#include <hooks.h>
+#endif //ENABLE_PARSEC_HOOKS
 
 #include "ParticleFilter.h"
 #include "TrackingModel.h"

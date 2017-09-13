@@ -20,6 +20,15 @@
 #include <sys/resource.h>
 #include <limits.h>
 
+#ifdef ENABLE_NORNIR
+#include <nornir.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 #if defined(FF_VERSION)
 #include "ff/parallel_for.hpp"
 #endif
@@ -43,15 +52,6 @@ using namespace tbb;
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
 #endif
-
-#ifdef ENABLE_NORNIR
-#include <nornir.hpp>
-#include <stdlib.h>
-#include <iostream>
-std::string getParametersPath(){
-    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
-}
-#endif //ENABLE_NORNIR
 
 using namespace std;
 
