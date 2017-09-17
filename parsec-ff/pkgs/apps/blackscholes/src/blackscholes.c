@@ -300,7 +300,10 @@ struct map: ff_Map<int> {
     int *svc(int *in) {
         int i, j;
         for (j=0; j<NUM_RUNS; j++) {
-            parallel_for(0, numOptions, [](const long i) {
+            parallel_for_thid(0, numOptions, 1, PARFOR_STATIC(0), [](const long i, const int thid) {
+#ifdef ENABLE_NORNIR
+                instr->begin(thid);
+#endif //ENABLE_NORNIR 
                 fptype price;
                 fptype priceDelta;
                 /* Calling main function to calculate option value based on
@@ -319,6 +322,9 @@ struct map: ff_Map<int> {
                     numError ++;
                 }
 #endif
+#ifdef ENABLE_NORNIR
+                instr->end(thid);
+#endif //ENABLE_NORNIR 
             }, nThreads);
         }
         return NULL;
@@ -340,20 +346,20 @@ int bs_thread(void *tid_ptr) {
     int end = start + (numOptions / nThreads);
 
     for (j=0; j<NUM_RUNS; j++) {
-#ifdef ENABLE_NORNIR
-#ifdef ENABLE_OPENMP
-        instr->begin();
-#else
-        instr->begin(tid);
-#endif
-#endif //ENABLE_NORNIR  
-
 #ifdef ENABLE_OPENMP
 #pragma omp parallel for private(i, price, priceDelta)
         for (i=0; i<numOptions; i++) {
 #else  //ENABLE_OPENMP
         for (i=start; i<end; i++) {
 #endif //ENABLE_OPENMP
+
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+        instr->begin();
+#else
+        instr->begin(tid);
+#endif
+#endif //ENABLE_NORNIR 
             /* Calling main function to calculate option value based on 
              * Black & Scholes's equation.
              */
@@ -370,7 +376,7 @@ int bs_thread(void *tid_ptr) {
                 numError ++;
             }
 #endif
-        }
+
 #ifdef ENABLE_NORNIR
 #ifdef ENABLE_OPENMP
         instr->end();
@@ -378,8 +384,8 @@ int bs_thread(void *tid_ptr) {
         instr->end(tid);
 #endif
 #endif //ENABLE_NORNIR 
+        }
     }
-
     return 0;
 }
 #endif //ENABLE_FF
