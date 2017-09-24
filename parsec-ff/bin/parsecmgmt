@@ -1217,12 +1217,39 @@ function run_benchmark {
       UPTCPIP_RX_THREADS=1
       export UPTCPIP_RX_THREADS
   fi 
+
+  ###### Starting Nornir Manager
+  NORNIR_EXTERNAL_MANAGER_PID=0
+  if [[ $build == "gcc-ff-nornir" ]] || [[ $build == "gcc-pthreads-nornir" ]] || [[ $build == "gcc-openmp-nornir" ]] || [[  $build == "gcc-tbb-nornir" ]]; then
+    echo "Starting Nornir external manager"
+    # Check if the script has been run with sudo
+    if [ "$(id -u)" != "0" ]; then
+        echo "=========================== ATTENTION =========================="
+        echo "| You need to run this command with sudo. Nornir may need sudo |"
+        echo "| rights to scale frequencies and read power consumption.      |"
+        echo "================================================================"
+        exit 1
+    fi
+    (cd ${PARSECDIR}/bin; ${PARSECDIR}/pkgs/libs/nornir/bin/manager-external > manager_out.log 2> manager_err.log &) # Run in background
+    NORNIR_EXTERNAL_MANAGER_PID=$(pidof manager-external)
+    disown $NORNIR_EXTERNAL_MANAGER_PID
+    echo "Manager started with pid "$NORNIR_EXTERNAL_MANAGER_PID
+  fi
+
+  ##### Starting application
   eval cmd="\"${submit} ${bmexec} ${bmexec_args}\""
+  #eval cmd="\"${submit} gdb --args ${bmexec} ${bmexec_args}\""
   echo "${oprefix} Running '${cmd}':" | ${TEE} ${log}
   echo "${oprefix} [---------- Beginning of output ----------]" | ${TEE} ${log}
   (eval ${cmd} 2>&1) 2>&1 | ${TEE} ${bmrundir}/benchmark.out | ${TEE} ${log}
   echo "${oprefix} [----------    End of output    ----------]" | ${TEE} ${log}
 
+  ##### Killing Nornir Manager
+  if [[ $NORNIR_EXTERNAL_MANAGER_PID -ne 0 ]]; then
+      echo "Killing Nornir manager."
+      sleep 4
+      kill -9 $NORNIR_EXTERNAL_MANAGER_PID
+  fi 
 
   # Unpack reference output and compare
   #echo "${oprefix} Unpacking benchmark reference output for '${inputsize}'." | ${TEE} ${log}

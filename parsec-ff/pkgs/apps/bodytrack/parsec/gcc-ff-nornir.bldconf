@@ -26,4 +26,3 @@ build_inplace="FALSE"
 # Arguments to pass to the configure script, if it exists
 build_conf="--enable-ff --enable-nornir --disable-threads --disable-openmp --disable-tbb CXXFLAGS=\"${CXXFLAGS} -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2\""
 build_deps="libxml2 ${build_deps}"
-

@@ -53,7 +53,7 @@ static int omp_get_thread_num() {return 0;}
 #endif //_OPENMP
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

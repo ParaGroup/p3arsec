@@ -28,7 +28,7 @@
 // SUCH DAMAGE.
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <iostream>
 extern nornir::Instrumenter* instr;
 #endif // ENABLE_NORNIR

@@ -38,7 +38,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #endif
 
 #ifdef ENABLE_NORNIR
-#include <nornir.h>
+#include <instrumenter.h>
 #include <stdlib.h>
 #include <stdio.h>
 char* getParametersPath(){
@@ -466,6 +466,10 @@ int main (int argc, char *argv[])
 		return 0;
 	}
 
+#ifdef ENABLE_NORNIR
+    instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
+
 	db_dir = argv[1];
 	table_name = argv[2];
 	query_dir = argv[3];
@@ -563,9 +567,6 @@ int main (int argc, char *argv[])
 
 	cnt_enqueue = cnt_dequeue = 0;
 
-#ifdef ENABLE_NORNIR
-    instr = nornir_instrumenter_create(getParametersPath());
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif

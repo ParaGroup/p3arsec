@@ -42,7 +42,7 @@ using namespace tbb;
 #endif //ENABLE_TBB
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){
@@ -446,6 +446,14 @@ int main (int argc, char **argv)
     }
 #endif
 
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+    instr = new nornir::Instrumenter(getParametersPath());
+#else
+    instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif
+#endif //ENABLE_NORNIR
+    
     // alloc spaces for the option data
     data = (OptionData*)malloc(numOptions*sizeof(OptionData));
     prices = (fptype*)malloc(numOptions*sizeof(fptype));
@@ -494,13 +502,6 @@ int main (int argc, char **argv)
 
     printf("Size of data: %d\n", numOptions * (sizeof(OptionData) + sizeof(int)));
 
-#ifdef ENABLE_NORNIR
-#ifdef ENABLE_OPENMP
-    instr = new nornir::Instrumenter(getParametersPath());
-#else
-    instr = new nornir::Instrumenter(getParametersPath(), nThreads);
-#endif
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif

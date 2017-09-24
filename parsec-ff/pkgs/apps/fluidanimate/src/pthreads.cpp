@@ -30,7 +30,7 @@
 #endif
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){
@@ -1251,6 +1251,10 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+#ifdef ENABLE_NORNIR
+  instr = new nornir::Instrumenter(getParametersPath(), threadnum);
+#endif //ENABLE_NORNIR
+  
 #ifdef ENABLE_CFL_CHECK
   std::cout << "WARNING: Check for Courant–Friedrichs–Lewy condition enabled. Do not use for performance measurements." << std::endl;
 #endif
@@ -1260,9 +1264,6 @@ int main(int argc, char *argv[])
   InitVisualizationMode(&argc, argv, &AdvanceFrameVisualization, &numCells, &cells, &cnumPars);
 #endif
 
-#ifdef ENABLE_NORNIR
-  instr = new nornir::Instrumenter(getParametersPath(), threadnum);
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_begin();
 #endif

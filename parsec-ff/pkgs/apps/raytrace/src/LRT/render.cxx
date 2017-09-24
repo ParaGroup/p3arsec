@@ -26,7 +26,7 @@
 #endif
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

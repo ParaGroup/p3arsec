@@ -40,7 +40,7 @@ by the emitter (i.e. file loading) is moved to the farm's workers.
 #include "tpool.h"
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){
@@ -385,6 +385,10 @@ int main (int argc, char *argv[])
 		return 0;
 	}
 
+#ifdef ENABLE_NORNIR
+	instr = new nornir::Instrumenter(getParametersPath());
+#endif //ENABLE_NORNIR
+
 	db_dir = argv[1];
 	table_name = argv[2];
 	query_dir = argv[3];
@@ -433,9 +437,6 @@ int main (int argc, char *argv[])
 
 	cnt_enqueue = cnt_dequeue = 0;
 
-#ifdef ENABLE_NORNIR
-	instr = new nornir::Instrumenter(getParametersPath());
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif

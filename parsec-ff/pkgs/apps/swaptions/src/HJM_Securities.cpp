@@ -31,7 +31,7 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #endif // TBB_VERSION
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){
@@ -203,6 +203,10 @@ int main(int argc, char *argv[])
         printf("Number of Simulations: %d,  Number of threads: %d Number of swaptions: %d\n", NUM_TRIALS, nThreads, nSwaptions);
         swaption_seed = (long)(2147483647L * RanUnif(&seed));
 
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif //ENABLE_NORNIR
+    
 #ifdef ENABLE_THREADS
 
 #ifdef TBB_VERSION
@@ -299,9 +303,6 @@ int main(int argc, char *argv[])
 
 
 	// **********Calling the Swaption Pricing Routine*****************
-#ifdef ENABLE_NORNIR
-  instr = new nornir::Instrumenter(getParametersPath(), nThreads);
-#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();

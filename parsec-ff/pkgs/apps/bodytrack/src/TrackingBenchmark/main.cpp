@@ -59,7 +59,7 @@ using namespace tbb;
 #endif //USE_TBB
 
 #ifdef USE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

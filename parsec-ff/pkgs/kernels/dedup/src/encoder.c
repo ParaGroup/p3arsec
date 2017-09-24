@@ -59,7 +59,7 @@
 
 
 #ifdef ENABLE_NORNIR
-#include <nornir.h>
+#include <instrumenter.h>
 #include <stdlib.h>
 #include <stdio.h>
 char* getParametersPath(){
@@ -1380,6 +1380,10 @@ void Encode(config_t * _conf) {
   init_stats(&stats);
 #endif
 
+#ifdef ENABLE_NORNIR
+  instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
+
   //Create chunk cache
   cache = hashtable_create(65536, hash_from_key_fn, keys_equal_fn, FALSE);
   if(cache == NULL) {
@@ -1493,10 +1497,6 @@ void Encode(config_t * _conf) {
   data_process_args.tid = 0;
   data_process_args.nqueues = nqueues;
   data_process_args.fd = fd;
-
-#ifdef ENABLE_NORNIR
-  instr = nornir_instrumenter_create(getParametersPath());
-#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();

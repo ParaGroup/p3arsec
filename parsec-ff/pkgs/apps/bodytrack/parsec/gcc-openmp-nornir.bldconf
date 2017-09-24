@@ -17,4 +17,3 @@ source ${PARSECDIR}/pkgs/apps/bodytrack/parsec/gcc-openmp.bldconf
 # Arguments to pass to the configure script, if it exists
 build_conf="--enable-openmp --enable-nornir --disable-threads --disable-tbb CXXFLAGS=\"${CXXFLAGS} -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2\""
 build_deps="libxml2 ${build_deps}"
-

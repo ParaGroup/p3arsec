@@ -47,7 +47,7 @@ extern "C" {
 #include <iostream>
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){
@@ -1179,6 +1179,10 @@ void EncodeFF(config_t * _conf) {
   init_stats(&stats);
 #endif
 
+#ifdef ENABLE_NORNIR
+  instr = new nornir::Instrumenter(getParametersPath());
+#endif //ENABLE_NORNIR
+  
   //Create chunk cache
   cache = hashtable_create(65536, hash_from_key_fn, keys_equal_fn, FALSE);
   if(cache == NULL) {
@@ -1250,9 +1254,6 @@ void EncodeFF(config_t * _conf) {
   stats_t *threads_chunk_rv[conf->nthreads];
   stats_t *threads_compress_rv[conf->nthreads];
 
-#ifdef ENABLE_NORNIR
-  instr = new nornir::Instrumenter(getParametersPath());
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif

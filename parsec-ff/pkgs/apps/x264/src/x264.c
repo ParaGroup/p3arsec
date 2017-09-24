@@ -48,7 +48,7 @@
 #endif
 
 #ifdef ENABLE_NORNIR
-#include <nornir.h>
+#include <instrumenter.h>
 #include <stdlib.h>
 #include <stdio.h>
 char* getParametersPath(){
@@ -836,6 +836,10 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     int     i_update_interval;
     char    buf[200];
 
+#ifdef ENABLE_NORNIR
+    instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
+    
     opt->b_progress &= param->i_log_level < X264_LOG_DEBUG;
     i_frame_total = p_get_frame_total( opt->hin );
     i_frame_total -= opt->i_seek;
@@ -864,10 +868,6 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     x264_picture_alloc( &pic, X264_CSP_I420, param->i_width, param->i_height );
 
     i_start = x264_mdate();
-
-#ifdef ENABLE_NORNIR
-    instr = nornir_instrumenter_create(getParametersPath());
-#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();

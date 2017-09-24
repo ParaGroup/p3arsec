@@ -43,7 +43,7 @@
 #endif
 
 #ifdef ENABLE_NORNIR
-#include <nornir.hpp>
+#include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){
@@ -104,6 +104,10 @@ int main (int argc, char * const argv[]) {
 	}
 #endif
 		
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter(getParametersPath(), num_threads);
+#endif //ENABLE_NORNIR
+    
 	//argument 2 is the num moves / temp
 	int swaps_per_temp = atoi(argv[2]);
 	cout << swaps_per_temp << " swaps per temperature step" << endl;
@@ -130,9 +134,6 @@ int main (int argc, char * const argv[]) {
 	annealer_thread a_thread(&my_netlist,num_threads,swaps_per_temp,start_temp,number_temp_steps);
 #endif
 	
-#ifdef ENABLE_NORNIR
-    instr = new nornir::Instrumenter(getParametersPath(), num_threads);
-#endif //ENABLE_NORNIR
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif

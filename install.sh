@@ -99,7 +99,7 @@ else
 				echo $APP" "$VER" "$FILE
 				if [ -f $FILE ];
 				then
-					echo "build_deps=\"hooks \${build_deps}\"" >> $FILE
+					echo -e "\nbuild_deps=\"hooks \${build_deps}\"\n" >> $FILE
 				fi
 			done
 		done
