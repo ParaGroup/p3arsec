@@ -1220,7 +1220,11 @@ function run_benchmark {
 
   ###### Starting Nornir Manager
   NORNIR_EXTERNAL_MANAGER_PID=0
-  if [[ $build == "gcc-ff-nornir" ]] || [[ $build == "gcc-pthreads-nornir" ]] || [[ $build == "gcc-openmp-nornir" ]] || [[  $build == "gcc-tbb-nornir" ]]; then
+  pidof manager-external
+  if [[ $? == 0 ]]; then
+      NORNIR_EXTERNAL_MANAGER_PID=$(pidof manager-external)
+      echo "Manager already running"
+  elif [[ $build == "gcc-ff-nornir" ]] || [[ $build == "gcc-pthreads-nornir" ]] || [[ $build == "gcc-openmp-nornir" ]] || [[  $build == "gcc-tbb-nornir" ]]; then
     echo "Starting Nornir external manager"
     # Check if the script has been run with sudo
     if [ "$(id -u)" != "0" ]; then
@@ -1249,7 +1253,7 @@ function run_benchmark {
       echo "Killing Nornir manager."
       sleep 4
       kill -9 $NORNIR_EXTERNAL_MANAGER_PID
-  fi 
+  fi
 
   # Unpack reference output and compare
   #echo "${oprefix} Unpacking benchmark reference output for '${inputsize}'." | ${TEE} ${log}

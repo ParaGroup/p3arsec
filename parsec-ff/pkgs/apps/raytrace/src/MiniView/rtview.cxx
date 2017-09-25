@@ -49,11 +49,20 @@ LRTCamera  lrtCamera;
 
 void InitGL()
 {
+#ifdef DEMO_BRIGHT17
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+#else
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
   glShadeModel(GL_FLAT);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_LIGHTING);
+#endif
 }
+
+#ifdef DEMO_BRIGHT17
+int rendered_frame = 0;
+#endif
 
 void render()
 {
@@ -83,7 +92,21 @@ void render()
     //move camera towards object to compensate for drift
     RTVec3f newDirection = camera.getDirection();
     newDirection.normalize();
+#ifdef DEMO_BRIGHT17
+    newDirection[0]=0.003*rendered_frame;
+    if(rendered_frame<300)
+      newDirection[2]=1+0.4*rendered_frame;
+    else
+      newDirection[2]=1+0.4*(300-rendered_frame);
+    camera.setOrigin(camera.getOrigin() + (driftRatio-1.0)* newDirection/5.5);
+    rendered_frame++;
+    if(rendered_frame==625){
+      camera.initMatrix(viewerOrigin,viewerDirection,viewerUp,viewerAngle);
+      rendered_frame=0;
+    }
+#else
     camera.setOrigin(camera.getOrigin() + (driftRatio-1.0) * newDirection);
+#endif
   }
 }
 
@@ -368,7 +391,11 @@ int main(int argc, char* argv[])
   if (glDisplay) {
     /* initialize glut */
     glutInit(&argc, argv);
+#ifdef DEMO_BRIGHT17
+    glutInitDisplayMode(GLUT_DOUBLE);
+#else
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+#endif
     glutInitWindowSize(resX, resY);
     glutInitWindowPosition(0, 0);
     glutCreateWindow("rtview");

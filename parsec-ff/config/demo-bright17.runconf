@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# demo-bright17.runconf - demo shown @ Bright2017
+#
+# Copyright (C) 2007 Princeton University
+# Written by Christian Bienia
+
+# This file contains the global run configuration of all packages for one
+# input set.
+
+# Description of the input set
+run_desc="Demo for Bright 2017"
+
+# Citations for this input set (requires matching citation file)
+pkg_cite="bienia11parsec"
+

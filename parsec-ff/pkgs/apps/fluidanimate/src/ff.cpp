@@ -1194,7 +1194,7 @@ int main(int argc, char *argv[])
   }
 
 #ifdef ENABLE_NORNIR
-    instr = new nornir::Instrumenter(getParametersPath(), threadnum);
+    instr = new nornir::Instrumenter(getParametersPath());
 #endif //ENABLE_NORNIR
     
 #ifdef ENABLE_CFL_CHECK
