@@ -518,6 +518,9 @@ int main(int argc, char* argv[])
     __parsec_roi_end();
 #endif
     cout << "Done" << endl << flush;
+#ifdef ENABLE_NORNIR
+    lrtDestroyContext(lrtContext);
+#endif
   }
 
   return 0;

@@ -92,6 +92,11 @@ void Display()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   std::cout << "Advancing frame (" << DisplayFrameNumber++ << ")..." << std::endl << std::flush;
+#ifdef DEMO_BRIGHT17
+  if(DisplayFrameNumber % 300 == 0){
+    ApplyImpulse(Vec3(0.f, 0.6f, 0.f));
+  }
+#endif
   _AdvanceFrame();
 
   glLoadIdentity();
@@ -209,9 +214,6 @@ void Keyboard(unsigned char key, int x, int y)
     case 'q': ApplyImpulse(Vec3(0.f, 1.f, 0.f)); break;
     case 'w': ApplyImpulse(Vec3(0.f, 0.f, -1.f)); break;
     case 's': ApplyImpulse(Vec3(0.f, 0.f, 1.f)); break;
-#ifdef DEMO_BRIGHT17
-    case 'r': ApplyImpulse(Vec3(0.f, 0.6f, 0.f)); break;
-#endif
     case 27:    // escape
     exit(0);
     break;

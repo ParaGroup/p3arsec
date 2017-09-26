@@ -233,7 +233,7 @@ public:
 
   ~Context(){
 #ifdef ENABLE_NORNIR
-    instr->terminate(); // TODO: Probably could be done earlier.
+    instr->terminate();
     std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
     std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
     delete instr;
@@ -814,7 +814,7 @@ LRTContext lrtCreateContext()
 LRTvoid lrtDestroyContext(LRTContext context)
 {
   assert(context);
-  delete context;
+  delete (Context*) context;
 }
 
 LRTContext lrtCreateCamera()

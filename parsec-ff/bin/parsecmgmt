@@ -1235,8 +1235,9 @@ function run_benchmark {
         exit 1
     fi
     (cd ${PARSECDIR}/bin; ${PARSECDIR}/pkgs/libs/nornir/bin/manager-external > manager_out.log 2> manager_err.log &) # Run in background
+    sleep 1
     NORNIR_EXTERNAL_MANAGER_PID=$(pidof manager-external)
-    #disown $NORNIR_EXTERNAL_MANAGER_PID
+    trap 'sudo kill $NORNIR_EXTERNAL_MANAGER_PID; exit' SIGINT
     echo "Manager started with pid "$NORNIR_EXTERNAL_MANAGER_PID
   fi
 
