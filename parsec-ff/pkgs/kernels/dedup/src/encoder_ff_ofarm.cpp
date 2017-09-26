@@ -952,20 +952,20 @@ public:
     }
 
     void *svc(void * task) {
-#ifdef ENABLE_NORNIR
-        instr->begin();
-#endif //ENABLE_NORNIR
         ringbuffer_t* recv_buf = (ringbuffer_t*) task;
         while(!ringbuffer_isEmpty(recv_buf)) {
+#ifdef ENABLE_NORNIR
+          instr->begin();
+#endif //ENABLE_NORNIR
             chunk_t * chunk = (chunk_t*)ringbuffer_remove(recv_buf);
             if (chunk == NULL){break;}
             write_chunk_to_file(fd, chunk);
-        }
-        ringbuffer_destroy(recv_buf);
-        free(recv_buf);
 #ifdef ENABLE_NORNIR
         instr->end();
 #endif //ENABLE_NORNIR
+        }
+        ringbuffer_destroy(recv_buf);
+        free(recv_buf);
         return GO_ON;
     }
 };

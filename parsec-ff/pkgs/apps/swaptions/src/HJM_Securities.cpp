@@ -120,21 +120,15 @@ void * worker(void *arg){
     end = nSwaptions;
 
   for(int i=beg; i < end; i++) {
-#ifdef ENABLE_NORNIR
-    instr->begin(tid);
-#endif //ENABLE_NORNIR
      int iSuccess = HJM_Swaption_Blocking(pdSwaptionPrice,  swaptions[i].dStrike, 
                                        swaptions[i].dCompounding, swaptions[i].dMaturity, 
                                        swaptions[i].dTenor, swaptions[i].dPaymentInterval,
                                        swaptions[i].iN, swaptions[i].iFactors, swaptions[i].dYears, 
                                        swaptions[i].pdYield, swaptions[i].ppdFactors,
-                                       swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, 0);
+                                       swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, tid);
      assert(iSuccess == 1);
      swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
      swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
-#ifdef ENABLE_NORNIR
-      instr->end(tid);
-#endif //ENABLE_NORNIR
    }
 
    return NULL;
@@ -316,22 +310,16 @@ int main(int argc, char *argv[])
 #elif defined(FF_VERSION)
         ff::ParallelFor pf;
 	pf.parallel_for_thid(0, nSwaptions, 1, PARFOR_STATIC(0), [](const long i, const int thid) {
-#ifdef ENABLE_NORNIR
-        instr->begin(thid);
-#endif //ENABLE_NORNIR
 		FTYPE pdSwaptionPrice[2];
 		int iSuccess = HJM_Swaption_Blocking(pdSwaptionPrice,  swaptions[i].dStrike, 
 					   swaptions[i].dCompounding, swaptions[i].dMaturity, 
 					   swaptions[i].dTenor, swaptions[i].dPaymentInterval,
 					   swaptions[i].iN, swaptions[i].iFactors, swaptions[i].dYears, 
 					   swaptions[i].pdYield, swaptions[i].ppdFactors,
-					   swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, 0);
+					   swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, thid);
 		assert(iSuccess == 1);
 		swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
 		swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
-#ifdef ENABLE_NORNIR
-        instr->end(thid);
-#endif //ENABLE_NORNIR
 	}, nThreads);
 #else
 	int threadIDs[nThreads];
