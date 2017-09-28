@@ -1,10 +1,17 @@
 [![Build Status](https://travis-ci.org/ParaGroup/p3arsec.svg?branch=master)](https://travis-ci.org/ParaGroup/p3arsec)
+[![release](http://github-release-version.herokuapp.com/github/paragroup/p3arsec/release.svg?style=flat)](https://github.com/paragroup/p3arsec/releases/latest)
+
 
 # Description
 This repository contains parallel patterns implementations of some applications contained in the PARSEC benchmark.
 
-The structure and modelling of some provided applications (Blackscholes, Canneal, Dedup, Ferret and Swaptions) is described in the paper:
-**P<sup>3</sup>ARSEC: Towards Parallel Patterns Benchmarking** by Marco Danelutto, Tiziano De Matteis, Daniele De Sensi, Gabriele Mencagli and Massimo Torquati. The paper has been presented at the [32nd ACM Symposium on Applied Computing (SAC)](http://www.sigapp.org/sac/sac2017/).
+The structure and modelling of the applications is described in the paper:
+
+**Bringing Parallel Patterns out of the Corner: the P<sup>3</sup>ARSEC Benchmark Suite**</br>
+Daniele De Sensi, Tiziano De Matteis, Massimo Torquati, Gabriele Mencagli, Marco Danelutto</br>
+*ACM Transactions on Architecture and Code Optimization (TACO)* **[To Appear]**</br>
+
+[![Release v1.0](http://github-release-version.herokuapp.com/github/paragroup/p3arsec/release.svg?style=flat)](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
 
 All the applications (except x264) have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) pattern-based parallel programming framework. Some benchmarks have been also implemented with the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) framework. In the following table you can find more details about the pattern used for each benchmark and the file(s) containing the actual implementation, both for **FastFlow** and for **SkePU2**. The pattern descriptions reported here are an approximation and exact descriptions will come later. Some benchmarks are implemented by using different patterns (**bold** pattern is the one used by default). To run the benchmark a different pattern refer to the specific [section](#run-alternative-versions) of this document.
 
@@ -24,7 +31,7 @@ Ferret        | Pipeline of Farms      | [File 1](parsec-ff/pkgs/apps/ferret/src
 "             | **Farm (Optimized)**   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm-optimized.cpp)
 Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)
 Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)
-Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu_omp.cxx)
+Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu.cxx)
 Streamcluster | **Maps and MapReduce** | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster.cpp) | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster_skepu.cpp)
 Swaptions     | **Map**                | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)       | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities_skepu.cpp)
 Vips          | **Farm**               | [File 1](parsec-ff/pkgs/apps/vips/src/libvips/iofuncs/threadpool.cc)
@@ -37,15 +44,19 @@ the *Pthreads*, *OpenMP* and *TBB* versions already present in PARSEC.
 After following this guide, more details can be found on [PARSEC Website](http://parsec.cs.princeton.edu/).
 
 # Download
-To download PARSEC and the parallel patterns implementation of some of its benchmark, run the
+To download the last version of P<sup>3</sup>RSEC, run the
 following commands:
 
 ```
-git clone https://github.com/ParaGroup/p3arsec.git
+wget https://github.com/ParaGroup/p3arsec/archive/v1.0.tar.gz
 ```
 
 ```
-cd p3arsec
+tar -xvf v1.0.tar.gz 
+```
+
+```
+cd p3arsec-1.0
 ```
 
 Then, run:
