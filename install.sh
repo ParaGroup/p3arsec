@@ -143,6 +143,9 @@ else
     # Removing caches
     rm -rf pkgs/apps/bodytrack/src/autom4te.cache/
 
+    # Removing VIPS old file (is needed otherwise will not compile the new version).
+    rm -rf pkgs/apps/vips/src/libvips/iofuncs/threadpool.c
+
 	# Clean
 	mv README README_PARSEC
 	echo "Download succeeded."

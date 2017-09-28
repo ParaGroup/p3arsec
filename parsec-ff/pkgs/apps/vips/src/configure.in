@@ -277,13 +277,12 @@ fi
 AC_ARG_ENABLE(fastflow, 
   AS_HELP_STRING([--enable-ff], [evaluate with FastFlow (default: no)]))
 
-if test x"$enable_ff" = x"yes"; then
+if test x"$enable_ff" = "xyes"; then
   AC_DEFINE(HAVE_FF,1,[FastFlow evaluation])
   enable_ff=yes
 else
   enable_ff=no
 fi
-
 
 # check for gtk-doc
 GTK_DOC_CHECK(1.9)

@@ -568,7 +568,7 @@ vips_thread_main_loop( void *a )
 /* Attach another thread to a threadpool.
  */
 static VipsThread *
-vips_thread_new( VipsThreadpool *pool )
+vips_thread_new( VipsThreadpool *pool)
 {
 	VipsThread *thr;
 
@@ -917,7 +917,7 @@ vips_threadpool_run( VipsImage *im,
         workers.push_back(new Worker(pool));
     }
     ff::ff_farm<> farm(workers, new Emitter(), new Collector(pool, progress));
-    (Emitter*) farm.getEmitter()->_lb = farm.getlb();
+    ((Emitter*) farm.getEmitter())->_lb = farm.getlb();
     farm.run_and_wait_end();
 	/* Return 0 for success.
 	 */
