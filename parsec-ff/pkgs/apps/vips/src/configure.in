@@ -277,11 +277,22 @@ fi
 AC_ARG_ENABLE(fastflow, 
   AS_HELP_STRING([--enable-ff], [evaluate with FastFlow (default: no)]))
 
-if test x"$enable_ff" = x"yes"; then
+if test x"$enable_ff" = "xyes"; then
   AC_DEFINE(HAVE_FF,1,[FastFlow evaluation])
   enable_ff=yes
 else
   enable_ff=no
+fi
+
+# option to use Nornir management
+AC_ARG_ENABLE(nornir, 
+  AS_HELP_STRING([--enable-nornir], [add Nornir management (default: no)]))
+
+if test x"$enable_nornir" = "xyes"; then
+  AC_DEFINE(HAVE_NORNIR,1,[Nornir management])
+  enable_nornir=yes
+else
+  enable_nornir=no
 fi
 
 
@@ -660,6 +671,7 @@ enable debug:				$enable_debug
 build C++ components:			$enable_cxx
 evaluate with threads: 			$enable_threads
 evaluate with FastFlow:			$enable_ff
+add Nornir management:      $enable_nornir
 make symlinks for commands in bin: 	$enable_links
 build docs with gtkdoc 			$enable_gtk_doc
 

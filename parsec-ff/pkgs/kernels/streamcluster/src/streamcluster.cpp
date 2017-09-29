@@ -27,6 +27,7 @@
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
+nornir::Instrumenter* instr;
 #endif //ENABLE_NORNIR
 
 #if defined(FF_VERSION)
@@ -1492,8 +1493,14 @@ float pFL(Points *points, int *feasible, int numfeasible,
 
 		intshuffle(feasible, numfeasible);
 		for (i=0;i<iter;i++) {
+#ifdef ENABLE_NORNIR
+      instr->begin();
+#endif // ENABLE_NORNIR
 			x = i%numfeasible;
 			change += pgain(feasible[x], points, z, k);
+#ifdef ENABLE_NORNIR
+      instr->end();
+#endif // ENABLE_NORNIR
 		}
 		cost -= change;
 	}
@@ -1561,8 +1568,14 @@ float pFL(Points *points, int *feasible, int numfeasible,
     pthread_barrier_wait(barrier);
 #endif
     for (i=0;i<iter;i++) {
+#ifdef ENABLE_NORNIR
+      instr->begin(pid);
+#endif // ENABLE_NORNIR
       x = i%numfeasible;
       change += pgain(feasible[x], points, z, k, pid, barrier);
+#ifdef ENABLE_NORNIR
+      instr->end(pid);
+#endif // ENABLE_NORNIR
     }
     cost -= change;
 #ifdef ENABLE_THREADS
@@ -1905,7 +1918,6 @@ float pkmedian(Points *points, long kmin, long kmax, long* kfinal,
       hiz = z; z = (hiz+loz)/2.0;
       cost += (z-hiz)*k;
     }
-
     /* if k is good, return the result */
     /* if we're stuck, just give up and return what we have */
     if (((k <= kmax)&&(k >= kmin))||((loz >= (0.999)*hiz)) )
@@ -2049,7 +2061,6 @@ float pkmedian(Points *points, long kmin, long kmax, long* kfinal,
       hiz = z; z = (hiz+loz)/2.0;
       cost += (z-hiz)*k;
     }
-
     /* if k is good, return the result */
     /* if we're stuck, just give up and return what we have */
     if (((k <= kmax)&&(k >= kmin))||((loz >= (0.999)*hiz)) )
@@ -2295,10 +2306,6 @@ void streamCluster( PStream* stream,
 			long chunksize, long centersize, char* outfile )
 {
 
-#ifdef ENABLE_NORNIR
-  nornir::Instrumenter instr(getParametersPath());
-#endif //ENABLE_NORNIR
-
 #ifdef TBB_VERSION
   float* block = (float*)memoryFloat.allocate( chunksize*dim*sizeof(float) );
   float* centerBlock = (float*)memoryFloat.allocate(centersize*dim*sizeof(float) );
@@ -2346,9 +2353,6 @@ void streamCluster( PStream* stream,
   long IDoffset = 0;
   long kfinal;
   while(1) {
-#ifdef ENABLE_NORNIR
-    instr.begin();
-#endif //ENABLE_NORNIR
     size_t numRead  = stream->read(block, dim, chunksize ); 
     fprintf(stderr,"read %d points\n",numRead);
 
@@ -2398,18 +2402,10 @@ void streamCluster( PStream* stream,
     free(switch_membership);
     free(center_table);
 #endif
-#ifdef ENABLE_NORNIR
-    instr.end();
-#endif //ENABLE_NORNIR
     if( stream->feof() ) {
       break;
     }
   }
-#ifdef ENABLE_NORNIR
-  instr.terminate();
-  std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
-  std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
-#endif //ENABLE_NORNIR
   //finally cluster all temp centers
 #ifdef TBB_VERSION
   switch_membership = (bool*)memoryBool.allocate(centers.num*sizeof(bool));
@@ -2476,6 +2472,13 @@ int main(int argc, char **argv)
   strcpy(outfilename, argv[8]);
   nproc = atoi(argv[9]);
 
+#ifdef ENABLE_NORNIR
+#ifdef FF_VERSION
+  instr = new nornir::Instrumenter(getParametersPath());
+#else
+  instr = new nornir::Instrumenter(getParametersPath(), nproc);
+#endif // FF_VERSION
+#endif // ENABLE_NORNIR
 
 #ifdef TBB_VERSION
   fprintf(stderr,"TBB version. Number of divisions: %d\n",NUM_DIVISIONS);
@@ -2513,6 +2516,12 @@ int main(int argc, char **argv)
 #endif
 
   delete stream;
+
+#ifdef ENABLE_NORNIR
+  instr->terminate();
+  std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
+  std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_bench_end();

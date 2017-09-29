@@ -132,6 +132,9 @@ else
     # Removing caches
     rm -rf pkgs/apps/bodytrack/src/autom4te.cache/
 
+    # Removing VIPS old file (is needed otherwise will not compile the new version).
+    rm -rf pkgs/apps/vips/src/libvips/iofuncs/threadpool.c
+
     # Creating inputs for new configurations (e.g. for demos)
     cp ./pkgs/apps/raytrace/inputs/input_simlarge.tar ./pkgs/apps/raytrace/inputs/input_demo-bright17.tar
     cp ./pkgs/apps/fluidanimate/inputs/input_simsmall.tar ./pkgs/apps/fluidanimate/inputs/input_demo-bright17.tar

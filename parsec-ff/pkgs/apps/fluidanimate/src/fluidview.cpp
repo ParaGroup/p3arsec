@@ -9,7 +9,7 @@
 #include "fluid.hpp"
 #include "fluidview.hpp"
 
-
+void ApplyImpulse(Vec3 const &impulse);
 
 float rotX = 0.f;
 float rotY = 0.f;
@@ -93,8 +93,8 @@ void Display()
 
   std::cout << "Advancing frame (" << DisplayFrameNumber++ << ")..." << std::endl << std::flush;
 #ifdef DEMO_BRIGHT17
-  if(DisplayFrameNumber % 300 == 0){
-    ApplyImpulse(Vec3(0.f, 0.6f, 0.f));
+  if(DisplayFrameNumber % 200 == 0){
+    ApplyImpulse(Vec3(0.f, 0.4f, 0.f));
   }
 #endif
   _AdvanceFrame();
