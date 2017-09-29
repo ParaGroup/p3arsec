@@ -16,4 +16,4 @@
 source ${PARSECDIR}/pkgs/apps/x264/parsec/gcc-pthreads.bldconf
 
 # Environment to use for configure script and Makefile
-build_env="PATH=\"${PARSECDIR}/pkgs/tools/yasm/inst/${PARSECPLAT}/bin:${PATH}\""
+build_env="CFLAGS=\"${CFLAGS} -DENABLE_NORNIR \" PATH=\"${PARSECDIR}/pkgs/tools/yasm/inst/${PARSECPLAT}/bin:${PATH}\""
