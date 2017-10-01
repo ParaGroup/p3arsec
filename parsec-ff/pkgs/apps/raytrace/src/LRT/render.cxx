@@ -1,7 +1,6 @@
 //
 // FastFlow version by Daniele De Sensi (d.desensi.software@gmail.com)
 //
-
 #include "LRT/include/lrt.h"
 #include "RTTL/common/RTInclude.hxx"
 #include "RTTL/common/RTThread.hxx"
@@ -672,9 +671,6 @@ void Context::renderFrame(Camera *camera,
 			 LRT::FrameBuffer *frameBuffer,
                          const int resX,const int resY)
 {
-#ifdef ENABLE_NORNIR
-  instr->begin();
-#endif
     assert(camera);
   if (m_threadsCreated == false)
     {
@@ -694,6 +690,16 @@ void Context::renderFrame(Camera *camera,
       m_threadsCreated = true;
     }
 
+#ifdef ENABLE_NORNIR
+#ifdef DEMO_BRIGHT17
+  static long long int framenum = 0;
+  if(framenum > 10000){
+      instr->begin();
+  }
+#else
+  instr->begin();
+#endif
+#endif
   frameBuffer->startNewFrame();
   initSharedThreadData(camera,resX,resY,frameBuffer);
 
@@ -737,7 +743,15 @@ void Context::renderFrame(Camera *camera,
   BVH_STAT_COLLECTOR(BVHStatCollector::global.print());
   frameBuffer->doneWithFrame();
 #ifdef ENABLE_NORNIR
+#ifdef DEMO_BRIGHT17
+  if(framenum > 10000){
+      instr->end();
+  }else{
+      ++framenum;
+  }
+#else
   instr->end();
+#endif
 #endif
 }
 
