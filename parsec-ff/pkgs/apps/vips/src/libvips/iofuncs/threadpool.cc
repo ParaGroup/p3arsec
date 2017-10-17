@@ -73,8 +73,8 @@
 #include <dmalloc.h>
 #endif /*WITH_DMALLOC*/
 
-#ifdef HAVE_NORNIR
-#include <instrumenter.hpp>
+#if defined(HAVE_NORNIR) || defined(HAVE_NORNIR_NATIVE)
+#include <interface.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){
@@ -339,7 +339,7 @@ typedef struct {
 
 	VipsThreadState *state;
 
-#ifndef HAVE_FF
+#if !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
 	/* Thread we are running.
 	 */
         GThread *thread;  	
@@ -383,7 +383,7 @@ typedef struct _VipsThreadpool {
 	int nthr;		/* Number of threads in pool */
 	VipsThread **thr;	/* Threads */
 
-#ifndef HAVE_FF
+#if !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
 	/* The caller blocks here until all threads finish.
 	 */
 	im_semaphore_t finish;	
@@ -438,7 +438,7 @@ vips_thread_save_time_buffers( VipsThread *thr )
 static void
 vips_thread_free( VipsThread *thr )
 {
-#ifndef HAVE_FF
+#if !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
         /* Is there a thread running this region? Kill it!
          */
         if( thr->thread ) {
@@ -568,7 +568,7 @@ vips_thread_work_unit( VipsThread *thr )
 #endif //HAVE_NORNIR
 }
 
-#if defined(HAVE_THREADS) && !defined(HAVE_FF)
+#if defined(HAVE_THREADS) && !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
 /* What runs as a thread ... loop, waiting to be told to do stuff.
  */
 static void *
@@ -612,7 +612,7 @@ vips_thread_new( VipsThreadpool *pool
 		return( NULL );
 	thr->pool = pool;
 	thr->state = NULL;
-#ifndef HAVE_FF
+#if !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
 	thr->thread = NULL;
 #endif
 	thr->exit = 0;
@@ -641,7 +641,7 @@ vips_thread_new( VipsThreadpool *pool
 	}
 #endif /*TIME_THREAD*/
 
-#if defined(HAVE_THREADS) && !defined(HAVE_FF)
+#if defined(HAVE_THREADS) && !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
 	/* Make a worker thread. We have to use g_thread_create_full() because
 	 * we need to insist on a non-tiny stack. Some platforms default to
 	 * very small values (eg. various BSDs).
@@ -688,7 +688,7 @@ vips_threadpool_free( VipsThreadpool *pool )
 
 	vips_threadpool_kill_threads( pool );
 	IM_FREEF( g_mutex_free, pool->allocate_lock );
-#ifndef HAVE_FF
+#if !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
 	im_semaphore_destroy( &pool->finish );
 	im_semaphore_destroy( &pool->tick );
 #endif
@@ -710,7 +710,7 @@ vips_threadpool_new( VipsImage *im )
 	pool->allocate_lock = g_mutex_new();
 	pool->nthr = im_concurrency_get();
 	pool->thr = NULL;
-#ifndef HAVE_FF
+#if !defined(HAVE_FF) && !defined(HAVE_NORNIR_NATIVE)
 	im_semaphore_init( &pool->finish, 0, "finish" );
 	im_semaphore_init( &pool->tick, 0, "tick" );
 #endif
@@ -980,6 +980,108 @@ vips_threadpool_run( VipsImage *im,
 
 	return( result );
 }
+
+#elif defined(HAVE_NORNIR_NATIVE)
+
+/**
+ * This emitter is used because Nornir's farm always require a scheduler to
+ * be present. In this specific application is not actually needed so it just
+ * start, starts all the workers and then die.
+ **/
+class Emitter: public nornir::Scheduler<int>{
+public:
+    int* schedule(){
+        broadcast(new int()); // Just to return anything
+        return nothing;
+    }
+};
+
+class Worker: public nornir::Worker<int, int>{
+private:
+    VipsThreadpool *_pool; 
+public:
+    Worker(VipsThreadpool *pool):_pool(pool){;}
+
+    int* compute(int*){
+        VipsThread *thr = _pool->thr[get_my_id()];
+	    g_assert(_pool == thr->pool);
+	    do{
+		    vips_thread_work_unit(thr);
+            // Just send something to collector so it can execute progress routine.
+            // Any valid pointer is ok, we just use a random global variable.
+            send(&im__concurrency);
+	    }while(!_pool->stop && !_pool->error);
+	    return NULL;
+    }
+};
+
+class Collector: public nornir::Gathere<int>{
+private:
+    VipsThreadpool *_pool; 
+	VipsThreadpoolProgress _progress;
+public:
+    Collector(VipsThreadpool *pool, VipsThreadpoolProgress progress):
+        _pool(pool), _progress(progress){;}
+
+    void gather(int* t){
+		VIPS_DEBUG_MSG( "vips_threadpool_run: tick\n" );
+		if(_progress && _progress(_pool->a)){
+		    _pool->error = TRUE;
+        }
+    }
+};
+
+int
+vips_threadpool_run( VipsImage *im, 
+	VipsThreadStart start, 
+	VipsThreadpoolAllocate allocate, 
+	VipsThreadpoolWork work,
+	VipsThreadpoolProgress progress, 
+	void *a )
+{
+#ifndef HAVE_THREADS
+#error "Nornir version requires HAVE_THREADS to be defined."
+#endif
+
+	VipsThreadpool *pool; 
+	int result;
+
+#ifdef TIME_THREAD
+	if( !thread_timer )
+		thread_timer = g_timer_new();
+#endif /*TIME_THREAD*/
+
+	if( !(pool = vips_threadpool_new( im )) )
+		return( -1 );
+
+	pool->start = start;
+	pool->allocate = allocate;
+	pool->work = work;
+	pool->a = a;
+
+    /*
+     * Create worker structures (not real threads).
+     */
+    if(vips_threadpool_create_threads(pool)){
+	    vips_threadpool_free(pool);
+	    return(-1);
+    }
+    nornir::Farm<int, int> farm(getParametersPath());
+    farm.addScheduler(new Emitter());
+    for(int i = 0; i < im_concurrency_get(); i++){
+        farm.addWorker(new Worker(pool));
+    }
+    farm.addGatherer(new Collector(pool, progress));
+    farm.start();
+    farm.wait();
+
+	/* Return 0 for success.
+	 */
+	result = pool->error ? -1 : 0;
+	vips_threadpool_free( pool );
+	return( result );
+}
+
 #else
 int
 vips_threadpool_run( VipsImage *im, 

@@ -108,7 +108,7 @@ void __parsec_bench_begin(enum __parsec_benchmark __bench) {
   assert(num_bench_ends==0);
   #endif //DEBUG
 
-  printf(HOOKS_PREFIX" PARSEC Hooks Version "HOOKS_VERSION"\n");
+  printf(HOOKS_PREFIX " PARSEC Hooks Version " HOOKS_VERSION"\n");
   fflush(NULL);
 
   //Store global benchmark ID for other hook functions

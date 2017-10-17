@@ -31,6 +31,9 @@ ifdef version
   else ifeq "$(version)" "ff"
     CFLAGS += -DENABLE_FF -DENABLE_FF_ONDEMAND
     DEDUP_OBJ += queue.o binheap.o tree.o encoder_ff_ofarm.o
+  else ifeq "$(version)" "nornir"
+    CFLAGS += -DENABLE_NORNIR_NATIVE
+    DEDUP_OBJ += queue.o binheap.o tree.o encoder_nornir.o
   endif
 endif
 

@@ -78,6 +78,10 @@ ifdef version
     benchmark_base := ferret-ff-farm-optimized
     LDLIBS += -lpthread
   endif
+  ifeq "$(version)" "nornir"
+    benchmark_base := ferret-nornir
+    LDLIBS += -lpthread
+  endif
 endif
 
 benchmark_src := $(benchmark_base).c

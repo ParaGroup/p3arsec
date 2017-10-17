@@ -42,7 +42,11 @@
 #include <hooks.h>
 #endif
 
-#ifdef ENABLE_NORNIR
+#ifdef ENABLE_NORNIR_NATIVE
+#undef BLOCKING_MODE // There is a bug in ff feedback with blocking queues, so we disable them
+#endif
+
+#if defined(ENABLE_NORNIR) || defined(ENABLE_NORNIR_NATIVE)
 #include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
@@ -56,6 +60,8 @@ nornir::Instrumenter* instr;
 #include "annealer_types.h"
 #ifdef ENABLE_FF
 #include "annealer_thread_ff.h"
+#elif defined ENABLE_NORNIR_NATIVE
+#include "annealer_thread_nornir.h"
 #else
 #include "annealer_thread.h"
 #endif
@@ -64,7 +70,7 @@ nornir::Instrumenter* instr;
 
 using namespace std;
 
-#if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
 void* entry_pt(void*);
 #endif
 
@@ -97,7 +103,7 @@ int main (int argc, char * const argv[]) {
 	//argument 1 is numthreads
 	int num_threads = atoi(argv[1]);
 	cout << "Threadcount: " << num_threads << endl;
-#if !defined(ENABLE_THREADS) && !defined(ENABLE_FF)
+#if !defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
 	if (num_threads != 1){
 		cout << "NTHREADS must be 1 (serial version)" <<endl;
 		exit(1);
@@ -130,7 +136,7 @@ int main (int argc, char * const argv[]) {
 	//now that we've read in the commandline, run the program
 	netlist my_netlist(filename);
 
-#if !defined(ENABLE_FF)	
+#if !defined(ENABLE_FF)	&& !defined(ENABLE_NORNIR_NATIVE)
 	annealer_thread a_thread(&my_netlist,num_threads,swaps_per_temp,start_temp,number_temp_steps);
 #endif
 	
@@ -149,7 +155,16 @@ int main (int argc, char * const argv[]) {
     farm.add_workers(workers);
     farm.wrap_around();
     farm.run_and_wait_end();
-#else
+#elif defined(ENABLE_NORNIR_NATIVE)
+    nornir::Farm<CTask, CTask> farm(getParametersPath());
+    farm.addScheduler(new Emitter(num_threads, number_temp_steps));
+    for(int i = 0; i < num_threads; i++){
+        farm.addWorker(new annealer_thread(&my_netlist, num_threads, swaps_per_temp, start_temp));
+    }
+    farm.setFeedback();
+    farm.start();
+    farm.wait();
+#else // pthreads version
 	std::vector<pthread_t> threads(num_threads);
 	void* thread_in = static_cast<void*>(&a_thread);
 	for(int i=0; i<num_threads; i++){
@@ -189,7 +204,7 @@ int main (int argc, char * const argv[]) {
 	return 0;
 }
 
-#if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
 void* entry_pt(void* data)
 {
 #ifdef ENABLE_NORNIR

@@ -32,15 +32,13 @@
 #ifndef ANNEALER_THREAD_FF_H
 #define ANNEALER_THREAD_FF_H
 
-
 #include <assert.h>
 
 #include "annealer_types.h"
 #include "netlist.h"
 #include "netlist_elem.h"
 #include "rng.h"
-#include <ff/farm.hpp>
-
+#include <interface.hpp>
 
 typedef struct CTask{
     int accepted_good_moves;
@@ -48,55 +46,56 @@ typedef struct CTask{
     CTask():accepted_good_moves(0), accepted_bad_moves(-1){;}
 } CTask;
 
-class Emitter: public ff::ff_node {
-    private:
-        int temp_steps_completed;
-        uint activeWorkers;
-        size_t tasksRcvd;
-        int _number_temp_steps;
-        bool _keep_going_global_flag;
-        ff::ff_loadbalancer* lb;
-        bool _firstRun;
-    public:
-        Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb);
-        bool keep_going(int accepted_good_moves, int accepted_bad_moves);
-        void* svc(void*);
+class Emitter: public nornir::Scheduler<CTask, CTask> {
+private:
+    int temp_steps_completed;
+    uint activeWorkers;
+    size_t tasksRcvd;
+    int _number_temp_steps;
+    bool _keep_going_global_flag;
+    bool _firstRun;
+protected:
+    void notifyRethreading(size_t oldn, size_t newn);
+public:
+    Emitter(uint maxNumWorkers, int number_temp_steps);
+    bool keep_going(int accepted_good_moves, int accepted_bad_moves);
+    CTask* schedule(CTask*);
+};
+
+class annealer_thread: public nornir::Worker<CTask, CTask>{
+public:
+    enum move_decision_t {
+        move_decision_accepted_good,
+        move_decision_accepted_bad,
+        move_decision_rejected
     };
-class annealer_thread: public ff::ff_node {
-    public:
-        enum move_decision_t {
-            move_decision_accepted_good,
-            move_decision_accepted_bad,
-            move_decision_rejected
-        };
-        annealer_thread(
-                        netlist* netlist, 
-                        int nthreads,
-                        int swaps_per_temp,
-                        double start_temp
-            )
-            :_netlist(netlist), 
-            T(start_temp),
-            _moves_per_thread_temp(swaps_per_temp/nthreads),
-            a_id(0), b_id(0){
+
+    annealer_thread(netlist* netlist, int nthreads, int swaps_per_temp, double start_temp):
+        _netlist(netlist), T(start_temp), _swaps_per_temp(swaps_per_temp),
+        _moves_per_thread_temp(swaps_per_temp/nthreads),
+        a_id(0), b_id(0){
             assert(_netlist != NULL);
             a = _netlist->get_random_element(&a_id, NO_MATCHING_ELEMENT, &rng);
             b = _netlist->get_random_element(&b_id, NO_MATCHING_ELEMENT, &rng);
-        }
-        
-        ~annealer_thread(){;}
-        void* svc(void* task);
-    protected:
-        move_decision_t accept_move(routing_cost_t delta_cost, double T, Rng* rng);
-        routing_cost_t calculate_delta_routing_cost(netlist_elem* a, netlist_elem* b);
-        netlist* _netlist;
-        double T;
-        int _moves_per_thread_temp;
-        Rng rng; //store of randomness 
-        long a_id;
-        long b_id;
-        netlist_elem* a;
-        netlist_elem* b;
-    };
+    }
+
+    ~annealer_thread(){;}
+
+    CTask* compute(CTask* task);
+protected:
+    move_decision_t accept_move(routing_cost_t delta_cost, double T, Rng* rng);
+    routing_cost_t calculate_delta_routing_cost(netlist_elem* a, netlist_elem* b);
+    void notifyRethreading(size_t oldn, size_t newn);
+
+    netlist* _netlist;
+    double T;
+    int _swaps_per_temp;
+    int _moves_per_thread_temp;
+    Rng rng; //store of randomness 
+    long a_id;
+    long b_id;
+    netlist_elem* a;
+    netlist_elem* b;
+};
 
 #endif
