@@ -56,6 +56,7 @@ static int omp_get_thread_num() {return 0;}
 #include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
+nornir::Instrumenter* instr;
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -1331,7 +1332,7 @@ int FP_tree::FP_growth_first(FSout* fout)
 	if (lowerbound > itemno)
 		lowerbound = itemno;
 #ifdef ENABLE_NORNIR
-    nornir::Instrumenter instr(getParametersPath(), omp_get_max_threads());
+    instr = new nornir::Instrumenter(getParametersPath(), omp_get_max_threads());
 #endif //ENABLE_NORNIR
 	for (int t = 0; t < 3; t ++) {
 		upperbound = lowerbound;
@@ -1357,9 +1358,6 @@ int FP_tree::FP_growth_first(FSout* fout)
 		if(upperbound > lowerbound){
             ffpf->disableScheduler();
   			ffpf->parallel_for_thid(1, upperbound - lowerbound + 1, 1, 1, [&](const int index, const int thid) { 
-#ifdef ENABLE_NORNIR
-                instr.begin(thid);
-#endif //ENABLE_NORNIR
 				int sequence = upperbound - index;
 				int current, new_item_no, listlen;
 				int MC2=0;			
@@ -1443,17 +1441,14 @@ int FP_tree::FP_growth_first(FSout* fout)
 					}
 					release_node_array_after_mining(sequence, thread, workingthread);
 				}
-#ifdef ENABLE_NORNIR
-				instr.end(thid);
-#endif //ENABLE_NORNIR
 			}, workingthread);
 			ffpf->disableScheduler(false);
 		}
 	}
 #ifdef ENABLE_NORNIR
-    instr.terminate();
-    std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
-    std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+    instr->terminate();
+    std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
 #endif //ENABLE_NORNIR
 	 wtime(&tend);
 //	 printf("the major FP_growth cost %f vs %f seconds\n", tend - tstart, temp_time - tstart);
@@ -1488,6 +1483,9 @@ int FP_tree::FP_growth(int thread, FSout* fout)
 	local_fp_tree_buf->freebuf(MR_tree, MC_tree, MB_tree);
 	for(sequence=itemno - 1; sequence>=0; sequence--)
 	{
+#ifdef ENABLE_NORNIR
+		instr->begin(thread);
+#endif //ENABLE_NORNIR
 		current=table[sequence];
 		local_list->FS[local_list->top++]=current;
 		listlen = local_list->top;
@@ -1515,6 +1513,9 @@ int FP_tree::FP_growth(int thread, FSout* fout)
 					fout->printSet(local_list->top, local_list->FS, local_global_count_array[0]);
 			}
 			local_list->top=listlen-1;
+#ifdef ENABLE_NORNIR
+			instr->end(thread);
+#endif //ENABLE_NORNIR
 			continue;
 		}
 
@@ -1550,7 +1551,13 @@ int FP_tree::FP_growth(int thread, FSout* fout)
 				fptree->generate_all(new_item_no, thread, fout);
 			local_list->top--;
 			local_fp_tree_buf->freebuf(fptree->MR_tree, fptree->MC_tree, fptree->MB_tree);
+#ifdef ENABLE_NORNIR
+			instr->end(thread);
+#endif //ENABLE_NORNIR 
 		}else{             
+#ifdef ENABLE_NORNIR
+			instr->end(thread); // Call here otherwise we recurse, we call begin() again and we fail.
+#endif //ENABLE_NORNIR 
 			fptree->FP_growth(thread, fout);
 			local_list->top = listlen-1;
 		}

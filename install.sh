@@ -109,7 +109,12 @@ else
 	# Install Nornir
 	if [ "$NORNIR" = true ]; then
 		cd ./pkgs/libs && git clone https://github.com/DanieleDeSensi/nornir.git
-		# TODO link already downloaded mammut.
+        if [ "$MEASURE" = true ]; then
+            # To avoid collisions between two differet mammut versions, remove
+            # one so that both p3arsec and nornir have the same mammut version.
+            rm -rf ./nornir/src/external/mammut
+            ln -s $(pwd)/mammut $(pwd)/nornir/src/external/mammut
+        fi
 		cd nornir && make
 		cd $rootdir
 	fi
