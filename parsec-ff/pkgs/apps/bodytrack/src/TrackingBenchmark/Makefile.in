@@ -57,8 +57,12 @@ bin_PROGRAMS = bodytrack$(EXEEXT)
 @ENABLE_FF_TRUE@                       TrackingModelFF.h \
 @ENABLE_FF_TRUE@                       TrackingModelFF.cpp
 
-@ENABLE_THREADS_TRUE@am__append_5 = threads/libthreads.la
-@ENABLE_TBB_TRUE@am__append_6 = -ltbb
+@ENABLE_NORNIR_NATIVE_TRUE@am__append_5 = ParticleFilterNornir.h \
+@ENABLE_NORNIR_NATIVE_TRUE@                       TrackingModelNornir.h \
+@ENABLE_NORNIR_NATIVE_TRUE@                       TrackingModelNornir.cpp
+
+@ENABLE_THREADS_TRUE@am__append_6 = threads/libthreads.la
+@ENABLE_TBB_TRUE@am__append_7 = -ltbb
 subdir = TrackingBenchmark
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -80,6 +84,7 @@ am__bodytrack_SOURCES_DIST = DMatrix.h GeneralUtil.h ParticleFilter.h \
 	RandomGenerator.cpp TrackingModel.h TrackingModel.cpp main.cpp \
 	ParticleFilterOMP.h TrackingModelOMP.h TrackingModelOMP.cpp \
 	ParticleFilterFF.h TrackingModelFF.h TrackingModelFF.cpp \
+	ParticleFilterNornir.h TrackingModelNornir.h TrackingModelNornir.cpp \
 	ParticleFilterPthread.h TrackingModelPthread.h \
 	TrackingModelPthread.cpp WorkPoolPthread.h AsyncIO.h \
 	AsyncIO.cpp TBBtypes.h ParticleFilterTBB.h TrackingModelTBB.h \
@@ -89,13 +94,14 @@ am__bodytrack_SOURCES_DIST = DMatrix.h GeneralUtil.h ParticleFilter.h \
 @ENABLE_THREADS_TRUE@	AsyncIO.$(OBJEXT)
 @ENABLE_TBB_TRUE@am__objects_3 = TrackingModelTBB.$(OBJEXT)
 @ENABLE_FF_TRUE@am__objects_4 = TrackingModelFF.$(OBJEXT)
+@ENABLE_NORNIR_NATIVE_TRUE@am__objects_5 = TrackingModelNornir.$(OBJEXT)
 am_bodytrack_OBJECTS = AnnealingFactor.$(OBJEXT) \
 	BodyGeometry.$(OBJEXT) BodyPose.$(OBJEXT) \
 	CameraModel.$(OBJEXT) CovarianceMatrix.$(OBJEXT) \
 	ImageMeasurements.$(OBJEXT) ImageProjection.$(OBJEXT) \
 	RandomGenerator.$(OBJEXT) TrackingModel.$(OBJEXT) \
 	main.$(OBJEXT) $(am__objects_1) $(am__objects_2) \
-	$(am__objects_3) $(am__objects_4)
+	$(am__objects_3) $(am__objects_4) $(am__objects_5)
 bodytrack_OBJECTS = $(am_bodytrack_OBJECTS)
 @ENABLE_THREADS_TRUE@am__DEPENDENCIES_1 = threads/libthreads.la
 am__DEPENDENCIES_2 =
@@ -245,10 +251,10 @@ bodytrack_SOURCES = DMatrix.h GeneralUtil.h ParticleFilter.h \
 	CovarianceMatrix.cpp ImageMeasurements.h ImageMeasurements.cpp \
 	ImageProjection.h ImageProjection.cpp RandomGenerator.h \
 	RandomGenerator.cpp TrackingModel.h TrackingModel.cpp main.cpp \
-	$(am__append_1) $(am__append_2) $(am__append_3) $(am__append_4)
+	$(am__append_1) $(am__append_2) $(am__append_3) $(am__append_4) $(am__append_5)
 AM_CPPFLAGS = -I$(VPATH)/../FlexImageLib
-bodytrack_LDADD = ../FlexImageLib/libflex.la -lm $(am__append_5) \
-	$(am__append_6)
+bodytrack_LDADD = ../FlexImageLib/libflex.la -lm $(am__append_6) \
+	$(am__append_7)
 @ENABLE_THREADS_TRUE@SUBDIRS = threads
 all: all-recursive
 
@@ -335,6 +341,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TrackingModelPthread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TrackingModelTBB.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TrackingModelFF.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TrackingModelNornir.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
 
 .cpp.o:

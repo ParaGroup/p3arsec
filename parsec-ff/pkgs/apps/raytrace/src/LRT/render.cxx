@@ -24,10 +24,18 @@
 # include "RTTL/Grid/Grid.hxx"
 #endif
 
+#ifdef ENABLE_NORNIR_NATIVE
+#undef BLOCKING_MODE
+#include <nornir.hpp>
+#endif // ENABLE_NORNIR_NATIVE
+
 #ifdef ENABLE_NORNIR
 #include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
+#endif
+
+#if defined(ENABLE_NORNIR) || defined(ENABLE_NORNIR_NATIVE)
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
@@ -160,6 +168,10 @@ protected:
 
 #ifdef FF_VERSION
 	ff::ParallelFor* pf;
+#endif
+
+#ifdef ENABLE_NORNIR_NATIVE
+  nornir::ParallelFor* pf;
 #endif
 
   // Nornir: Create instrumenter
@@ -676,14 +688,19 @@ void Context::renderFrame(Camera *camera,
     {
       if (m_threads > 1)
 	{
-	  cout << "-> starting " << m_threads << " threads..." << flush;
-    // FastFlow: Create threads
+	  cout << "-> starting " << m_threads << " threads..." << flush;    
 #ifdef FF_VERSION
+      // FastFlow: ParallelFor
       pf = new ff::ParallelFor(m_threads, false, true);
       pf->disableScheduler();
 #else
+#ifdef ENABLE_NORNIR_NATIVE 
+      // Nornir: ParallelFor
+      pf = new nornir::ParallelFor(m_threads, new nornir::Parameters(getParametersPath()));
+#else
     // Pthreads: Create threads
 	  createThreads(m_threads);
+#endif
 #endif
 	  cout << "done" << endl << flush;
 	}
@@ -727,10 +744,31 @@ void Context::renderFrame(Camera *camera,
          , m_threads
          );
 #else
+#ifdef ENABLE_NORNIR_NATIVE
+        // Parallel for
+        int index;
+        const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
+        pf->parallel_for(0, m_threadData.maxTiles, 1, 1, 
+          [&](const long long int index, const uint thid) 
+        {
+                /* todo: get rid of '/' and '%' */
+                int sx = (index % tilesPerRow)*TILE_WIDTH;
+                int sy = (index / tilesPerRow)*TILE_WIDTH;
+                int ex = min(sx+TILE_WIDTH,m_threadData.resX);
+                int ey = min(sy+TILE_WIDTH,m_threadData.resY);
+                if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
+                    renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
+                else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+                    renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
+                else
+                    FATAL("unknown mesh type");
+         });
+#else // ENABLE_NORNIR_NATIVE
       Context::m_tileCounter.reset();
       startThreads();
       waitForAllThreads();
-#endif
+#endif // ENABLE_NORNIR_NATIVE
+#endif // FF_VERSION
     }
   else
     if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)

@@ -64,7 +64,9 @@ CTask* Emitter::schedule(CTask*) {
                 return lastElement();
             }
         }
-        broadcast(&dummyTask);
+        enableRethreading();
+        broadcast(&dummyTask); // Only point when it is possible to safely do rethreading
+        disableRethreading();
     }
     return nothing();
 }

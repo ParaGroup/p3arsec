@@ -10,6 +10,7 @@ AC_ARG_ENABLE([openmp], AC_HELP_STRING([--enable-openmp], [enable OpenMP threadi
 AC_ARG_ENABLE([tbb], AC_HELP_STRING([--enable-tbb], [enable Intel TBB threading @<:@default=no@:>@]), [], [enable_tbb=no])
 AC_ARG_ENABLE([ff], AC_HELP_STRING([--enable-ff], [enable FastFlow threading @<:@default=no@:>@]), [], [enable_ff=no])
 AC_ARG_ENABLE([nornir], AC_HELP_STRING([--enable-nornir], [enable Nornir support @<:@default=no@:>@]), [], [enable_nornir=no])
+AC_ARG_ENABLE([nornir-native], AC_HELP_STRING([--enable-nornir-native], [enable Nornir native support @<:@default=no@:>@]), [], [enable_nornir_native=no])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
@@ -82,6 +83,12 @@ fi
 AM_CONDITIONAL([ENABLE_NORNIR], [test "x$enable_nornir" == "xyes"])
 AC_SUBST([ENABLE_NORNIR])
 
+if test "x$enable_nornir_native" == "xyes"; then
+  AC_DEFINE([USE_NORNIR_NATIVE], [1], [Define to 1 to enable Nornir native threading])
+  CXXFLAGS="$CXXFLAGS"
+fi
+AM_CONDITIONAL([ENABLE_NORNIR_NATIVE], [test "x$enable_nornir_native" == "xyes"])
+AC_SUBST([ENABLE_NORNIR_NATIVE])
 
 # Extra arguments
 CXXFLAGS="$CXXFLAGS -Wall"

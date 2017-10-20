@@ -35,6 +35,7 @@ by the emitter (i.e. file loading) is moved to the farm's workers.
 #include <pthread.h>
 #include <cass.h>
 #undef fatal // Defined in cass, will collide with variables named as 'fatal', e.g. "bool fatal = true;"
+#undef info 
 #include <cass_timer.h>
 #include <../image/image.h>
 #include "tpool.h"
@@ -211,7 +212,7 @@ struct load_data* file_helper (const char *file)
 }
 
 struct seg_data* segment(std::string* filename){
-	struct load_data * load = file_helper(filename);
+	struct load_data * load = file_helper(filename->c_str());
 	delete filename;
 	assert(load != NULL);
     struct seg_data *seg = (struct seg_data *)calloc(1, sizeof(struct seg_data));

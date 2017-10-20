@@ -1477,7 +1477,7 @@ int FP_tree::FP_growth(int thread, FSout* fout)
 	for(sequence=itemno - 1; sequence>=0; sequence--)
 	{
 #ifdef ENABLE_NORNIR
-                instr->begin(thread);
+		instr->begin(thread);
 #endif //ENABLE_NORNIR
 		current=table[sequence];
 		local_list->FS[local_list->top++]=current;
@@ -1507,7 +1507,7 @@ int FP_tree::FP_growth(int thread, FSout* fout)
 			}
 			local_list->top=listlen-1;
 #ifdef ENABLE_NORNIR
-                        instr->end(thread);
+			instr->end(thread);
 #endif //ENABLE_NORNIR
 			continue;
 		}
@@ -1545,11 +1545,11 @@ int FP_tree::FP_growth(int thread, FSout* fout)
 			local_list->top--;
 			local_fp_tree_buf->freebuf(fptree->MR_tree, fptree->MC_tree, fptree->MB_tree);
 #ifdef ENABLE_NORNIR
-                        instr->end(thread);
+			instr->end(thread);
 #endif //ENABLE_NORNIR 
 		}else{             
 #ifdef ENABLE_NORNIR
-                    instr->end(thread); // Call here otherwise we recurse, we call begin() again and we fail.
+			instr->end(thread); // Call here otherwise we recurse, we call begin() again and we fail.
 #endif //ENABLE_NORNIR 
 			fptree->FP_growth(thread, fout);
 			local_list->top = listlen-1;

@@ -41,14 +41,21 @@ using namespace std;
 using namespace tbb;
 #endif //ENABLE_TBB
 
+#ifdef ENABLE_NORNIR_NATIVE
+#include <nornir.hpp>
+#endif // ENABLE_NORNIR_NATIVE
+
 #ifdef ENABLE_NORNIR
 #include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
+#endif //ENABLE_NORNIR
+
+#if defined(ENABLE_NORNIR) || defined(ENABLE_NORNIR_NATIVE)
 std::string getParametersPath(){
     return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
 }
-#endif //ENABLE_NORNIR
+#endif
 
 #ifdef ENABLE_FF
 #include <iostream>
@@ -333,6 +340,35 @@ struct map: ff_Map<int> {
 
 #else // !ENABLE_FF
 
+#ifdef ENABLE_NORNIR_NATIVE
+void nornirloop(){
+    int i, j;
+    for (j=0; j<NUM_RUNS; j++) {
+        nornir::parallel_for(0, numOptions, 1, 1, nThreads, getParametersPath(), 
+            [](const long long i, const uint thid) {
+            fptype price;
+            fptype priceDelta;
+            /* Calling main function to calculate option value based on
+             * Black & Scholes's equation.
+             */
+            price = BlkSchlsEqEuroNoDiv( sptprice[i], strike[i],
+                                         rate[i], volatility[i], otime[i],
+                                         otype[i], 0);
+            prices[i] = price;
+
+#ifdef ERR_CHK
+            priceDelta = data[i].DGrefval - price;
+            if( fabs(priceDelta) >= 1e-4 ){
+                printf("Error on %d. Computed=%.5f, Ref=%.5f, Delta=%.5f\n",
+                       i, price, data[i].DGrefval, priceDelta);
+                numError ++;
+            }
+#endif
+        });
+    }
+}
+#else // ENABLE_NORNIR_NATIVE
+
 #ifdef WIN32
 DWORD WINAPI bs_thread(LPVOID tid_ptr){
 #else
@@ -550,9 +586,13 @@ int main (int argc, char **argv)
     m.run();
     m.wait();
 #else //ENABLE_FF
+#ifdef ENABLE_NORNIR_NATIVE
+    nornirloop();
+#else // ENABLE_NORNIR_NATIVE
     //serial version
     int tid=0;
     bs_thread(&tid);
+#endif //ENABLE_NORNIR_NATIVE
 #endif //ENABLE_FF
 #endif //ENABLE_TBB
 #endif //ENABLE_OPENMP

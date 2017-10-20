@@ -58,7 +58,14 @@
 using namespace tbb;
 #endif //USE_TBB
 
-#ifdef USE_NORNIR
+#ifdef USE_NORNIR_NATIVE
+#undef BLOCKING_MODE // TODO FIX
+#include <nornir.hpp>
+#include "ParticleFilterNornir.h"
+#include "TrackingModelNornir.h"
+#endif //USE_NORNIR_NATIVE
+
+#if defined(USE_NORNIR) || defined(USE_NORNIR_NATIVE)
 #include <instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
@@ -128,8 +135,14 @@ bool ProcessCmdLine(int argc, char **argv, string &path, int &cameras, int &fram
 #else
         usage += string("(unavailable)\n");
 #endif
+        usage += string("                       5 = Nornir native               ");
+#ifdef USE_NORNIR_NATIVE
+        usage += string("\n");
+#else
+        usage += string("(unavailable)\n");
+#endif
 
-        usage += string("                       5 = Serial\n");
+        usage += string("                       6 = Serial\n");
 
 	string errmsg("Error : invalid argument - ");
 	if(argc < 6 || argc > 9)															//check for valid number of arguments
@@ -241,6 +254,55 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 #endif //USE_NORNIR
 
 	return 1;
+}
+#endif
+
+//Body tracking threaded with Nornir
+#if defined(USE_NORNIR_NATIVE)
+int mainNornir(string path, int cameras, int frames, int particles, int layers, int threads, bool OutputBMP)
+{
+    cout << "Threading with Nornir" << endl;
+    cout << "Number of Threads : " << threads << endl;
+
+    TrackingModelNornir model;
+    if(!model.Initialize(path, cameras, layers))                                        //Initialize model parameters
+    {   cout << endl << "Error loading initialization data." << endl;
+        return 0;
+    }
+    model.SetNumThreads(threads);
+    nornir::ParallelFor parallelFor(threads, new nornir::Parameters(getParametersPath()));
+    model.setParallelFor(&parallelFor);                                 //set parallelFor object.  
+    model.GetObservation(0);                                                            //load data for first frame
+    ParticleFilterNornir<TrackingModel> pf;                                                 //particle filter (Nornir threaded) instantiated with body tracking model type
+    pf.setParallelFor(&parallelFor);
+    pf.SetModel(model);                                                                 //set the particle filter model
+    pf.InitializeParticles(particles);                                                  //generate initial set of particles and evaluate the log-likelihoods
+
+    cout << "Using dataset : " << path << endl;
+    cout << particles << " particles with " << layers << " annealing layers" << endl << endl;
+    ofstream outputFileAvg((path + "poses.txt").c_str());
+
+    vector<float> estimate;                                                             //expected pose from particle distribution
+
+#if defined(ENABLE_PARSEC_HOOKS)
+    __parsec_roi_begin();
+#endif
+    for(int i = 0; i < frames; i++)                                                     //process each set of frames
+    {   
+        cout << "Processing frame " << i << endl;
+        if(!pf.Update((float)i))                                                        //Run particle filter step
+        {   cout << "Error loading observation data" << endl;
+            return 0;
+        }       
+        pf.Estimate(estimate);                                                          //get average pose of the particle distribution
+        WritePose(outputFileAvg, estimate);
+        if(OutputBMP)
+            pf.Model().OutputBMP(estimate, i);                                          //save output bitmap file
+    }
+#if defined(ENABLE_PARSEC_HOOKS)
+    __parsec_roi_end();
+#endif
+    return 1;
 }
 #endif
 
@@ -518,8 +580,10 @@ int main(int argc, char **argv)
                 threadModel = 3;
 #elif defined(USE_FF)
                 threadModel = 4;
-#else
+#elif defined(USE_NORNIR_NATIVE)
                 threadModel = 5;
+#else
+                threadModel = 6;
 #endif
         }
 	switch(threadModel)
@@ -569,8 +633,16 @@ int main(int argc, char **argv)
                                 cout << "If the environment supports it, rebuild with USE_FF #defined." << endl;
                                 break;
                         #endif
-
                 case 5 :
+                        #if defined(USE_NORNIR_NATIVE)
+                                mainNornir(path, cameras, frames, particles, layers, threads, OutputBMP);             //Nornir tracking
+                                break;
+                        #else
+                                cout << "Not compiled with Nornir native support. " << endl;
+                                cout << "If the environment supports it, rebuild with USE_NORNIR_NATIVE #defined." << endl;
+                                break;
+                        #endif
+                case 6 :
                         mainSingleThread(path, cameras, frames, particles, layers, OutputBMP);                          //single threaded tracking
                         break;
 

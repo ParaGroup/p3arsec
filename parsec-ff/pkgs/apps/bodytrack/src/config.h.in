@@ -87,6 +87,9 @@
 /* Define to 1 to enable Nornir support */
 #undef USE_NORNIR
 
+/* Define to 1 to enable Nornir native threading */
+#undef USE_NORNIR_NATIVE
+
 /* Version number of package */
 #undef VERSION
 
