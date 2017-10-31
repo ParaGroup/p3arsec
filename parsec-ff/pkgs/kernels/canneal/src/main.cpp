@@ -42,10 +42,6 @@
 #include <hooks.h>
 #endif
 
-#ifdef ENABLE_NORNIR_NATIVE
-#undef BLOCKING_MODE // There is a bug in ff feedback with blocking queues, so we disable them
-#endif
-
 #if defined(ENABLE_NORNIR) || defined(ENABLE_NORNIR_NATIVE)
 #include <instrumenter.hpp>
 #include <stdlib.h>
@@ -156,7 +152,9 @@ int main (int argc, char * const argv[]) {
     farm.wrap_around();
     farm.run_and_wait_end();
 #elif defined(ENABLE_NORNIR_NATIVE)
-    nornir::Farm<CTask, CTask> farm(getParametersPath());
+    nornir::Parameters nornirparams(getParametersPath());
+    nornirparams.synchronousWorkers = true;
+    nornir::Farm<CTask, CTask> farm(&nornirparams);
     farm.addScheduler(new Emitter(num_threads, number_temp_steps));
     for(int i = 0; i < num_threads; i++){
         farm.addWorker(new annealer_thread(&my_netlist, num_threads, swaps_per_temp, start_temp));

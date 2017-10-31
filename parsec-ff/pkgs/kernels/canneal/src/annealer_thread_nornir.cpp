@@ -27,6 +27,7 @@
 // OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 
+#undef BLOCKING_MODE
 #include <instrumenter.hpp>
 #include <iostream>
 extern nornir::Instrumenter* instr;
@@ -53,6 +54,7 @@ Emitter::Emitter(uint maxNumWorkers, int number_temp_steps):
 }
 
 CTask* Emitter::schedule(CTask*) {
+    disableRethreading();
     if(_firstRun){
         broadcast(&dummyTask);
         _firstRun = false;
@@ -64,9 +66,11 @@ CTask* Emitter::schedule(CTask*) {
                 return lastElement();
             }
         }
+        broadcast(&dummyTask); 
         enableRethreading();
-        broadcast(&dummyTask); // Only point when it is possible to safely do rethreading
-        disableRethreading();
+        return nothing(); // Since rethreading in never executed inside broadcast, we force it by returining a nothing task // TODO FIX In a general way inside broadcast
+    }else{
+        ;
     }
     return nothing();
 }
