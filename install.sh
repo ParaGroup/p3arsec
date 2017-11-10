@@ -53,6 +53,9 @@ if [ "$ONLYINPUT" = true ]; then
 	rm -f parsec-3.0-input-native.tar.gz
 	rsync --remove-source-files -a parsec-3.0/ ./
 	rm -rf parsec-3.0
+
+    cp ./pkgs/apps/raytrace/inputs/input_simlarge.tar ./pkgs/apps/raytrace/inputs/input_demo-bright17.tar
+    cp ./pkgs/apps/fluidanimate/inputs/input_simsmall.tar ./pkgs/apps/fluidanimate/inputs/input_demo-bright17.tar
 else
 	# Get PARSEC
 	if [ "$INPUT" = true ]; then
@@ -115,7 +118,7 @@ else
             rm -rf ./nornir/src/external/mammut
             ln -s $(pwd)/mammut $(pwd)/nornir/src/external/mammut
         fi
-		cd nornir && make
+		cd nornir && git checkout a97827b && make
 		cd $rootdir
 	fi
 
@@ -141,8 +144,10 @@ else
     rm -rf pkgs/apps/vips/src/libvips/iofuncs/threadpool.c
 
     # Creating inputs for new configurations (e.g. for demos)
-    cp ./pkgs/apps/raytrace/inputs/input_simlarge.tar ./pkgs/apps/raytrace/inputs/input_demo-bright17.tar
-    cp ./pkgs/apps/fluidanimate/inputs/input_simsmall.tar ./pkgs/apps/fluidanimate/inputs/input_demo-bright17.tar
+    if [ "$INPUT" = true ]; then
+        cp ./pkgs/apps/raytrace/inputs/input_simlarge.tar ./pkgs/apps/raytrace/inputs/input_demo-bright17.tar
+        cp ./pkgs/apps/fluidanimate/inputs/input_simsmall.tar ./pkgs/apps/fluidanimate/inputs/input_demo-bright17.tar
+    fi
 
 	# Clean
 	mv README README_PARSEC

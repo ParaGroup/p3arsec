@@ -245,8 +245,8 @@ public:
   ~Context(){
 #ifdef ENABLE_NORNIR
     instr->terminate();
-    std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
-    std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+    std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
     delete instr;
 #endif 
   }

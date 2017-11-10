@@ -249,8 +249,8 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 #endif
 #ifdef USE_NORNIR
     instr.terminate();
-    std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
-    std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+    std::cout << "riff.time|" << instr.getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr.getTotalTasks() << std::endl;
 #endif //USE_NORNIR
 
 	return 1;
@@ -363,8 +363,8 @@ int mainOMP(string path, int cameras, int frames, int particles, int layers, int
 #endif
 #ifdef USE_NORNIR
 	instr.terminate();
-	std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
-    std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+	std::cout << "riff.time|" << instr.getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr.getTotalTasks() << std::endl;
 #endif //USE_NORNIR
 
 	return 1;
@@ -442,8 +442,8 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 #endif
 #ifdef USE_NORNIR
     instr.terminate();
-    std::cout << "knarr.time|" << instr.getExecutionTime() << std::endl;
-    std::cout << "knarr.iterations|" << instr.getTotalTasks() << std::endl;
+    std::cout << "riff.time|" << instr.getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr.getTotalTasks() << std::endl;
 #endif //USE_NORNIR
 	return 1;
 }

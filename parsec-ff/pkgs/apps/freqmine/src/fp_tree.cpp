@@ -1440,8 +1440,8 @@ int FP_tree::FP_growth_first(FSout* fout)
 	}
 #ifdef ENABLE_NORNIR
             instr->terminate();
-            std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
-            std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+            std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+            std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
 #endif //ENABLE_NORNIR 
 	 wtime(&tend);
 //	 printf("the major FP_growth cost %f vs %f seconds\n", tend - tstart, temp_time - tstart);

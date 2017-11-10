@@ -973,8 +973,8 @@ vips_threadpool_run( VipsImage *im,
 
 #ifdef HAVE_NORNIR
 	instr->terminate();
-    std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
-    std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+    std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
 	delete instr;
 #endif //HAVE_NORNIR
 
@@ -1153,8 +1153,8 @@ vips_threadpool_run( VipsImage *im,
 	vips_threadpool_free( pool );
 #ifdef HAVE_NORNIR
 	instr->terminate();
-    std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
-    std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+    std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
 	delete instr;
 #endif //HAVE_NORNIR
 

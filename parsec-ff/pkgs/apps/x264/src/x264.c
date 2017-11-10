@@ -942,8 +942,8 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
 
 #ifdef ENABLE_NORNIR
     nornir_instrumenter_terminate(instr);
-    printf("knarr.time|%d\n", nornir_instrumenter_get_execution_time(instr));
-    printf("knarr.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
+    printf("riff.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("riff.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
     nornir_instrumenter_destroy(instr);
 #endif //ENABLE_NORNIR
 

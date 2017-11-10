@@ -2519,8 +2519,8 @@ int main(int argc, char **argv)
 
 #ifdef ENABLE_NORNIR
   instr->terminate();
-  std::cout << "knarr.time|" << instr->getExecutionTime() << std::endl;
-  std::cout << "knarr.iterations|" << instr->getTotalTasks() << std::endl;
+  std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+  std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
 #endif //ENABLE_NORNIR
 
 #ifdef ENABLE_PARSEC_HOOKS

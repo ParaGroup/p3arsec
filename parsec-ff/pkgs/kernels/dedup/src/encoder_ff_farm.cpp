@@ -1263,8 +1263,8 @@ void EncodeFF(config_t * _conf) {
 #endif
 #ifdef ENABLE_NORNIR
     instr->terminate();
-    printf("knarr.time|%d\n", instr->getExecutionTime());
-    printf("knarr.iterations|%d\n", instr->getTotalTasks());
+    printf("riff.time|%d\n", instr->getExecutionTime());
+    printf("riff.iterations|%d\n", instr->getTotalTasks());
     delete instr;
 #endif //ENABLE_NORNIR
 
