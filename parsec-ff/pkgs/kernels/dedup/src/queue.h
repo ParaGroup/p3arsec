@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 #include <pthread.h>
 #endif //ENABLE_PTHREADS
 
@@ -15,7 +15,7 @@ struct _ringbuffer_t {
   int head, tail;
   void **data;
   size_t size;
-#ifdef ENABLE_FF
+#if defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   int last;
   int bypassCompress;
 #endif
@@ -29,7 +29,7 @@ struct _queue_t {
   ringbuffer_t buf;
   int nProducers;
   int nTerminated;
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   pthread_mutex_t mutex;
   pthread_cond_t notEmpty, notFull;
 #endif //ENABLE_PTHREADS
@@ -50,7 +50,7 @@ static inline int ringbuffer_init(ringbuffer_t *buf, size_t size) {
   buf->size = (size+1);
   buf->head = 0;
   buf->tail = 0;
-#ifdef ENABLE_FF
+#if defined(ENABLE_FF)  || defined(ENABLE_NORNIR_NATIVE)
   buf->last = 0;
   buf->bypassCompress = 0;
 #endif
@@ -101,7 +101,7 @@ static inline int ringbuffer_insert(ringbuffer_t *buf, void *ptr) {
   return 0;
 }
 
-#ifdef ENABLE_FF
+#if defined(ENABLE_FF)  || defined(ENABLE_NORNIR_NATIVE)
 // Marks the ringbuffer as the last of the stream.
 static inline void ringbuffer_setLast(ringbuffer_t *buf){
   buf->last = 1;

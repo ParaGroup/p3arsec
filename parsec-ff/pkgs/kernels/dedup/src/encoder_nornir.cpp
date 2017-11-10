@@ -50,9 +50,6 @@ extern "C" {
 #include <interface.hpp>
 #include <stdlib.h>
 #include <iostream>
-std::string getParametersPath(){
-    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
-}
 
 #include <ff/farm.hpp>
 #include <ff/pipeline.hpp>
@@ -863,7 +860,7 @@ public:
                 split = 0;
                 //Try to split the buffer at least ANCHOR_JUMP bytes away from its beginning
                 if(ANCHOR_JUMP < chunk->uncompressed_data.n) {
-                    int offset = rabinseg(chunk->uncompressed_data.ptr + ANCHOR_JUMP, chunk->uncompressed_data.n - ANCHOR_JUMP, rf_win_dataprocess, rabintab, rabinwintab);
+                    int offset = rabinseg((uchar*) chunk->uncompressed_data.ptr + ANCHOR_JUMP, chunk->uncompressed_data.n - ANCHOR_JUMP, rf_win_dataprocess, rabintab, rabinwintab);
                     //Did we find a split location?
                     if(offset == 0) {
                         //Split found at the very beginning of the buffer (should never happen due to technical limitations)
@@ -914,14 +911,16 @@ public:
         }
         //drain buffer
         ringbuffer_setLast(send_buf);
-        send(send_buf);
+        sendTo(send_buf, 0);
+        disableRethreading();
         // Send the last buffer also to the other workers (nw - 1)
         for(size_t i = 1; i < nw; i++){
             send_buf = (ringbuffer_t*) malloc(sizeof(ringbuffer_t));
             r = ringbuffer_init(send_buf, ANCHOR_DATA_PER_INSERT);
             ringbuffer_setLast(send_buf);
-            send(send_buf);
+            sendTo(send_buf, i);
         }
+        enableRethreading();
 
         free(rabintab);
         free(rabinwintab);
@@ -1000,10 +999,12 @@ public:
 
 static void runSingleFarm(config_t * conf, struct thread_args* data_process_args,
         stats_t **threads_anchor_rv, stats_t **threads_chunk_rv, stats_t **threads_compress_rv){
-    nornir::Farm<ringbuffer_t, ringbuffer_t> farm(getParametersPath());
+    std::vector<CollapsedPipeline*> workers;
+    nornir::Farm<ringbuffer_t, ringbuffer_t> farm("parameters.xml");
     farm.addScheduler(new Fragment(data_process_args, conf->nthreads));
     for(int i = 0; i < conf->nthreads; i++){
-        farm.addWorker(new CollapsedPipeline());
+        workers.push_back(new CollapsedPipeline());
+        farm.addWorker(workers.back());
     }
     farm.addGatherer(new Reorder());
     /* 
@@ -1034,7 +1035,7 @@ static void runSingleFarm(config_t * conf, struct thread_args* data_process_args
  *   conf:    Configuration parameters
  *
  */
-void EncodeFF(config_t * _conf) {
+void EncodeNornir(config_t * _conf) {
   struct stat filestat;
   int32 fd;
 
