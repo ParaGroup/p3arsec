@@ -7,9 +7,9 @@ This repository contains parallel patterns implementations of some applications 
 
 The structure and modelling of the applications is described in the paper:
 
-**Bringing Parallel Patterns out of the Corner: the P<sup>3</sup>ARSEC Benchmark Suite**</br>
+[**Bringing Parallel Patterns out of the Corner: the P<sup>3</sup>ARSEC Benchmark Suite**</br>
 Daniele De Sensi, Tiziano De Matteis, Massimo Torquati, Gabriele Mencagli, Marco Danelutto</br>
-*ACM Transactions on Architecture and Code Optimization (TACO)* **[To Appear]**</br>
+*ACM Transactions on Architecture and Code Optimization (TACO)* </br>](https://dl.acm.org/citation.cfm?id=3132710)
 
 [![Release v1.0](http://github-release-version.herokuapp.com/github/paragroup/p3arsec/release.svg?style=flat)](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
 
@@ -219,28 +219,51 @@ At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace 
 
 After that, build and run *ferret* as usual.
 
-# Nornir Support
+# Enforcing Performance and Power Consumption Requirements
 
-We also support dynamic reconfiguration of the applications by relying on [Nornir](http://danieledesensi.github.io/nornir/) 
-runtime. It is possible to specify requirements on performance (throughput or execution time) and/or power and energy
-consumption. To do that, is necessary to put an XML file (called ```parameters.xml```) in the p3arsec root directory, 
+It is possible to specify requirements on performance (throughput or execution time) and/or power and energy
+consumption for all the benchmarks. We provide this possibility by exploiting dynamic reconfiguration of the applications 
+by relying on [Nornir](http://danieledesensi.github.io/nornir/) runtime. The runtime will automatically change the number of cores
+allocated to the application and their clock frequency. 
+To exploit this possibility, you need to put an XML file (called ```parameters.xml```) in the p3arsec root directory, 
 containing requirements in terms of performance and power consumption. The XML file must have the following format:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <nornirParameters>
     <requirements>
-        <bandwidth>100</bandwidth>
+        <throughput>100</throughput>
         <powerConsumption>MIN</powerConsumption> 
     </requirements>
 </nornirParameters>
 ```
 In this specific example, we require the application to have a troughput greater
-than 100. Since many configurations of resources may be characterized by
-such throughput, we require Nornir to pick the one characterized by the
-lowest power consumption.
+than 100 iterations per second. Moreover, since many configurations may provide
+such throughput, we require Nornir to choose the configuration with the 
+lowest power consumption among those with a feasible throughput.
 For more details about the type of parameters that can be specified please refer 
 to [Nornir Documentation](http://danieledesensi.github.io/nornir/description.html#parameters).
+The meaning of *iteration* (i.e. the way in which we measure the throughput) is application-specific. In the
+following table we show what do we mean for *iteration* for each benchmark application:
+
+Application   | Iteration
+------------- | ---------
+Blacksholes   | 1 Stock Option
+Bodytrack     | 1 Frame
+Canneal       | 1 Move
+Dedup         | 1 Chunk
+Facesim       | 1 Frame
+Ferret        | 1 Query
+Fluidanimate  | 1 Frame
+Freqmine      | 1 Call of the *FP_growth* function
+Raytrace      | 1 Frame
+Streamcluster | 1 Evaluation for opening a new center
+Swaptions     | 1 Simulation
+Vips          | 1 Image Tile
+x264          | 1 Frame
+
+For example, the example XML configuration file we shown before would
+enforce *Blackscholes* to process at least 100 Stock Options per second.
 
 If you want to compile/run applications with dynamic reconfiguration enabled, use the following
 configurations (to be specified through the ```-c``` parameter):
@@ -249,6 +272,9 @@ configurations (to be specified through the ```-c``` parameter):
 * *gcc-pthreads-nornir* for the Pthreads implementation.
 * *gcc-openmp-nornir* for the OpenMP implementation.
 * *gcc-tbb-nornir* for the Intel TBB implementation.
+
+**ATTENTION: sudo rights are required since we need to perform some high-priviledge operations such as: reading the power consumption,
+dynamically scaling the clock frequency, etc...**
 
 # Contributors
 P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto:d.desensi.software@gmail.com) and [Tiziano De Matteis](mailto:dematteis@di.unipi.it).
