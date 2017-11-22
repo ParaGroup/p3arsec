@@ -9,7 +9,7 @@ The structure and modelling of the applications is described in the paper:
 
 [**Bringing Parallel Patterns out of the Corner: the P<sup>3</sup>ARSEC Benchmark Suite**</br>
 Daniele De Sensi, Tiziano De Matteis, Massimo Torquati, Gabriele Mencagli, Marco Danelutto</br>
-*ACM Transactions on Architecture and Code Optimization (TACO)* </br>](https://dl.acm.org/citation.cfm?id=3132710)
+*ACM Transactions on Architecture and Code Optimization (TACO), October 2017* </br>](https://dl.acm.org/citation.cfm?id=3132710)
 
 [![Release v1.0](http://github-release-version.herokuapp.com/github/paragroup/p3arsec/release.svg?style=flat)](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
 
@@ -219,7 +219,7 @@ At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace 
 
 After that, build and run *ferret* as usual.
 
-# Enforcing Performance and Power Consumption Requirements
+# Enforcing Performance and Power Consumption Objectives
 
 It is possible to specify requirements on performance (throughput or execution time) and/or power and energy
 consumption for all the benchmarks. We provide this possibility by exploiting dynamic reconfiguration of the applications 
@@ -262,7 +262,7 @@ Swaptions     | 1 Simulation
 Vips          | 1 Image Tile
 x264          | 1 Frame
 
-For example, the example XML configuration file we shown before would
+For example, the example XML file we shown before would
 enforce *Blackscholes* to process at least 100 Stock Options per second.
 
 If you want to compile/run applications with dynamic reconfiguration enabled, use the following
@@ -273,7 +273,7 @@ configurations (to be specified through the ```-c``` parameter):
 * *gcc-openmp-nornir* for the OpenMP implementation.
 * *gcc-tbb-nornir* for the Intel TBB implementation.
 
-**ATTENTION: sudo rights are required since we need to perform some high-priviledge operations such as: reading the power consumption,
+**ATTENTION: To run *gcc-&ast;-nornir* configurations sudo rights are required since we need to perform some high-priviledge operations such as: reading the power consumption,
 dynamically scaling the clock frequency, etc...**
 
 # Contributors
