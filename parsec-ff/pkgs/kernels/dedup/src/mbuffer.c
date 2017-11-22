@@ -5,7 +5,7 @@
 #include <string.h>
 #include <assert.h>
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 #include <pthread.h>
 #endif //ENABLE_PTHREADS
 
@@ -18,7 +18,7 @@
 
 
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 
 //Use spin locks instead of mutexes (this file only)
 #define ENABLE_SPIN_LOCKS
@@ -58,7 +58,7 @@ static inline int lock_hash(void *p) {
 
 //Initialize memory buffer subsystem
 int mbuffer_system_init() {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   int i;
 
   assert(locks==NULL);
@@ -81,7 +81,7 @@ int mbuffer_system_init() {
 
 //Shutdown memory buffer subsystem
 int mbuffer_system_destroy() {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   int i, rv;
   rv=0;
   for(i=0; i<NUMBER_OF_LOCKS; i++) {
@@ -136,7 +136,7 @@ mbuffer_t *mbuffer_clone(mbuffer_t *m) {
   if(temp==NULL) return NULL;
 
   //Update reference counter
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   PTHREAD_LOCK(&locks[lock_hash(m->mcb)]);
   assert(m->mcb->i>=1);
   m->mcb->i++;
@@ -193,7 +193,7 @@ void mbuffer_free(mbuffer_t *m) {
 #endif
 
   //Update meta state first to avoid races
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   PTHREAD_LOCK(&locks[lock_hash(m->mcb)]);
   m->mcb->i--;
   ref = m->mcb->i;
@@ -226,20 +226,20 @@ int mbuffer_realloc(mbuffer_t *m, size_t size) {
   assert(m->check_flag==MBUFFER_CHECK_MAGIC);
 #endif
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   PTHREAD_LOCK(&locks[lock_hash(m->mcb)]);
 #endif //ENABLE_PTHREADS
 
   //We cannot resize a buffer if more than one pointer to it is in circulation
   if(m->mcb->i > 1) {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
     PTHREAD_UNLOCK(&locks[lock_hash(m->mcb)]);
 #endif
     return -1;
   }
   //This must be the original mbuffer, otherwise we'd have to do something more complicated
   if(m->ptr != m->mcb->ptr) {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
     PTHREAD_UNLOCK(&locks[lock_hash(m->mcb)]);
 #endif
     return -1;
@@ -252,7 +252,7 @@ int mbuffer_realloc(mbuffer_t *m, size_t size) {
     m->mcb->ptr = r;
   }
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   PTHREAD_UNLOCK(&locks[lock_hash(m->mcb)]);
 #endif
 
@@ -276,7 +276,7 @@ int mbuffer_split(mbuffer_t *m1, mbuffer_t *m2, size_t split) {
 #endif
 
   //Update reference counter
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   PTHREAD_LOCK(&locks[lock_hash(m1->mcb)]);
   assert(m1->mcb->i>=1);
   m1->mcb->i++;

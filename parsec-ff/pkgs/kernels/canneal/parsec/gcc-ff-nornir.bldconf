@@ -1,0 +1,7 @@
+#!/bin/bash
+# gcc-ff-nornir.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/kernels/canneal/parsec/gcc-ff.bldconf
+
+build_env="${build_env} CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2\""
+build_deps="libxml2 ${build_deps}"

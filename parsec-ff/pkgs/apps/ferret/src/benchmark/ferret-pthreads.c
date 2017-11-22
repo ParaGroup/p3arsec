@@ -37,6 +37,21 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <instrumenter.h>
+#include <stdlib.h>
+#include <stdio.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+
+NornirInstrumenter* instr;
+#endif //ENABLE_NORNIR
+
 #define DEFAULT_DEPTH	25
 #define MAXR	100
 #define IMAGE_DIM	14
@@ -379,7 +394,9 @@ void *t_out (void *dummy)
 	{
 		if(dequeue(&q_rank_out, &rank) < 0)
 		    break;
-		
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
 		assert(rank != NULL);
 
 		fprintf(fout, "%s", rank->name);
@@ -402,8 +419,10 @@ void *t_out (void *dummy)
 		cnt_dequeue++;
 		
 		fprintf(stderr, "(%d,%d)\n", cnt_enqueue, cnt_dequeue);
+#ifdef ENABLE_NORNIR
+		nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
 	}
-
 	assert(cnt_enqueue == cnt_dequeue);
 	return NULL;
 }
@@ -446,6 +465,10 @@ int main (int argc, char *argv[])
 		printf("%s <database> <table> <query dir> <top K> <depth> <n> <out>\n", argv[0]); 
 		return 0;
 	}
+
+#ifdef ENABLE_NORNIR
+    instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
 
 	db_dir = argv[1];
 	table_name = argv[2];
@@ -564,6 +587,12 @@ int main (int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("riff.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("riff.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));    
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
 	tpool_destroy(p_load);
 	tpool_destroy(p_seg);

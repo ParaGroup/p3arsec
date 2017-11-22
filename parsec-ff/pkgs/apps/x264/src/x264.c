@@ -47,6 +47,19 @@
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <instrumenter.h>
+#include <stdlib.h>
+#include <stdio.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+#endif //ENABLE_NORNIR
+
 uint8_t *mux_buffer = NULL;
 int mux_buffer_size = 0;
 
@@ -67,6 +80,10 @@ typedef struct {
     hnd_t hout;
     FILE *qpfile;
 } cli_opt_t;
+
+#ifdef ENABLE_NORNIR
+NornirInstrumenter* instr;
+#endif //ENABLE_NORNIR
 
 /* input file operation function pointers */
 int (*p_open_infile)( char *psz_filename, hnd_t *p_handle, x264_param_t *p_param );
@@ -819,6 +836,10 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     int     i_update_interval;
     char    buf[200];
 
+#ifdef ENABLE_NORNIR
+    instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
+    
     opt->b_progress &= param->i_log_level < X264_LOG_DEBUG;
     i_frame_total = p_get_frame_total( opt->hin );
     i_frame_total -= opt->i_seek;
@@ -858,6 +879,9 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
         if( p_read_frame( &pic, opt->hin, i_frame + opt->i_seek ) )
             break;
 
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
         pic.i_pts = (int64_t)i_frame * param->i_fps_den;
 
         if( opt->qpfile )
@@ -894,16 +918,34 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
             SetConsoleTitle( buf );
             fflush( stderr ); // needed in windows
         }
+
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
     }
     /* Flush delayed B-frames */
-    do {
+    do {        
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
         i_file +=
         i_frame_size = Encode_frame( h, opt->hout, NULL );
+
+#ifdef ENABLE_NORNIR
+        nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
     } while( i_frame_size );
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();
 #endif
+
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("riff.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("riff.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
     i_end = x264_mdate();
     x264_picture_clean( &pic );

@@ -29,6 +29,15 @@
 #include <hooks.h>
 #endif
 
+#ifdef ENABLE_NORNIR
+#include <instrumenter.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 #include <ff/parallel_for.hpp>
 
 //Uncomment to add code to check that Courant–Friedrichs–Lewy condition is satisfied at runtime
@@ -77,6 +86,10 @@ pthread_mutex_t **mutex;  // used to lock cells in RebuildGrid and also particle
 
 ff::ParallelFor* ffpf;
 int frames;
+
+#ifdef ENABLE_NORNIR
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1113,8 +1126,12 @@ void AdvanceParticlesMT()
 
 void AdvanceFrameMT()
 {
-	std::swap(cells, cells2);
-    std::swap(cnumPars, cnumPars2);
+#ifdef ENABLE_NORNIR
+  instr->begin();
+#endif //ENABLE_NORNIR
+
+  std::swap(cells, cells2);
+  std::swap(cnumPars, cnumPars2);
 
   ClearParticlesMT();
   RebuildGridMT();
@@ -1130,6 +1147,9 @@ void AdvanceFrameMT()
   // to account for particle migration beyond domain.
   ProcessCollisions2MT();
 #endif
+#ifdef ENABLE_NORNIR
+  instr->end();
+#endif //ENABLE_NORNIR
 }
 
 void *AdvanceFramesMT()
@@ -1173,6 +1193,10 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter(getParametersPath());
+#endif //ENABLE_NORNIR
+    
 #ifdef ENABLE_CFL_CHECK
   std::cout << "WARNING: Check for Courant–Friedrichs–Lewy condition enabled. Do not use for performance measurements." << std::endl;
 #endif
@@ -1185,7 +1209,7 @@ int main(int argc, char *argv[])
 	frames = framenum;
 	ffpf = new ff::ParallelFor(threadnum, false, true);
 #ifdef ENABLE_PARSEC_HOOKS
-  __parsec_roi_begin();
+    __parsec_roi_begin();
 #endif	
 
   // *** PARALLEL PHASE *** //
@@ -1198,6 +1222,12 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+  instr->terminate();
+  std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+  std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
+  delete instr;
+#endif //ENABLE_NORNIR
 
   if(argc > 4)
     SaveFile(argv[4]);

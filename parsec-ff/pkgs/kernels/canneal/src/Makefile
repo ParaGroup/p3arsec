@@ -14,6 +14,10 @@ ifdef version
     CXXFLAGS+=-DENABLE_THREADS -DENABLE_FF -pthread
     THREADFILE:=annealer_thread_ff.cpp
   endif
+  ifeq "$(version)" "nornir"
+    CXXFLAGS+=-DENABLE_THREADS -DENABLE_NORNIR_NATIVE -pthread
+    THREADFILE:=annealer_thread_nornir.cpp
+  endif
 endif
 
 all:

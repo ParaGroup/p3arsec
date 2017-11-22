@@ -55,6 +55,12 @@ if ENABLE_FF
                        TrackingModelFF.cpp
 endif
 
+if ENABLE_NORNIR_NATIVE
+  bodytrack_SOURCES += ParticleFilterNornir.h \
+                       TrackingModelNornir.h \
+                       TrackingModelNornir.cpp
+endif
+
 AM_CPPFLAGS = -I$(VPATH)/../FlexImageLib
 bodytrack_LDADD = ../FlexImageLib/libflex.la -lm
 

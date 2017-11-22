@@ -284,6 +284,28 @@ else
   enable_ff=no
 fi
 
+# option to use Nornir management
+AC_ARG_ENABLE(nornir, 
+  AS_HELP_STRING([--enable-nornir], [add Nornir management (default: no)]))
+
+if test x"$enable_nornir" = "xyes"; then
+  AC_DEFINE(HAVE_NORNIR,1,[Nornir management])
+  enable_nornir=yes
+else
+  enable_nornir=no
+fi
+
+# option to use Nornir native interface
+AC_ARG_ENABLE(nornir-native, 
+  AS_HELP_STRING([--enable-nornir-native], [evaluate with Nornir interface (default: no)]))
+
+if test x"$enable_nornir_native" = "xyes"; then
+  AC_DEFINE(HAVE_NORNIR_NATIVE,1,[Nornir evaluation])
+  enable_nornir_native=yes
+else
+  enable_nornir_native=no
+fi
+
 # check for gtk-doc
 GTK_DOC_CHECK(1.9)
 
@@ -659,6 +681,8 @@ enable debug:				$enable_debug
 build C++ components:			$enable_cxx
 evaluate with threads: 			$enable_threads
 evaluate with FastFlow:			$enable_ff
+add Nornir management:      $enable_nornir
+evaluate with Nornir:      $enable_nornir_native
 make symlinks for commands in bin: 	$enable_links
 build docs with gtkdoc 			$enable_gtk_doc
 

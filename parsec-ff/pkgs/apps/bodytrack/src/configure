@@ -465,7 +465,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar build build_cpu build_vendor build_os host host_cpu host_vendor host_os CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE SED EGREP LN_S ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB CPP CXX CXXFLAGS ac_ct_CXX CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL ENABLE_THREADS_TRUE ENABLE_THREADS_FALSE ENABLE_THREADS ENABLE_OPENMP_TRUE ENABLE_OPENMP_FALSE ENABLE_OPENMP ENABLE_TBB_TRUE ENABLE_TBB_FALSE ENABLE_TBB ENABLE_FF_TRUE ENABLE_FF_FALSE ENABLE_FF LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar build build_cpu build_vendor build_os host host_cpu host_vendor host_os CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE SED EGREP LN_S ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB CPP CXX CXXFLAGS ac_ct_CXX CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL ENABLE_THREADS_TRUE ENABLE_THREADS_FALSE ENABLE_THREADS ENABLE_OPENMP_TRUE ENABLE_OPENMP_FALSE ENABLE_OPENMP ENABLE_TBB_TRUE ENABLE_TBB_FALSE ENABLE_TBB ENABLE_FF_TRUE ENABLE_FF_FALSE ENABLE_FF ENABLE_NORNIR_TRUE ENABLE_NORNIR_FALSE ENABLE_NORNIR ENABLE_NORNIR_NATIVE_TRUE ENABLE_NORNIR_NATIVE_FALSE ENABLE_NORNIR_NATIVE LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -1991,6 +1991,22 @@ if test "${enable_ff+set}" = set; then
 
 else
   enable_ff=no
+fi;
+
+# Check whether --enable-nornir or --disable-nornir was given.
+if test "${enable_nornir+set}" = set; then
+  enableval="$enable_nornir"
+
+else
+  enable_nornir=no
+fi;
+
+# Check whether --enable-nornir-native or --disable-nornir-native was given.
+if test "${enable_nornir_native+set}" = set; then
+  enableval="$enable_nornir_native"
+
+else
+  enable_nornir_native=no
 fi;
 
 # Checks for programs.
@@ -20449,7 +20465,41 @@ else
   ENABLE_FF_FALSE=
 fi
 
+if test "x$enable_nornir" == "xyes"; then
 
+cat >>confdefs.h <<\_ACEOF
+#define USE_NORNIR 1
+_ACEOF
+
+  CXXFLAGS="$CXXFLAGS"
+fi
+
+
+if test "x$enable_nornir" == "xyes"; then
+  ENABLE_NORNIR_TRUE=
+  ENABLE_NORNIR_FALSE='#'
+else
+  ENABLE_NORNIR_TRUE='#'
+  ENABLE_NORNIR_FALSE=
+fi
+
+if test "x$enable_nornir_native" == "xyes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define USE_NORNIR_NATIVE 1
+_ACEOF
+
+  CXXFLAGS="$CXXFLAGS"
+fi
+
+
+if test "x$enable_nornir_native" == "xyes"; then
+  ENABLE_NORNIR_NATIVE_TRUE=
+  ENABLE_NORNIR_NATIVE_FALSE='#'
+else
+  ENABLE_NORNIR_NATIVE_TRUE='#'
+  ENABLE_NORNIR_NATIVE_FALSE=
+fi
 
 
 # Extra arguments
@@ -20611,6 +20661,21 @@ if test -z "${ENABLE_FF_TRUE}" && test -z "${ENABLE_FF_FALSE}"; then
   { { echo "$as_me:$LINENO: error: conditional \"ENABLE_FF\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 echo "$as_me: error: conditional \"ENABLE_FF\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_NORNIR_TRUE}" && test -z "${ENABLE_NORNIR_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"ENABLE_NORNIR\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"ENABLE_NORNIR\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+if test -z "${ENABLE_NORNIR_NATIVE_TRUE}" && test -z "${ENABLE_NORNIR_NATIVE_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"ENABLE_NORNIR_NATIVE\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"ENABLE_NORNIR_NATIVE\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -21227,6 +21292,12 @@ s,@ENABLE_TBB@,$ENABLE_TBB,;t t
 s,@ENABLE_FF_TRUE@,$ENABLE_FF_TRUE,;t t
 s,@ENABLE_FF_FALSE@,$ENABLE_FF_FALSE,;t t
 s,@ENABLE_FF@,$ENABLE_FF,;t t
+s,@ENABLE_NORNIR_TRUE@,$ENABLE_NORNIR_TRUE,;t t
+s,@ENABLE_NORNIR_FALSE@,$ENABLE_NORNIR_FALSE,;t t
+s,@ENABLE_NORNIR@,$ENABLE_NORNIR,;t t
+s,@ENABLE_NORNIR_NATIVE_TRUE@,$ENABLE_NORNIR_NATIVE_TRUE,;t t
+s,@ENABLE_NORNIR_NATIVE_FALSE@,$ENABLE_NORNIR_NATIVE_FALSE,;t t
+s,@ENABLE_NORNIR_NATIVE@,$ENABLE_NORNIR_NATIVE,;t t
 s,@LIBOBJS@,$LIBOBJS,;t t
 s,@LTLIBOBJS@,$LTLIBOBJS,;t t
 CEOF

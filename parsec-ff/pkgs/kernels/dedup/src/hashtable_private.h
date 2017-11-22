@@ -7,7 +7,7 @@
 #include <errno.h>
 #include "config.h"
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 #include <pthread.h>
 #endif
 
@@ -28,7 +28,7 @@ struct hash_entry
 struct hashtable {
     unsigned int tablelength;
     struct hash_entry **table;
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
     //Each entry in table array is protected with its own lock
     pthread_mutex_t *locks;
 #endif

@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
   }
 #endif
 
-#if !defined(ENABLE_PTHREADS) && !defined(ENABLE_FF)
+#if !defined(ENABLE_PTHREADS) && !defined(ENABLE_FF) &&  !defined(ENABLE_NORNIR_NATIVE)
  if (conf->nthreads != 1){
     printf("Number of threads must be 1 (serial version)\n");
     exit(1);
@@ -157,6 +157,13 @@ int main(int argc, char** argv) {
    EncodeFF(conf);
  } else {
     fprintf(stderr, "Decode in FF not yet implemented.");
+    exit(-1);
+ }
+#elif ENABLE_NORNIR_NATIVE
+ if (compress) {
+   EncodeNornir(conf);
+ } else {
+    fprintf(stderr, "Decode in Nornir not yet implemented.");
     exit(-1);
  }
 #else

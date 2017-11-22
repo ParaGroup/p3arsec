@@ -980,6 +980,8 @@ enable_libtool_lock
 enable_links
 enable_threads
 enable_ff
+enable_nornir
+enable_nornir_native
 with_html_dir
 with_fftw3
 with_magick
@@ -1682,6 +1684,8 @@ Optional Features:
   --enable-links          make links for operations (default: no)
   --enable-threads        evaluate with threads (default: yes)
   --enable-ff             evaluate with FastFlow (default: no)
+  --enable-nornir         adds Nornir management (default: no)
+  --enable-nornir-native  evaluate with Nornir (default: no)
   --enable-gtk-doc        use gtk-doc to build documentation [[default=no]]
   --enable-gtk-doc-html   build documentation in html format [[default=yes]]
   --enable-gtk-doc-pdf    build documentation in pdf format [[default=no]]
@@ -19192,6 +19196,20 @@ if test "${enable_ff+set}" = set; then :
 $as_echo "#define HAVE_FF 1" >>confdefs.h;
 fi
 
+# option Nornir management
+# Check whether --enable-nornir was given.
+if test "${enable_nornir+set}" = set; then :
+  enableval=$enable_nornir;
+$as_echo "#define HAVE_NORNIR 1" >>confdefs.h;
+fi
+
+# option to eval with Nornir
+# Check whether --enable-nornir-native was given.
+if test "${enable_nornir_native+set}" = set; then :
+  enableval=$enable_nornir_native;
+$as_echo "#define HAVE_NORNIR_NATIVE 1" >>confdefs.h;
+fi
+
 # check for gtk-doc
 
 
@@ -25331,6 +25349,8 @@ enable debug:				$enable_debug
 build C++ components:			$enable_cxx
 evaluate with threads: 			$enable_threads
 evaluate with FastFlow: 		$enable_ff
+add Nornir management:      $enable_nornir
+evaluate with Nornir:      $enable_nornir_native
 make symlinks for commands in bin: 	$enable_links
 build docs with gtkdoc 			$enable_gtk_doc
 
@@ -25359,6 +25379,8 @@ enable debug:				$enable_debug
 build C++ components:			$enable_cxx
 evaluate with threads: 			$enable_threads
 evaluate with FastFlow: 			$enable_ff
+add Nornir management:        $enable_nornir
+evaluate with Nornir:        $enable_nornir_native
 make symlinks for commands in bin: 	$enable_links
 build docs with gtkdoc 			$enable_gtk_doc
 

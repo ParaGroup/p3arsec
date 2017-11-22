@@ -50,7 +50,6 @@
 #if (__cplusplus >= 201103L) || (defined __GXX_EXPERIMENTAL_CXX0X__) || (defined(HAS_CXX11_VARIADIC_TEMPLATES))
 #include <atomic>
 namespace ff {
-#define _INLINE static inline
 
 ALIGN_TO_PRE(CACHE_LINE_SIZE) struct AtomicFlagWrapper {
 /* MA: MSVS 2013 does not allow initialisation of lock-free atomic_flag in the constructor. 
@@ -78,12 +77,12 @@ ALIGN_TO_PRE(CACHE_LINE_SIZE) struct AtomicFlagWrapper {
 
 typedef AtomicFlagWrapper lock_t[1];
 
-_INLINE void init_unlocked(lock_t l) { }
-_INLINE void init_locked(lock_t l)   { abort(); }
-_INLINE void spin_lock(lock_t l) { 
+static inline void init_unlocked(lock_t l) { }
+static inline void init_locked(lock_t l)   { abort(); }
+static inline void spin_lock(lock_t l) { 
     while(l->test_and_set(std::memory_order_acquire)) ;
 }
-_INLINE void spin_unlock(lock_t l) { l->clear(std::memory_order_release);}
+static inline void spin_unlock(lock_t l) { l->clear(std::memory_order_release);}
 }
 #else
 #pragma message ("FastFlow requires a c++11 compiler")
@@ -162,10 +161,10 @@ ALIGN_TO_PRE(CACHE_LINE_SIZE) struct CLHSpinLock {
     
 typedef CLHSpinLock clh_lock_t[1];
 
-_INLINE void init_unlocked(clh_lock_t l) { l->init();}
-_INLINE void init_locked(clh_lock_t l) { abort(); }
-_INLINE void spin_lock(clh_lock_t l, const int pid) { l->spin_lock(pid); }
-_INLINE void spin_unlock(clh_lock_t l, const int pid) { l->spin_unlock(pid); }
+static inline void init_unlocked(clh_lock_t l) { l->init();}
+static inline void init_locked(clh_lock_t l) { abort(); }
+static inline void spin_lock(clh_lock_t l, const int pid) { l->spin_lock(pid); }
+static inline void spin_unlock(clh_lock_t l, const int pid) { l->spin_unlock(pid); }
 
 #endif 
 /*

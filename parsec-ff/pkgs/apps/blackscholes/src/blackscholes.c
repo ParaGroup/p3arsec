@@ -41,6 +41,22 @@ using namespace std;
 using namespace tbb;
 #endif //ENABLE_TBB
 
+#ifdef ENABLE_NORNIR_NATIVE
+#include <nornir.hpp>
+#endif // ENABLE_NORNIR_NATIVE
+
+#ifdef ENABLE_NORNIR
+#include <instrumenter.hpp>
+#include <stdlib.h>
+#include <iostream>
+#endif //ENABLE_NORNIR
+
+#if defined(ENABLE_NORNIR) || defined(ENABLE_NORNIR_NATIVE)
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif
+
 #ifdef ENABLE_FF
 #include <iostream>
 #include <ff/farm.hpp>
@@ -86,6 +102,11 @@ fptype * volatility;
 fptype * otime;
 int numError = 0;
 int nThreads;
+
+#ifdef ENABLE_NORNIR
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
+
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,7 +307,10 @@ struct map: ff_Map<int> {
     int *svc(int *in) {
         int i, j;
         for (j=0; j<NUM_RUNS; j++) {
-            parallel_for(0, numOptions, [](const long i) {
+            parallel_for_thid(0, numOptions, 1, PARFOR_STATIC(0), [](const long i, const int thid) {
+#ifdef ENABLE_NORNIR
+                instr->begin(thid);
+#endif //ENABLE_NORNIR 
                 fptype price;
                 fptype priceDelta;
                 /* Calling main function to calculate option value based on
@@ -305,6 +329,9 @@ struct map: ff_Map<int> {
                     numError ++;
                 }
 #endif
+#ifdef ENABLE_NORNIR
+                instr->end(thid);
+#endif //ENABLE_NORNIR 
             }, nThreads);
         }
         return NULL;
@@ -312,6 +339,35 @@ struct map: ff_Map<int> {
 };
 
 #else // !ENABLE_FF
+
+#ifdef ENABLE_NORNIR_NATIVE
+void nornirloop(){
+    int i, j;
+    for (j=0; j<NUM_RUNS; j++) {
+        nornir::parallel_for(0, numOptions, 1, 1, nThreads, getParametersPath(), 
+            [](const long long i, const uint thid) {
+            fptype price;
+            fptype priceDelta;
+            /* Calling main function to calculate option value based on
+             * Black & Scholes's equation.
+             */
+            price = BlkSchlsEqEuroNoDiv( sptprice[i], strike[i],
+                                         rate[i], volatility[i], otime[i],
+                                         otype[i], 0);
+            prices[i] = price;
+
+#ifdef ERR_CHK
+            priceDelta = data[i].DGrefval - price;
+            if( fabs(priceDelta) >= 1e-4 ){
+                printf("Error on %d. Computed=%.5f, Ref=%.5f, Delta=%.5f\n",
+                       i, price, data[i].DGrefval, priceDelta);
+                numError ++;
+            }
+#endif
+        });
+    }
+}
+#else // ENABLE_NORNIR_NATIVE
 
 #ifdef WIN32
 DWORD WINAPI bs_thread(LPVOID tid_ptr){
@@ -332,6 +388,14 @@ int bs_thread(void *tid_ptr) {
 #else  //ENABLE_OPENMP
         for (i=start; i<end; i++) {
 #endif //ENABLE_OPENMP
+
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+        instr->begin();
+#else
+        instr->begin(tid);
+#endif
+#endif //ENABLE_NORNIR 
             /* Calling main function to calculate option value based on 
              * Black & Scholes's equation.
              */
@@ -348,13 +412,21 @@ int bs_thread(void *tid_ptr) {
                 numError ++;
             }
 #endif
+
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+        instr->end();
+#else
+        instr->end(tid);
+#endif
+#endif //ENABLE_NORNIR 
         }
     }
-
     return 0;
 }
 #endif //ENABLE_FF
 #endif //ENABLE_TBB
+#endif
 
 int main (int argc, char **argv)
 {
@@ -411,6 +483,14 @@ int main (int argc, char **argv)
     }
 #endif
 
+#ifdef ENABLE_NORNIR
+#ifdef ENABLE_OPENMP
+    instr = new nornir::Instrumenter(getParametersPath());
+#else
+    instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif
+#endif //ENABLE_NORNIR
+    
     // alloc spaces for the option data
     data = (OptionData*)malloc(numOptions*sizeof(OptionData));
     prices = (fptype*)malloc(numOptions*sizeof(fptype));
@@ -507,9 +587,13 @@ int main (int argc, char **argv)
     m.run();
     m.wait();
 #else //ENABLE_FF
+#ifdef ENABLE_NORNIR_NATIVE
+    nornirloop();
+#else // ENABLE_NORNIR_NATIVE
     //serial version
     int tid=0;
     bs_thread(&tid);
+#endif //ENABLE_NORNIR_NATIVE
 #endif //ENABLE_FF
 #endif //ENABLE_TBB
 #endif //ENABLE_OPENMP
@@ -518,6 +602,13 @@ int main (int argc, char **argv)
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_end();
 #endif
+
+#ifdef ENABLE_NORNIR
+    instr->terminate();
+    std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
+    delete instr;
+#endif //ENABLE_NORNIR
 
     //Write prices to output file
     file = fopen(outputFile, "w");

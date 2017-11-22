@@ -113,7 +113,7 @@ If you also want to compile the other existing versions of the benchmark, just r
 
 Note that not all these implementations are available for all the benchmarks. For more details on supported 
 implementations, please refer to the original [PARSEC documentation](http://wiki.cs.princeton.edu/index.php/PARSEC) 
-(and to the top table in this file for the SkePU2 versions).
+(and to the top table in this file for the SkePU2 and FastFlow versions).
 
 **ATTENTION: If you plan to execute the benchmark with more than 1024 threads, you need to modify the following MACROS:**
 * `MAX_THREADS` in `pkgs/apps/blackscholes/src/c.m4.pthreads` file.
@@ -218,6 +218,37 @@ At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace 
 * `ferret-ff-pipeoffarms` if you want to run the *pipelines of farms* version.
 
 After that, build and run *ferret* as usual.
+
+# Nornir Support
+
+We also support dynamic reconfiguration of the applications by relying on [Nornir](http://danieledesensi.github.io/nornir/) 
+runtime. It is possible to specify requirements on performance (throughput or execution time) and/or power and energy
+consumption. To do that, is necessary to put an XML file (called ```parameters.xml```) in the p3arsec root directory, 
+containing requirements in terms of performance and power consumption. The XML file must have the following format:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<nornirParameters>
+    <requirements>
+        <bandwidth>100</bandwidth>
+        <powerConsumption>MIN</powerConsumption> 
+    </requirements>
+</nornirParameters>
+```
+In this specific example, we require the application to have a troughput greater
+than 100. Since many configurations of resources may be characterized by
+such throughput, we require Nornir to pick the one characterized by the
+lowest power consumption.
+For more details about the type of parameters that can be specified please refer 
+to [Nornir Documentation](http://danieledesensi.github.io/nornir/description.html#parameters).
+
+If you want to compile/run applications with dynamic reconfiguration enabled, use the following
+configurations (to be specified through the ```-c``` parameter):
+
+* *gcc-ff-nornir* for the FastFlow implementation.
+* *gcc-pthreads-nornir* for the Pthreads implementation.
+* *gcc-openmp-nornir* for the OpenMP implementation.
+* *gcc-tbb-nornir* for the Intel TBB implementation.
 
 # Contributors
 P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto:d.desensi.software@gmail.com) and [Tiziano De Matteis](mailto:dematteis@di.unipi.it).

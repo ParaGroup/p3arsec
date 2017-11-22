@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# gcc-ff-nornir.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/libs/glib/parsec/gcc-ff.bldconf
+

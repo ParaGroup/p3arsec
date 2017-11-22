@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# gcc-ff-nornir.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/apps/swaptions/parsec/gcc-ff.bldconf
+
+# Environment to use for configure script and Makefile
+build_env="${build_env} CXXFLAGS=\"${CXXFLAGS} -DENABLE_NORNIR -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2 \""
+
+build_deps="libxml2 ${build_deps}"

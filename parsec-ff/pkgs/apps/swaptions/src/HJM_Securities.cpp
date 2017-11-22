@@ -30,6 +30,15 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #define TBB_GRAINSIZE 1
 #endif // TBB_VERSION
 
+#ifdef ENABLE_NORNIR
+#include <instrumenter.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+#endif //ENABLE_NORNIR
+
 #ifdef FF_VERSION
 #include <ff/parallel_for.hpp>
 #endif
@@ -57,6 +66,9 @@ FTYPE *dSumSimSwaptionPrice_global_ptr;
 FTYPE *dSumSquareSimSwaptionPrice_global_ptr;
 int chunksize;
 
+#ifdef ENABLE_NORNIR
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
 
 #ifdef TBB_VERSION
 struct Worker {
@@ -113,7 +125,7 @@ void * worker(void *arg){
                                        swaptions[i].dTenor, swaptions[i].dPaymentInterval,
                                        swaptions[i].iN, swaptions[i].iFactors, swaptions[i].dYears, 
                                        swaptions[i].pdYield, swaptions[i].ppdFactors,
-                                       swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, 0);
+                                       swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, tid);
      assert(iSuccess == 1);
      swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
      swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
@@ -185,6 +197,10 @@ int main(int argc, char *argv[])
         printf("Number of Simulations: %d,  Number of threads: %d Number of swaptions: %d\n", NUM_TRIALS, nThreads, nSwaptions);
         swaption_seed = (long)(2147483647L * RanUnif(&seed));
 
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+#endif //ENABLE_NORNIR
+    
 #ifdef ENABLE_THREADS
 
 #ifdef TBB_VERSION
@@ -281,6 +297,7 @@ int main(int argc, char *argv[])
 
 
 	// **********Calling the Swaption Pricing Routine*****************
+
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
@@ -292,14 +309,14 @@ int main(int argc, char *argv[])
 	tbb::parallel_for(tbb::blocked_range<int>(0,nSwaptions,TBB_GRAINSIZE),w);
 #elif defined(FF_VERSION)
         ff::ParallelFor pf;
-	pf.parallel_for(0, nSwaptions, [](const long i) {
+	pf.parallel_for_thid(0, nSwaptions, 1, PARFOR_STATIC(0), [](const long i, const int thid) {
 		FTYPE pdSwaptionPrice[2];
 		int iSuccess = HJM_Swaption_Blocking(pdSwaptionPrice,  swaptions[i].dStrike, 
 					   swaptions[i].dCompounding, swaptions[i].dMaturity, 
 					   swaptions[i].dTenor, swaptions[i].dPaymentInterval,
 					   swaptions[i].iN, swaptions[i].iFactors, swaptions[i].dYears, 
 					   swaptions[i].pdYield, swaptions[i].ppdFactors,
-					   swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, 0);
+					   swaption_seed+i, NUM_TRIALS, BLOCK_SIZE, thid);
 		assert(iSuccess == 1);
 		swaptions[i].dSimSwaptionMeanPrice = pdSwaptionPrice[0];
 		swaptions[i].dSimSwaptionStdError = pdSwaptionPrice[1];
@@ -326,6 +343,12 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+  instr->terminate();
+  std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+  std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
+  delete instr;
+#endif //ENABLE_NORNIR
 
         for (i = 0; i < nSwaptions; i++) {
           fprintf(stderr,"Swaption %d: [SwaptionPrice: %.10lf StdError: %.10lf] \n", 

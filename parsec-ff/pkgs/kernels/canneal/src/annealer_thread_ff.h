@@ -56,6 +56,7 @@ class Emitter: public ff::ff_node {
         int _number_temp_steps;
         bool _keep_going_global_flag;
         ff::ff_loadbalancer* lb;
+        bool _firstRun;
     public:
         Emitter(uint maxNumWorkers, int number_temp_steps, ff::ff_loadbalancer* lb);
         bool keep_going(int accepted_good_moves, int accepted_bad_moves);
@@ -88,7 +89,6 @@ class annealer_thread: public ff::ff_node {
     protected:
         move_decision_t accept_move(routing_cost_t delta_cost, double T, Rng* rng);
         routing_cost_t calculate_delta_routing_cost(netlist_elem* a, netlist_elem* b);
-    protected:
         netlist* _netlist;
         double T;
         int _moves_per_thread_temp;

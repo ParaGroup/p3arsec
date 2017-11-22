@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# demo-bright17.bldconf - for demo used @ Bright2017
+#
+# Copyright (C) 2008 Princeton University
+# Written by Christian Bienia
+
+source ${PARSECDIR}/config/gcc-pthreads.bldconf
+
+NORNIRDIR=${PARSECDIR}/pkgs/libs/nornir/src
+# Enable FastFlow
+CFLAGS="${CFLAGS} -I${NORNIRDIR}"
+CXXFLAGS="--std=c++11 ${CXXFLAGS} -I${NORNIRDIR} -I${NORNIRDIR}/external/fastflow -fexceptions"
+LIBS="${LIBS} -pthread -lnornir  -lrt -lm -lmlpack -llapack -lblas -lgsl -lgslcblas -larmadillo -lriff -lanl"
+LDFLAGS="${LDFLAGS} -L${NORNIRDIR} -L${NORNIRDIR}/external/riff/src"

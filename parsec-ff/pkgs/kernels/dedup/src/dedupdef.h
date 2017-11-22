@@ -80,7 +80,7 @@ typedef enum {
   CHUNK_STATE_FLUSHED=2        //no data available because chunk has already been flushed
 } chunk_state_t;
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 
 //Definition and basic functions for a two-level sequence number
 typedef u_int32 sequence_number_t;
@@ -151,7 +151,7 @@ typedef struct _chunk_t {
   struct {
     int isDuplicate;        //whether this is an original chunk or a duplicate
     chunk_state_t state;    //which type of data this chunk contains
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
     //once a chunk has been added to the global database accesses
     //to the state require synchronization b/c the chunk is globally viewable
     pthread_mutex_t lock;
@@ -168,7 +168,7 @@ typedef struct _chunk_t {
   mbuffer_t compressed_data;
   //reference to original chunk with compressed data (only if isDuplicate)
   struct _chunk_t *compressed_data_ref;
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   //Original location of the chunk in input stream (for reordering)
   sequence_t sequence;
   //whether this is the last L2 chunk for the given L1 number

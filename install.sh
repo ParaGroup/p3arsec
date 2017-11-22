@@ -5,10 +5,10 @@ INPUT=true
 ONLYINPUT=false
 NORNIR=false
 SKEPU=false
-APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips"
+APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips x264"
 KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
-VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu"
+VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu gcc-pthreads-nornir gcc-openmp-nornir gcc-ff-nornir"
 
 while [[ $# -gt 0 ]]
 do
@@ -53,6 +53,9 @@ if [ "$ONLYINPUT" = true ]; then
 	rm -f parsec-3.0-input-native.tar.gz
 	rsync --remove-source-files -a parsec-3.0/ ./
 	rm -rf parsec-3.0
+
+    cp ./pkgs/apps/raytrace/inputs/input_simlarge.tar ./pkgs/apps/raytrace/inputs/input_demo-bright17.tar
+    cp ./pkgs/apps/fluidanimate/inputs/input_simsmall.tar ./pkgs/apps/fluidanimate/inputs/input_demo-bright17.tar
 else
 	# Get PARSEC
 	if [ "$INPUT" = true ]; then
@@ -99,7 +102,7 @@ else
 				echo $APP" "$VER" "$FILE
 				if [ -f $FILE ];
 				then
-					echo "build_deps=\"hooks \${build_deps}\"" >> $FILE
+					echo -e "\nbuild_deps=\"hooks \${build_deps}\"\n" >> $FILE
 				fi
 			done
 		done
@@ -108,21 +111,15 @@ else
 	rootdir=$(pwd)
 	# Install Nornir
 	if [ "$NORNIR" = true ]; then
-		# TODO: Maybe better to integrate directly in FastFlow patterns?
 		cd ./pkgs/libs && git clone https://github.com/DanieleDeSensi/nornir.git
-		# TODO link already downloaded mammut.
-		cd nornir && make
+        if [ "$MEASURE" = true ]; then
+            # To avoid collisions between two differet mammut versions, remove
+            # one so that both p3arsec and nornir have the same mammut version.
+            rm -rf ./nornir/src/external/mammut
+            ln -s $(pwd)/mammut $(pwd)/nornir/src/external/mammut
+        fi
+		cd nornir && git checkout a97827b && make
 		cd $rootdir
-		for CONFIG in $VERSIONS
-		do
-			if [ "$CONFIG" != "gcc-serial" ]
-			then
-				echo CXXFLAGS=\"\${CXXFLAGS} -DENABLE_NORNIR -I\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
-				echo CFLAGS=\"\${CFLAGS} -DENABLE_NORNIR -I\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
-				echo LIBS=\"\${LIBS} -lnornir\" >> "./config/"$CONFIG".bldconf"				
-				echo LDFLAGS=\"\${LDFLAGS} -L\${PARSECDIR}/pkgs/libs/nornir/src\" >> "./config/"$CONFIG".bldconf"
-			fi
-		done
 	fi
 
 	# Install SkePU2
@@ -145,6 +142,12 @@ else
 
     # Removing VIPS old file (is needed otherwise will not compile the new version).
     rm -rf pkgs/apps/vips/src/libvips/iofuncs/threadpool.c
+
+    # Creating inputs for new configurations (e.g. for demos)
+    if [ "$INPUT" = true ]; then
+        cp ./pkgs/apps/raytrace/inputs/input_simlarge.tar ./pkgs/apps/raytrace/inputs/input_demo-bright17.tar
+        cp ./pkgs/apps/fluidanimate/inputs/input_simsmall.tar ./pkgs/apps/fluidanimate/inputs/input_demo-bright17.tar
+    fi
 
 	# Clean
 	mv README README_PARSEC

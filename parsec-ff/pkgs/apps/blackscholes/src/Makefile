@@ -35,6 +35,9 @@ ifdef version
 	CSRC = blackscholes_skepu_omp.cpp
 	MT = -fopenmp
   endif
+  ifeq "$(version)" "nornir"
+    MT        = -DENABLE_NORNIR_NATIVE
+  endif
 else
   MT        = 
 endif

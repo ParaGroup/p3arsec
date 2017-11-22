@@ -34,9 +34,20 @@ by the emitter (i.e. file loading) is moved to the farm's workers.
 #include <unistd.h>
 #include <pthread.h>
 #include <cass.h>
+#undef fatal // Defined in cass, will collide with variables named as 'fatal', e.g. "bool fatal = true;"
 #include <cass_timer.h>
 #include <../image/image.h>
 #include "tpool.h"
+
+#ifdef ENABLE_NORNIR
+#include <instrumenter.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
 
 #define NO_DEFAULT_MAPPING  
 #define ENABLE_FF_ONDEMAND
@@ -308,6 +319,9 @@ struct rank_data * rank(struct vec_query_data *vec){
 class Out: public ff::ff_node{
 public:
 	void* svc(void* task){
+#ifdef ENABLE_NORNIR
+		instr->begin();
+#endif //ENABLE_NORNIR
         struct rank_data * rank = (struct rank_data*) task;
 
 		assert(rank != NULL);
@@ -332,6 +346,9 @@ public:
 		cnt_dequeue++;
 		
 		fprintf(stderr, "(%d,%d)\n", cnt_enqueue, cnt_dequeue);
+#ifdef ENABLE_NORNIR
+		instr->end();
+#endif //ENABLE_NORNIR
 		return GO_ON;
 	}
 };
@@ -367,6 +384,10 @@ int main (int argc, char *argv[])
 		printf("%s <database> <table> <query dir> <top K> <depth> <n> <out>\n", argv[0]); 
 		return 0;
 	}
+
+#ifdef ENABLE_NORNIR
+	instr = new nornir::Instrumenter(getParametersPath());
+#endif //ENABLE_NORNIR
 
 	db_dir = argv[1];
 	table_name = argv[2];
@@ -433,6 +454,12 @@ int main (int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+	instr->terminate();
+    printf("riff.time|%d\n", instr->getExecutionTime());
+    printf("riff.iterations|%d\n", instr->getTotalTasks());
+    delete instr;
+#endif //ENABLE_NORNIR
 
 	stimer_tuck(&tmr, "QUERY TIME");
 

@@ -4,12 +4,12 @@
 #include "queue.h"
 #include "config.h"
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 #include <pthread.h>
 #endif //ENABLE_PTHREADS
 
 void queue_init(queue_t * que, size_t size, int nProducers) {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   pthread_mutex_init(&que->mutex, NULL);
   pthread_cond_init(&que->notEmpty, NULL);
   pthread_cond_init(&que->notFull, NULL);
@@ -20,7 +20,7 @@ void queue_init(queue_t * que, size_t size, int nProducers) {
 }
 
 void queue_destroy(queue_t * que) {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   pthread_mutex_destroy(&que->mutex);
   pthread_cond_destroy(&que->notEmpty);
   pthread_cond_destroy(&que->notFull);
@@ -35,12 +35,12 @@ static inline int queue_isTerminated(queue_t * que) {
 }
 
 void queue_terminate(queue_t * que) {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   pthread_mutex_lock(&que->mutex);
 #endif
   que->nTerminated++;
   assert(que->nTerminated <= que->nProducers);
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   if(queue_isTerminated(que)) pthread_cond_broadcast(&que->notEmpty);
   pthread_mutex_unlock(&que->mutex);
 #endif
@@ -49,14 +49,14 @@ void queue_terminate(queue_t * que) {
 int queue_dequeue(queue_t *que, ringbuffer_t *buf, int limit) {
   int i;
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   pthread_mutex_lock(&que->mutex);
   while (ringbuffer_isEmpty(&que->buf) && !queue_isTerminated(que)) {
     pthread_cond_wait(&que->notEmpty, &que->mutex);
   }
 #endif
   if (ringbuffer_isEmpty(&que->buf) && queue_isTerminated(que)) {
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
     pthread_mutex_unlock(&que->mutex);
 #endif
     return -1;
@@ -73,7 +73,7 @@ int queue_dequeue(queue_t *que, ringbuffer_t *buf, int limit) {
     rv = ringbuffer_insert(buf, temp);
     assert(rv==0);
   }
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   if(i>0) pthread_cond_signal(&que->notFull);
   pthread_mutex_unlock(&que->mutex);
 #endif
@@ -83,7 +83,7 @@ int queue_dequeue(queue_t *que, ringbuffer_t *buf, int limit) {
 int queue_enqueue(queue_t *que, ringbuffer_t *buf, int limit) {
   int i;
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   pthread_mutex_lock(&que->mutex);
   assert(!queue_isTerminated(que));
   while (ringbuffer_isFull(&que->buf))
@@ -103,7 +103,7 @@ int queue_enqueue(queue_t *que, ringbuffer_t *buf, int limit) {
     rv = ringbuffer_insert(&que->buf, temp);
     assert(rv==0);
   }
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   if(i>0) pthread_cond_signal(&que->notEmpty);
   pthread_mutex_unlock(&que->mutex);
 #endif

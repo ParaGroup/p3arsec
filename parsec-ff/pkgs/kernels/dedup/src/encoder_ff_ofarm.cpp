@@ -45,6 +45,17 @@ extern "C" {
 }
 
 #include <iostream>
+
+#ifdef ENABLE_NORNIR
+#include <instrumenter.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
+
 #include <ff/farm.hpp>
 #include <ff/pipeline.hpp>
 
@@ -59,7 +70,6 @@ extern "C" {
 #ifdef ENABLE_PARSEC_HOOKS
 #include <hooks.h>
 #endif //ENABLE_PARSEC_HOOKS
-
 
 #define INITIAL_SEARCH_TREE_SIZE 4096
 
@@ -944,9 +954,15 @@ public:
     void *svc(void * task) {
         ringbuffer_t* recv_buf = (ringbuffer_t*) task;
         while(!ringbuffer_isEmpty(recv_buf)) {
+#ifdef ENABLE_NORNIR
+          instr->begin();
+#endif //ENABLE_NORNIR
             chunk_t * chunk = (chunk_t*)ringbuffer_remove(recv_buf);
             if (chunk == NULL){break;}
             write_chunk_to_file(fd, chunk);
+#ifdef ENABLE_NORNIR
+        instr->end();
+#endif //ENABLE_NORNIR
         }
         ringbuffer_destroy(recv_buf);
         free(recv_buf);
@@ -1026,6 +1042,10 @@ void EncodeFF(config_t * _conf) {
   init_stats(&stats);
 #endif
 
+#ifdef ENABLE_NORNIR
+  instr = new nornir::Instrumenter(getParametersPath());
+#endif //ENABLE_NORNIR
+
   //Create chunk cache
   cache = hashtable_create(65536, hash_from_key_fn, keys_equal_fn, FALSE);
   if(cache == NULL) {
@@ -1104,6 +1124,12 @@ void EncodeFF(config_t * _conf) {
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    instr->terminate();
+    printf("riff.time|%d\n", instr->getExecutionTime());
+    printf("riff.iterations|%d\n", instr->getTotalTasks());
+    delete instr;
+#endif //ENABLE_NORNIR
 
 #ifdef ENABLE_STATISTICS
   //Merge everything into global `stats' structure

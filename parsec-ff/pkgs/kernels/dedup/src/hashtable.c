@@ -85,7 +85,7 @@ struct hashtable * hashtable_create(unsigned int minsize,
   if (NULL == h->table) { free(h); return NULL; } /*oom*/
   memset(h->table, 0, size * sizeof(struct hash_entry *));
   h->tablelength  = size;
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   //allocate and initialize array with locks
   h->locks = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t) * size);
   if(NULL == h->locks) {free(h->table); free(h); return NULL;} /*oom*/
@@ -116,7 +116,7 @@ unsigned int hash(struct hashtable *h, void *k) {
   return i;
 }
 
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 /*****************************************************************************/
 pthread_mutex_t * hashtable_getlock(struct hashtable *h, void *k) {
   unsigned int hashvalue, index;
@@ -301,7 +301,7 @@ void hashtable_destroy(struct hashtable *h, int free_values) {
       while (NULL != e) { f = e; e = e->next; if(h->free_keys) freekey(f->k); free(f); }
     }
   }
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
   for(i=0; i<h->tablelength; i++) {
     pthread_mutex_destroy(&(h->locks[i]));
   }

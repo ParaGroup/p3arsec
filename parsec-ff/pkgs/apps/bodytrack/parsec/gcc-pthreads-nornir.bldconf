@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# gcc-pthreads-nornir.bldconf - file containing information necessary to build a
+#                  specific program of the PARSEC benchmark suite with
+#                  gcc, Pthreads and Nornir
+#
+# Copyright (C) 2007-2008 Princeton University
+# Written by Christian Bienia
+
+# Compilation and linking options.
+# This is the configuration we'll use to build the program. Each package of the
+# benchmark suite has such a file with information that will be added to the
+# global configuration. All variables set in the global configuration files can
+# be referenced here.
+
+source ${PARSECDIR}/pkgs/apps/bodytrack/parsec/gcc-pthreads.bldconf
+
+# Arguments to pass to the configure script, if it exists
+build_conf="--disable-ff --enable-threads --enable-nornir --disable-openmp --disable-tbb CXXFLAGS=\"${CXXFLAGS} -I${PARSECDIR}/pkgs/libs/libxml2/inst/${PARSECPLAT}/include/libxml2\""
+build_deps="libxml2 ${build_deps}"

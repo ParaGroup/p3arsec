@@ -42,9 +42,22 @@
 #include <hooks.h>
 #endif
 
+#if defined(ENABLE_NORNIR) || defined(ENABLE_NORNIR_NATIVE)
+#include <instrumenter.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+
+nornir::Instrumenter* instr;
+#endif //ENABLE_NORNIR
+
 #include "annealer_types.h"
 #ifdef ENABLE_FF
 #include "annealer_thread_ff.h"
+#elif defined ENABLE_NORNIR_NATIVE
+#include "annealer_thread_nornir.h"
 #else
 #include "annealer_thread.h"
 #endif
@@ -53,8 +66,15 @@
 
 using namespace std;
 
-#if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
 void* entry_pt(void*);
+#endif
+
+#ifdef ENABLE_NORNIR
+typedef struct{
+    void* a_thread;
+    size_t tid;
+}ThreadData;
 #endif
 
 int main (int argc, char * const argv[]) {
@@ -79,13 +99,17 @@ int main (int argc, char * const argv[]) {
 	//argument 1 is numthreads
 	int num_threads = atoi(argv[1]);
 	cout << "Threadcount: " << num_threads << endl;
-#if !defined(ENABLE_THREADS) && !defined(ENABLE_FF)
+#if !defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
 	if (num_threads != 1){
 		cout << "NTHREADS must be 1 (serial version)" <<endl;
 		exit(1);
 	}
 #endif
 		
+#ifdef ENABLE_NORNIR
+    instr = new nornir::Instrumenter(getParametersPath(), num_threads);
+#endif //ENABLE_NORNIR
+    
 	//argument 2 is the num moves / temp
 	int swaps_per_temp = atoi(argv[2]);
 	cout << swaps_per_temp << " swaps per temperature step" << endl;
@@ -108,14 +132,13 @@ int main (int argc, char * const argv[]) {
 	//now that we've read in the commandline, run the program
 	netlist my_netlist(filename);
 
-#if !defined(ENABLE_FF)	
+#if !defined(ENABLE_FF)	&& !defined(ENABLE_NORNIR_NATIVE)
 	annealer_thread a_thread(&my_netlist,num_threads,swaps_per_temp,start_temp,number_temp_steps);
 #endif
 	
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
-
 #ifdef ENABLE_THREADS
 #ifdef ENABLE_FF
     ff::ff_farm<> farm;
@@ -128,11 +151,29 @@ int main (int argc, char * const argv[]) {
     farm.add_workers(workers);
     farm.wrap_around();
     farm.run_and_wait_end();
-#else
+#elif defined(ENABLE_NORNIR_NATIVE)
+    nornir::Parameters nornirparams(getParametersPath());
+    nornirparams.synchronousWorkers = true;
+    nornir::Farm<CTask, CTask> farm(&nornirparams);
+    farm.addScheduler(new Emitter(num_threads, number_temp_steps));
+    for(int i = 0; i < num_threads; i++){
+        farm.addWorker(new annealer_thread(&my_netlist, num_threads, swaps_per_temp, start_temp));
+    }
+    farm.setFeedback();
+    farm.start();
+    farm.wait();
+#else // pthreads version
 	std::vector<pthread_t> threads(num_threads);
 	void* thread_in = static_cast<void*>(&a_thread);
 	for(int i=0; i<num_threads; i++){
+#ifdef ENABLE_NORNIR
+        ThreadData* td = new ThreadData();
+        td->a_thread = thread_in;
+        td->tid = (size_t) i;
+        pthread_create(&threads[i], NULL, entry_pt, static_cast<void*>(td));
+#else
 		pthread_create(&threads[i], NULL, entry_pt, thread_in);
+#endif
 	}
 	for (int i=0; i<num_threads; i++){
 		pthread_join(threads[i], NULL);
@@ -140,10 +181,16 @@ int main (int argc, char * const argv[]) {
 #endif
 #else
 	a_thread.Run();
-#endif
+#endif	
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    instr->terminate();
+    std::cout << "riff.time|" << instr->getExecutionTime() << std::endl;
+    std::cout << "riff.iterations|" << instr->getTotalTasks() << std::endl;
+    delete instr;
+#endif //ENABLE_NORNIR
 	
 	cout << "Final routing is: " << my_netlist.total_routing_cost() << endl;
     cout << "Terminated" << endl;
@@ -155,11 +202,17 @@ int main (int argc, char * const argv[]) {
 	return 0;
 }
 
-#if defined(ENABLE_THREADS) && !defined(ENABLE_FF)
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
 void* entry_pt(void* data)
 {
+#ifdef ENABLE_NORNIR
+    ThreadData* td = static_cast<ThreadData*>(data);
+    annealer_thread* ptr = static_cast<annealer_thread*>(td->a_thread);
+    ptr->Run(td->tid);
+#else
 	annealer_thread* ptr = static_cast<annealer_thread*>(data);
 	ptr->Run();
+#endif
 	return NULL;
 }
 #endif

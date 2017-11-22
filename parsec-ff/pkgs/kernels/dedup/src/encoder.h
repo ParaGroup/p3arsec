@@ -7,4 +7,8 @@ void Encode(config_t * conf);
 void EncodeFF(config_t * conf);
 #endif //ENABLE_FF
 
+#ifdef ENABLE_NORNIR_NATIVE
+void EncodeNornir(config_t * conf);
+#endif // ENABLE_NORNIR_NATIVE
+
 #endif /* !_ENCODER_H_ */

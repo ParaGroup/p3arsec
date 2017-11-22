@@ -45,7 +45,7 @@
 
 //Make sure dynamic expansion and parallelization not enabled at the same time
 #ifdef ENABLE_DYNAMIC_EXPANSION
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 #error Dynamic hashtable expansion not thread-safe
 #endif
 #endif
@@ -140,7 +140,7 @@ struct hashtable * hashtable_create(
  * be used safely by multiple threads. After the lock has been acquired, all
  * accesses to the hash table with this key are thread-safe.
  */
-#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF)
+#if defined(ENABLE_PTHREADS) || defined(ENABLE_FF) || defined(ENABLE_NORNIR_NATIVE)
 pthread_mutex_t * hashtable_getlock(struct hashtable *h, void *k);
 #endif
 

@@ -58,6 +58,22 @@
 #endif //ENABLE_PARSEC_HOOKS
 
 
+#ifdef ENABLE_NORNIR
+#include <instrumenter.h>
+#include <stdlib.h>
+#include <stdio.h>
+char* getParametersPath(){
+    char* tmp = malloc(sizeof(char)*1024);
+    tmp[0] = 0;
+    strcat(tmp, getenv("PARSECDIR"));
+    strcat(tmp, "/parameters.xml");
+    return tmp;
+}
+
+NornirInstrumenter* instr;
+#endif //ENABLE_NORNIR
+
+
 #define INITIAL_SEARCH_TREE_SIZE 4096
 
 
@@ -1221,7 +1237,6 @@ void *Reorder(void * targs) {
   assert(r==0);
 
   fd = create_output_file(conf->outfile);
-
   while(1) {
     //get a group of items
     if (ringbuffer_isEmpty(&recv_buf)) {
@@ -1234,6 +1249,9 @@ void *Reorder(void * targs) {
     }
     chunk = (chunk_t *)ringbuffer_remove(&recv_buf);
     if (chunk == NULL) break;
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_begin(instr);
+#endif //ENABLE_NORNIR
 
     //Double size of sequence number array if necessary
     if(chunk->sequence.l1num >= chunks_per_anchor_max) {
@@ -1261,6 +1279,9 @@ void *Reorder(void * targs) {
       } else {
         Insert(chunk, pos->Element.queue);
       }
+#ifdef ENABLE_NORNIR
+      nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
       continue;
     }
 
@@ -1295,7 +1316,11 @@ void *Reorder(void * targs) {
         chunk = NULL;
       }
     } while(chunk != NULL);
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_end(instr);
+#endif //ENABLE_NORNIR
   }
+
 
   //flush the blocks left in the cache to file
   pos = TreeFindMin(T);
@@ -1325,14 +1350,12 @@ void *Reorder(void * targs) {
     }
     sequence_inc_l2(&next);
     if(chunks_per_anchor[next.l1num]!=0 && next.l2num==chunks_per_anchor[next.l1num]) sequence_inc_l1(&next);
-
   }
 
   close(fd);
 
   ringbuffer_destroy(&recv_buf);
   free(chunks_per_anchor);
-
   return NULL;
 }
 #endif //ENABLE_PTHREADS
@@ -1356,6 +1379,10 @@ void Encode(config_t * _conf) {
 #ifdef ENABLE_STATISTICS
   init_stats(&stats);
 #endif
+
+#ifdef ENABLE_NORNIR
+  instr = nornir_instrumenter_create(getParametersPath());
+#endif //ENABLE_NORNIR
 
   //Create chunk cache
   cache = hashtable_create(65536, hash_from_key_fn, keys_equal_fn, FALSE);
@@ -1523,6 +1550,12 @@ void Encode(config_t * _conf) {
 #ifdef ENABLE_PARSEC_HOOKS
   __parsec_roi_end();
 #endif
+#ifdef ENABLE_NORNIR
+    nornir_instrumenter_terminate(instr);
+    printf("riff.time|%d\n", nornir_instrumenter_get_execution_time(instr));
+    printf("riff.iterations|%d\n", nornir_instrumenter_get_total_tasks(instr));
+    nornir_instrumenter_destroy(instr);
+#endif //ENABLE_NORNIR
 
   /* free queues */
   for(i=0; i<nqueues; i++) {

@@ -34,12 +34,19 @@ by the emitter (i.e. file loading) is moved to the farm's workers.
 #include <unistd.h>
 #include <pthread.h>
 #include <cass.h>
+#undef fatal // Defined in cass, will collide with variables named as 'fatal', e.g. "bool fatal = true;"
+#undef info 
 #include <cass_timer.h>
 #include <../image/image.h>
 #include "tpool.h"
 
-#define NO_DEFAULT_MAPPING  
-#define ENABLE_FF_ONDEMAND
+#include <interface.hpp>
+#include <stdlib.h>
+#include <iostream>
+std::string getParametersPath(){
+    return std::string(getenv("PARSECDIR")) + std::string("/parameters.xml");
+}
+
 #include <ff/farm.hpp>
 #include <ff/pipeline.hpp>
 #include <iostream>
@@ -114,7 +121,7 @@ int cnt_dequeue;
 
 
 /* ------ The Stages ------ */
-class Load: public ff::ff_node{
+class Load: public nornir::Scheduler<std::string>{
 private:
     char path[BUFSIZ];
 	int scan_dir (const char *, char *head);
@@ -141,15 +148,14 @@ private:
 		return result;
 	}
 public:
-	void* svc(void* task){
+	std::string* schedule(){
 		path[0] = 0;
 		if (strcmp(query_dir, ".") == 0){
 			dir_helper(".", path);
 		}else{
 			scan_dir(query_dir, path);
 		}
-
-		return EOS;
+		return lastElement();
 	}
 };
 
@@ -176,9 +182,7 @@ int Load::scan_dir (const char *dir, char *head)
 			return -1;
 		}
 	if (S_ISREG(st.st_mode)){
-		char* pathtask = new char[BUFSIZ];
-		pathtask = strdup(path);
-		ff_send_out((void*) pathtask);
+		send(new std::string(path));
 		cnt_enqueue++;
 	} 
 	else if (S_ISDIR(st.st_mode))
@@ -207,9 +211,9 @@ struct load_data* file_helper (const char *file)
 	return data;
 }
 
-struct seg_data* segment(char* filename){
-	struct load_data * load = file_helper(filename);
-	delete[] filename;
+struct seg_data* segment(std::string* filename){
+	struct load_data * load = file_helper(filename->c_str());
+	delete filename;
 	assert(load != NULL);
     struct seg_data *seg = (struct seg_data *)calloc(1, sizeof(struct seg_data));
 
@@ -305,11 +309,9 @@ struct rank_data * rank(struct vec_query_data *vec){
 	return rank;
 }
 
-class Out: public ff::ff_node{
+class Out: public nornir::Gatherer<struct rank_data>{
 public:
-	void* svc(void* task){
-        struct rank_data * rank = (struct rank_data*) task;
-
+	void gather(rank_data* rank){
 		assert(rank != NULL);
 
 		fprintf(fout, "%s", rank->name);
@@ -332,14 +334,13 @@ public:
 		cnt_dequeue++;
 		
 		fprintf(stderr, "(%d,%d)\n", cnt_enqueue, cnt_dequeue);
-		return GO_ON;
 	}
 };
 
-class CollapsedPipeline: public ff::ff_node{
+class CollapsedPipeline: public nornir::Worker<std::string, struct rank_data>{
 public:
-	void* svc(void* task){
-        return rank(vec(extract(segment((char*) task))));
+	struct rank_data* compute(std::string* task){
+        return rank(vec(extract(segment(task))));
 	}
 };
 
@@ -419,16 +420,15 @@ int main (int argc, char *argv[])
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_begin();
 #endif
-	std::vector<ff::ff_node*> workers;
-	for(size_t i = 0; i < nthreads; i++){
-		workers.push_back(new CollapsedPipeline());
-	}
-	ff::ff_farm<> farm(workers, new Load(), new Out());
-	farm.cleanup_all();
-#ifdef ENABLE_FF_ONDEMAND
-	farm.set_scheduling_ondemand();
-#endif
-	farm.run_and_wait_end();
+    nornir::Farm<std::string, struct rank_data> farm("parameters.xml");
+    farm.addScheduler(new Load());
+    for(int i = 0; i < nthreads; i++){
+        farm.addWorker(new CollapsedPipeline());
+    }
+    farm.addGatherer(new Out());
+	farm.setOndemandScheduling();
+    farm.start();
+    farm.wait();
 	assert(cnt_enqueue == cnt_dequeue);
 #ifdef ENABLE_PARSEC_HOOKS
 	__parsec_roi_end();
