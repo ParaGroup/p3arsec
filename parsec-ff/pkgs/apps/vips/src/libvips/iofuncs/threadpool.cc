@@ -605,6 +605,7 @@ vips_thread_new( VipsThreadpool *pool
 			, uint tid
 #endif
 	)
+
 {
 	VipsThread *thr;
 
