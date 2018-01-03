@@ -343,8 +343,9 @@ struct map: ff_Map<int> {
 #ifdef ENABLE_NORNIR_NATIVE
 void nornirloop(){
     int i, j;
+    nornir::ParallelFor pf(nThreads, new nornir::Parameters(getParametersPath()));
     for (j=0; j<NUM_RUNS; j++) {
-        nornir::parallel_for(0, numOptions, 1, 1, nThreads, getParametersPath(), 
+        pf.parallel_for(0, numOptions, 1, 0, 
             [](const long long i, const uint thid) {
             fptype price;
             fptype priceDelta;
@@ -476,7 +477,7 @@ int main (int argc, char **argv)
       nThreads = numOptions;
     }
 
-#if !defined(ENABLE_THREADS) && !defined(ENABLE_OPENMP) && !defined(ENABLE_TBB) && !defined(ENABLE_FF)
+#if !defined(ENABLE_THREADS) && !defined(ENABLE_OPENMP) && !defined(ENABLE_TBB) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
     if(nThreads != 1) {
         printf("Error: <nthreads> must be 1 (serial version)\n");
         exit(1);

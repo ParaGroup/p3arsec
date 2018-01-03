@@ -1382,6 +1382,7 @@ void Encode(config_t * _conf) {
 
 #ifdef ENABLE_NORNIR
   instr = nornir_instrumenter_create(getParametersPath());
+  nornir_instrumenter_mark_inconsistent_samples(instr);
 #endif //ENABLE_NORNIR
 
   //Create chunk cache

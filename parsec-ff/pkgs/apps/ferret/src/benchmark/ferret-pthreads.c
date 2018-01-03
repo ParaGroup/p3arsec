@@ -468,6 +468,7 @@ int main (int argc, char *argv[])
 
 #ifdef ENABLE_NORNIR
     instr = nornir_instrumenter_create(getParametersPath());
+    nornir_instrumenter_mark_inconsistent_samples(instr);
 #endif //ENABLE_NORNIR
 
 	db_dir = argv[1];
