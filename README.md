@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/ParaGroup/p3arsec.svg?branch=master)](https://travis-ci.org/ParaGroup/p3arsec)
-[![release](http://github-release-version.herokuapp.com/github/paragroup/p3arsec/release.svg?style=flat)](https://github.com/paragroup/p3arsec/releases/latest)
+[![release](https://img.shields.io/github/release/paragroup/p3arsec.svg)](https://github.com/paragroup/p3arsec/releases/latest)
 
 
 # Description
@@ -11,7 +11,7 @@ The structure and modelling of the applications is described in the paper:
 Daniele De Sensi, Tiziano De Matteis, Massimo Torquati, Gabriele Mencagli, Marco Danelutto</br>
 *ACM Transactions on Architecture and Code Optimization (TACO), October 2017* </br>](https://dl.acm.org/citation.cfm?id=3132710)
 
-[![Release v1.0](http://github-release-version.herokuapp.com/github/paragroup/p3arsec/release.svg?style=flat)](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
+[Release v1.0](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
 
 All the applications (except x264) have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) pattern-based parallel programming framework. Some benchmarks have been also implemented with the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) framework. In the following table you can find more details about the pattern used for each benchmark and the file(s) containing the actual implementation, both for **FastFlow** and for **SkePU2**. The pattern descriptions reported here are an approximation and exact descriptions will come later. Some benchmarks are implemented by using different patterns (**bold** pattern is the one used by default). To run the benchmark a different pattern refer to the specific [section](#run-alternative-versions) of this document.
 
