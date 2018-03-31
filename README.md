@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/ParaGroup/p3arsec.svg?branch=master)](https://travis-ci.org/ParaGroup/p3arsec)
 [![release](https://img.shields.io/github/release/paragroup/p3arsec.svg)](https://github.com/paragroup/p3arsec/releases/latest)
+[![HitCount](http://hits.dwyl.io/paragroup/p3arsec.svg)](http://hits.dwyl.io/paragroup/p3arsec)
 
 
 # Description
