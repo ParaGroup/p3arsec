@@ -118,7 +118,7 @@ else
             rm -rf ./nornir/src/external/mammut
             ln -s $(pwd)/mammut $(pwd)/nornir/src/external/mammut
         fi
-		cd nornir && git checkout a97827b && make
+		cd nornir && git checkout a97827b && make && make bin
 		cd $rootdir
 	fi
 
