@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# gcc-caf.bldconf - file containing global information necessary to build
+#                   PARSEC with gcc and CAF
+#
+# Copyright (C) 2008 Princeton University
+# Written by Christian Bienia
+
+source ${PARSECDIR}/config/gcc-hooks.bldconf
+
+CAF_INCLUDE="/home/luca/actor-framework/install/include"
+CAF_LIB="/home/luca/actor-framework/install/lib"
+
+# Enable CAF
+CFLAGS="${CFLAGS}"
+CXXFLAGS="--std=c++11 ${CXXFLAGS} -fexceptions -I${CAF_INCLUDE}"
+LIBS="${LIBS} -L${CAF_LIB} -lcaf_core_static -pthread"

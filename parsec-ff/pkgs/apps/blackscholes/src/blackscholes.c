@@ -65,6 +65,12 @@ std::string getParametersPath(){
 using namespace ff;
 #endif //ENABLE_FF
 
+#ifdef ENABLE_CAF
+#include "caf/all.hpp"
+#define CAF_DETACHED_WORKER false
+#define CAF_N_WORKER nThreads
+#endif //ENABLE_CAF
+
 // Multi-threaded header for Windows
 #ifdef WIN32
 #pragma warning(disable : 4305)
@@ -340,6 +346,67 @@ struct map: ff_Map<int> {
 
 #else // !ENABLE_FF
 
+#ifdef ENABLE_CAF
+caf::behavior map_worker(caf::event_based_actor *self, uint32_t i, uint32_t nw) {
+    return {
+        [=](const size_t& start, const size_t& end) {
+            for (size_t i = start; i < end; ++i) {
+                fptype price;
+                fptype priceDelta;
+               /* Calling main function to calculate option value based on
+                * Black & Scholes's equation.
+                */
+                price = BlkSchlsEqEuroNoDiv(sptprice[i], strike[i],
+                                            rate[i], volatility[i], otime[i],
+                                            otype[i], 0);
+                prices[i] = price;
+#ifdef ERR_CHK
+                priceDelta = data[i].DGrefval - price;
+                if( fabs(priceDelta) >= 1e-4 ){
+                    printf("Error on %d. Computed=%.5f, Ref=%.5f, Delta=%.5f\n",
+                        i, price, data[i].DGrefval, priceDelta);
+                    numError ++;
+                }
+#endif
+            }
+      }};
+}
+
+struct map_state {
+  std::vector<caf::actor> worker;
+};
+caf::behavior map(caf::stateful_actor<map_state> *self,
+                  uint32_t nw, bool detached) {
+  // create workers
+  self->state.worker.resize(nw);
+  for (uint32_t i = 0; i < nw; i++) {
+    caf::actor a;
+    if (detached) {
+      a = self->spawn<caf::detached>(map_worker, i, nw);
+    } else {
+      a = self->spawn<caf::lazy_init>(map_worker, i, nw);
+    }
+    self->state.worker[i] = a;
+  }
+  return {[=](const size_t& start, const size_t& end) {
+    size_t nv = end - start + 1;
+    size_t chunk = nv / nw;
+    size_t plus = nv % nw;
+
+    size_t p_start = start;
+    for (uint32_t iw = 0; iw < nw; iw++) {
+        size_t p_end = p_start+chunk;
+        if (plus > 0){
+          p_end++;
+          plus--;
+        }
+        self->send(self->state.worker[iw], p_start, p_end);
+        p_start = p_end;
+    }
+  }};
+}
+#else // !ENABLE_CAF
+
 #ifdef ENABLE_NORNIR_NATIVE
 void nornirloop(){
     int i, j;
@@ -426,6 +493,7 @@ int bs_thread(void *tid_ptr) {
     return 0;
 }
 #endif //ENABLE_FF
+#endif //ENABLE_CAF
 #endif //ENABLE_TBB
 #endif
 
@@ -477,7 +545,7 @@ int main (int argc, char **argv)
       nThreads = numOptions;
     }
 
-#if !defined(ENABLE_THREADS) && !defined(ENABLE_OPENMP) && !defined(ENABLE_TBB) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
+#if !defined(ENABLE_THREADS) && !defined(ENABLE_OPENMP) && !defined(ENABLE_TBB) && !defined(ENABLE_FF) && !defined(ENABLE_CAF) && !defined(ENABLE_NORNIR_NATIVE)
     if(nThreads != 1) {
         printf("Error: <nthreads> must be 1 (serial version)\n");
         exit(1);
@@ -588,6 +656,20 @@ int main (int argc, char **argv)
     m.run();
     m.wait();
 #else //ENABLE_FF
+#ifdef ENABLE_CAF
+{
+    caf::actor_system_config cfg;
+    cfg.set("scheduler.max-threads", nThreads);
+    caf::actor_system sys{cfg};
+    // caf::scoped_actor self{sys};
+
+    auto map_inst = sys.spawn(map, CAF_N_WORKER, CAF_DETACHED_WORKER);
+    
+    for (uint32_t j=0; j<NUM_RUNS; j++) {
+        caf::anon_send(map_inst, size_t{0}, (size_t)numOptions);
+    }
+}
+#else //ENABLE_CAF
 #ifdef ENABLE_NORNIR_NATIVE
     nornirloop();
 #else // ENABLE_NORNIR_NATIVE
@@ -595,6 +677,7 @@ int main (int argc, char **argv)
     int tid=0;
     bs_thread(&tid);
 #endif //ENABLE_NORNIR_NATIVE
+#endif //ENABLE_CAF
 #endif //ENABLE_FF
 #endif //ENABLE_TBB
 #endif //ENABLE_OPENMP
