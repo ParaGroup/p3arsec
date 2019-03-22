@@ -66,9 +66,10 @@ using namespace ff;
 #endif //ENABLE_FF
 
 #ifdef ENABLE_CAF
+#include <cstdlib>
 #include "caf/all.hpp"
 #define CAF_DETACHED_WORKER false
-#define CAF_N_WORKER nThreads
+#define V_PARTITION
 #endif //ENABLE_CAF
 
 // Multi-threaded header for Windows
@@ -347,6 +348,7 @@ struct map: ff_Map<int> {
 #else // !ENABLE_FF
 
 #ifdef ENABLE_CAF
+#ifdef V_PARTITION
 caf::behavior map_worker(caf::event_based_actor *self, uint32_t i, uint32_t nw) {
     return {
         [=](const size_t& start, const size_t& end) {
@@ -405,6 +407,40 @@ caf::behavior map(caf::stateful_actor<map_state> *self,
     }
   }};
 }
+#else
+caf::behavior map_worker(caf::event_based_actor *self, uint32_t iw, uint32_t nw) {
+    return {
+        [=](const size_t& i) {
+            fptype price;
+            fptype priceDelta;
+            /* Calling main function to calculate option value based on
+            * Black & Scholes's equation.
+            */
+            price = BlkSchlsEqEuroNoDiv(sptprice[i], strike[i],
+                                        rate[i], volatility[i], otime[i],
+                                        otype[i], 0);
+            prices[i] = price;
+#ifdef ERR_CHK
+            priceDelta = data[i].DGrefval - price;
+            if( fabs(priceDelta) >= 1e-4 ){
+                printf("Error on %d. Computed=%.5f, Ref=%.5f, Delta=%.5f\n",
+                    i, price, data[i].DGrefval, priceDelta);
+                numError ++;
+            }
+#endif
+      }};
+}
+
+caf::behavior map(caf::event_based_actor *self) {
+  return {[=](const size_t& start, const size_t& end) {
+    auto nv = end - start + 1; 
+    for (auto i=start; i<end; i++){
+        auto a = self->spawn<caf::lazy_init>(map_worker, i, nv);
+        self->send(a, i);
+    }
+  }};
+}
+#endif
 #else // !ENABLE_CAF
 
 #ifdef ENABLE_NORNIR_NATIVE
@@ -658,16 +694,29 @@ int main (int argc, char **argv)
 #else //ENABLE_FF
 #ifdef ENABLE_CAF
 {
+    std::cout << "CAF_VERSION=" << CAF_VERSION << std::endl;
     caf::actor_system_config cfg;
     cfg.set("scheduler.max-threads", nThreads);
     caf::actor_system sys{cfg};
     // caf::scoped_actor self{sys};
-
-    auto map_inst = sys.spawn(map, CAF_N_WORKER, CAF_DETACHED_WORKER);
-    
+#ifdef V_PARTITION
+    std::cout << "v_partition" << std::endl;
+    int32_t wpt = 1;
+    if(const char* env_wpt = std::getenv("CAF_CONF_WPT"))
+       wpt = atoi(env_wpt);
+    auto nw = nThreads*wpt;
+    std::cout << "N. worker: " << nw << std::endl;
+    auto map_inst = sys.spawn(map, nw, CAF_DETACHED_WORKER);
     for (uint32_t j=0; j<NUM_RUNS; j++) {
         caf::anon_send(map_inst, size_t{0}, (size_t)numOptions);
     }
+#else
+    std::cout << "no v_partition" << std::endl;
+    auto map_inst = sys.spawn(map);
+    for (uint32_t j=0; j<NUM_RUNS; j++) {
+        caf::anon_send(map_inst, size_t{0}, (size_t)numOptions);
+    }
+#endif
 }
 #else //ENABLE_CAF
 #ifdef ENABLE_NORNIR_NATIVE
