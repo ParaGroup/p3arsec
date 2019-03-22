@@ -6,7 +6,7 @@
 # Copyright (C) 2008 Princeton University
 # Written by Christian Bienia
 
-source ${PARSECDIR}/config/gcc.bldconf
+source ${PARSECDIR}/config/gcc-hooks.bldconf
 
 # CAF_PREFIX="~/actor-framework/install"
 CAF_INCLUDE="${CAF_PREFIX}/include"
