@@ -1336,12 +1336,12 @@ case ${action} in
     echo "${oprefix} Packages to build: ${pkgs}" 2>&1 | ${TEE} ${log}
 
     # Prepare LD_LIBRARY_PATH (some build systems call their own binaries)
-    LD_LIBRARY_PATH_orig="${LD_LIBRARY_PATH}"
-    if [ -z "${LD_LIBRARY_PATH}" ]; then
-      export LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64"
-    else
-      LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64:${LD_LIBRARY_PATH}"
-    fi
+    # LD_LIBRARY_PATH_orig="${LD_LIBRARY_PATH}"
+    # if [ -z "${LD_LIBRARY_PATH}" ]; then
+    #   export LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64"
+    # else
+    #   LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64:${LD_LIBRARY_PATH}"
+    # fi
 
     # Initialize local variables
     list_of_bibentries=""
@@ -1402,7 +1402,7 @@ case ${action} in
  
 
     # Restore LD_LIBRARY_PATH
-    LD_LIBRARY_PATH="${LD_LIBRARY_PATH_orig}"
+    # LD_LIBRARY_PATH="${LD_LIBRARY_PATH_orig}"
 
     echo "${oprefix} Done." | ${TEE} ${log};;
   "run"           )
@@ -1413,12 +1413,12 @@ case ${action} in
     echo "${oprefix} Benchmarks to run: ${pkgs}" 2>&1 | ${TEE} ${log}
 
     # Prepare LD_LIBRARY_PATH
-    LD_LIBRARY_PATH_orig="${LD_LIBRARY_PATH}"
-    if [ -z "${LD_LIBRARY_PATH}" ]; then
-      export LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64"
-    else
-      LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64:${LD_LIBRARY_PATH}"
-    fi
+    # LD_LIBRARY_PATH_orig="${LD_LIBRARY_PATH}"
+    # if [ -z "${LD_LIBRARY_PATH}" ]; then
+    #   export LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64"
+    # else
+    #   LD_LIBRARY_PATH="${CC_HOME}/lib:${CC_HOME}/lib64:${LD_LIBRARY_PATH}"
+    # fi
 
     # Initialize local variables
     list_of_bibentries=""
@@ -1476,7 +1476,7 @@ case ${action} in
     echo "${oprefix}"
  
     # Restore LD_LIBRARY_PATH
-    LD_LIBRARY_PATH="${LD_LIBRARY_PATH_orig}"
+    # LD_LIBRARY_PATH="${LD_LIBRARY_PATH_orig}"
 
     echo "${oprefix} Done." | ${TEE} ${log};;
   "clean"         )
