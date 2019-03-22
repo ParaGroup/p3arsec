@@ -87,6 +87,13 @@ To let PARSEC properly work, some dependencies needs to be installed. For Ubuntu
 ```
 sudo apt-get install git build-essential m4 x11proto-xext-dev libglu1-mesa-dev libxi-dev libxmu-dev libtbb-dev libssl-dev
 ```
+
+For Arch Linux, the following:
+
+```
+sudo pacman -Sy git m4 xorgproto glu libxi libxmu intel-tbb openssl
+```
+
 Similar packages can be found for other Linux distributions.
 
 After that, you need to install the benchmarks you are interested in:
