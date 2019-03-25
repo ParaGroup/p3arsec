@@ -701,10 +701,11 @@ int main (int argc, char **argv)
     // caf::scoped_actor self{sys};
 #ifdef V_PARTITION
     std::cout << "v_partition" << std::endl;
-    int32_t wpt = 1;
-    if(const char* env_wpt = std::getenv("CAF_CONF_WPT"))
-       wpt = atoi(env_wpt);
-    auto nw = nThreads*wpt;
+    uint32_t wpt = 1;
+    if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
+        wpt = atoi(env_wpt);
+    }
+    uint32_t nw = nThreads * wpt;
     std::cout << "N. worker: " << nw << std::endl;
     auto map_inst = sys.spawn(map, nw, CAF_DETACHED_WORKER);
     for (uint32_t j=0; j<NUM_RUNS; j++) {
