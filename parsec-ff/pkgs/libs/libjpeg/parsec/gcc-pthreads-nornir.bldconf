@@ -2,5 +2,5 @@
 
 # gcc-pthreads-nornir.bldconf - configuration file for PARSEC
 
-source ${PARSECDIR}/pkgs/libs/gsl/parsec/gcc-pthreads.bldconf
+source ${PARSECDIR}/pkgs/libs/libjpeg/parsec/gcc-pthreads.bldconf
 
