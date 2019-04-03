@@ -48,7 +48,11 @@ std::string getParametersPath(){
 #include <ff/parallel_for.hpp>
 #undef _INLINE
 #define _INLINE inline __attribute__((always_inline))
-#endif
+#endif // FF_VERSION
+
+#ifdef ENABLE_CAF
+#include "caf/all.hpp"
+#endif // ENABLE_CAF
 
 #define NORMALIZE_PRIMARY_RAYS
 
@@ -99,6 +103,60 @@ static const sse_f factor = _mm_set_ps1(255.0f);
 
 using namespace RTTL;
 using namespace std;
+
+
+#ifdef ENABLE_CAF
+using wend = caf::atom_constant<caf::atom("wend")>;
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::function<void(size_t)>)
+
+caf::behavior pfor_worker(caf::event_based_actor *self, uint32_t i, uint32_t nw) {
+  return {
+    [=](const size_t& start, const size_t& end, const std::function<void(size_t)>& fun) {
+      for (size_t i = start; i < end; ++i) {
+        fun(i);
+      }
+      return wend::value;
+    }
+  };
+}
+
+struct map_state {
+  std::vector<caf::actor> worker;
+};
+caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint32_t nw) {
+  // create workers
+  self->state.worker.resize(nw);
+  for (uint32_t i = 0; i < nw; i++) {
+    caf::actor a = self->spawn<caf::lazy_init>(pfor_worker, i, nw);
+    self->state.worker[i] = a;
+  }
+  return {[=](const size_t& start, const size_t& end, const std::function<void(size_t)>& fun) {
+    size_t nv = end - start + 1;
+    size_t chunk = nv / nw;
+    size_t plus = nv % nw;
+
+    auto promis = self->make_response_promise();
+    auto n_res = make_shared<size_t>(nw);
+    auto update_cb = [=](wend) mutable {
+      if (--(*n_res) == 0) {
+        promis.deliver(wend::value);
+      }
+    };
+    size_t p_start = start;
+    for (uint32_t iw = 0; iw < nw; iw++) {
+        size_t p_end = p_start+chunk;
+        if (plus > 0){
+          p_end++;
+          plus--;
+        }
+        self->request(self->state.worker[iw], caf::infinite,
+                      p_start, p_end, fun).then(update_cb);
+        p_start = p_end;
+    }
+    return promis;
+  }};
+}
+#endif // ENABLE_CAF
 
 class Camera {
 public:
@@ -169,7 +227,11 @@ protected:
 #ifdef FF_VERSION
 	ff::ParallelFor* pf;
 #endif
-
+#ifdef ENABLE_CAF
+  std::shared_ptr<caf::actor_system> system;
+  std::shared_ptr<caf::scoped_actor> self;
+  caf::actor pf;
+#endif // ENABLE_CAF
 #ifdef ENABLE_NORNIR_NATIVE
   nornir::ParallelFor* pf;
 #endif
@@ -236,6 +298,9 @@ public:
     Context::m_tileCounter.reset();
 #ifdef FF_VERSION
 	pf = NULL;
+#endif
+#ifdef ENABLE_CAF
+    std::cout << "CAF_VERSION=" << CAF_VERSION << std::endl;
 #endif
 #ifdef ENABLE_NORNIR
     instr = new nornir::Instrumenter(getParametersPath());
@@ -694,18 +759,34 @@ void Context::renderFrame(Camera *camera,
       pf = new ff::ParallelFor(m_threads, false, true);
       pf->disableScheduler();
 #else
+#ifdef ENABLE_CAF
+    caf::actor_system_config cfg;
+    cfg.set("scheduler.max-threads", m_threads);
+    system = make_shared<caf::actor_system>(cfg);
+    self = make_shared<caf::scoped_actor>(*system);
+    uint32_t wpt = 1;
+    if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
+        wpt = atoi(env_wpt);
+    }
+    uint32_t nw = m_threads * wpt;
+    pf = system->spawn<caf::lazy_init>(pfor_act, nw);
+    std::cout << "and " << nw << " actors..." << std::flush;
+#else
 #ifdef ENABLE_NORNIR_NATIVE 
       // Nornir: ParallelFor
       pf = new nornir::ParallelFor(m_threads, new nornir::Parameters(getParametersPath()));
 #else
     // Pthreads: Create threads
 	  createThreads(m_threads);
-#endif
-#endif
+#endif // ENABLE_NORNIR_NATIVE
+#endif // ENABLE_CAF
+#endif //FF_VERSION
 	  cout << "done" << endl << flush;
 	}
       m_threadsCreated = true;
     }
+
+// std::cout << "DEBUG: elements " << m_threadData.maxTiles << std::endl;
 
 #ifdef ENABLE_NORNIR
 #ifdef DEMO_BRIGHT17
@@ -715,8 +796,8 @@ void Context::renderFrame(Camera *camera,
   }
 #else
   instr->begin();
-#endif
-#endif
+#endif // DEMO_BRIGHT17
+#endif // ENABLE_NORNIR
   frameBuffer->startNewFrame();
   initSharedThreadData(camera,resX,resY,frameBuffer);
 
@@ -744,6 +825,29 @@ void Context::renderFrame(Camera *camera,
          , m_threads
          );
 #else
+#ifdef ENABLE_CAF
+        // Parallel for
+        const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
+        (*self)->request(pf, caf::infinite, (size_t) 0, (size_t) m_threadData.maxTiles,
+          std::function<void(size_t)>([&](size_t index) {
+            /* todo: get rid of '/' and '%' */
+            int sx = (index % tilesPerRow)*TILE_WIDTH;
+            int sy = (index / tilesPerRow)*TILE_WIDTH;
+            int ex = min(sx+TILE_WIDTH,m_threadData.resX);
+            int ey = min(sy+TILE_WIDTH,m_threadData.resY);
+            if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
+                renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
+            else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+                renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
+            else
+                FATAL("unknown mesh type");
+          })).receive(
+            [&](wend) {
+              // caf::aout(*self) << "DEBUG " << "end pf computation" << endl;
+            },
+            [&](caf::error &_) { caf::aout(*self) << "error_" << _ << endl; }
+          );
+#else
 #ifdef ENABLE_NORNIR_NATIVE
         // Parallel for
         int index;
@@ -763,11 +867,12 @@ void Context::renderFrame(Camera *camera,
                 else
                     FATAL("unknown mesh type");
          });
-#else // ENABLE_NORNIR_NATIVE
+#else
       Context::m_tileCounter.reset();
       startThreads();
       waitForAllThreads();
 #endif // ENABLE_NORNIR_NATIVE
+#endif // ENABLE_CAF
 #endif // FF_VERSION
     }
   else

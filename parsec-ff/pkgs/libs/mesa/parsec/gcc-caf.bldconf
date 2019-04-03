@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# gcc-ff.bldconf - configuration file for PARSEC
+# gcc-caf.bldconf - configuration file for PARSEC
 
 source ${PARSECDIR}/pkgs/libs/mesa/parsec/gcc.bldconf
 
