@@ -3,7 +3,7 @@
 [![HitCount](http://hits.dwyl.io/paragroup/p3arsec.svg)](http://hits.dwyl.io/paragroup/p3arsec)
 
 
-# P^{3}ARSEC
+# P<sup>3</sup>ARSEC
 This repository contains parallel patterns implementations of some applications contained in the PARSEC benchmark.
 
 The structure and modelling of the applications is described in the paper:
