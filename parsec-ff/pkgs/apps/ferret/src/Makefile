@@ -79,7 +79,7 @@ ifdef version
     LDLIBS += -lpthread
   endif
   ifeq "$(version)" "caf"
-    benchmark_base := ferret-caf-farmofpipes
+    benchmark_base := ferret-caf-$(CAF_V)
     LDLIBS += -lpthread
   endif
   ifeq "$(version)" "nornir"
