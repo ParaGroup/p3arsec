@@ -58,6 +58,8 @@ nornir::Instrumenter* instr;
 #include "annealer_thread_ff.h"
 #elif defined ENABLE_NORNIR_NATIVE
 #include "annealer_thread_nornir.h"
+#elif defined ENABLE_CAF
+#include "annealer_thread_caf.h"
 #else
 #include "annealer_thread.h"
 #endif
@@ -66,7 +68,7 @@ nornir::Instrumenter* instr;
 
 using namespace std;
 
-#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE) && !defined(ENABLE_CAF)
 void* entry_pt(void*);
 #endif
 
@@ -99,7 +101,7 @@ int main (int argc, char * const argv[]) {
 	//argument 1 is numthreads
 	int num_threads = atoi(argv[1]);
 	cout << "Threadcount: " << num_threads << endl;
-#if !defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
+#if !defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE) && !defined(ENABLE_CAF)
 	if (num_threads != 1){
 		cout << "NTHREADS must be 1 (serial version)" <<endl;
 		exit(1);
@@ -132,7 +134,7 @@ int main (int argc, char * const argv[]) {
 	//now that we've read in the commandline, run the program
 	netlist my_netlist(filename);
 
-#if !defined(ENABLE_FF)	&& !defined(ENABLE_NORNIR_NATIVE)
+#if !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE) && !defined(ENABLE_CAF)
 	annealer_thread a_thread(&my_netlist,num_threads,swaps_per_temp,start_temp,number_temp_steps);
 #endif
 	
@@ -162,6 +164,20 @@ int main (int argc, char * const argv[]) {
     farm.setFeedback();
     farm.start();
     farm.wait();
+#elif defined ENABLE_CAF
+	{
+    std::cout << "CAF_VERSION=" << CAF_VERSION << std::endl;
+    caf::actor_system_config cfg;
+    cfg.set("scheduler.max-threads", num_threads);
+    caf::actor_system sys{cfg};
+    uint32_t wpt = 1;
+    if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
+        wpt = atoi(env_wpt);
+    }
+    uint nw = num_threads * wpt;
+    std::cout << "N. worker: " << nw << std::endl;
+    sys.spawn(master_actor, nw, number_temp_steps, &my_netlist, swaps_per_temp, double(start_temp));
+	}
 #else // pthreads version
 	std::vector<pthread_t> threads(num_threads);
 	void* thread_in = static_cast<void*>(&a_thread);
@@ -202,7 +218,7 @@ int main (int argc, char * const argv[]) {
 	return 0;
 }
 
-#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE)
+#if defined(ENABLE_THREADS) && !defined(ENABLE_FF) && !defined(ENABLE_NORNIR_NATIVE) && !defined(ENABLE_CAF)
 void* entry_pt(void* data)
 {
 #ifdef ENABLE_NORNIR
