@@ -173,7 +173,7 @@ struct map_state {
 caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
   // create workers
   self->state.worker.resize(nw);
-  for (uint32_t i = 0; i < nw; i++) {
+  for (uint64_t i = 0; i < nw; i++) {
     caf::actor a = self->spawn<caf::lazy_init>(pfor_worker, i, nw);
     self->state.worker[i] = a;
   }
@@ -183,7 +183,7 @@ caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
     size_t plus = nv % nw;
     
     auto promis = self->make_response_promise();
-    auto n_res = make_shared<size_t>(nw);
+    auto n_res = make_shared<uint64_t>(nw);
     auto update_cb = [=](wend) mutable {
       if (--(*n_res) == 0) {
         promis.deliver(wend::value);
@@ -386,7 +386,7 @@ caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
       self->state.n_res = 0;
       self->state.promis = self->make_response_promise();
 
-      for (auto _=0; _<2; _++) {
+      // for (auto _=0; _<2; _++) {
         for (auto w : self->state.worker) {
           if (self->state.p_start < self->state.end) {
             size_t p_end = self->state.p_start + self->state.chunk;
@@ -401,7 +401,7 @@ caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
             break;
           }
         }
-      }
+      // }
       return self->state.promis;
     },
     [=](wget) {
