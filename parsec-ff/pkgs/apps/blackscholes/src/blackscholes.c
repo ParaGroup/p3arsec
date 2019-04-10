@@ -68,8 +68,7 @@ using namespace ff;
 #ifdef ENABLE_CAF
 #include <cstdlib>
 #include "caf/all.hpp"
-#define CAF_DETACHED_WORKER false
-#define V_PARTITION
+#define CAF_V2
 #endif //ENABLE_CAF
 
 // Multi-threaded header for Windows
@@ -348,7 +347,7 @@ struct map: ff_Map<int> {
 #else // !ENABLE_FF
 
 #ifdef ENABLE_CAF
-#ifdef V_PARTITION
+#ifdef CAF_V1
 caf::behavior map_worker(caf::event_based_actor *self, uint32_t i, uint32_t nw) {
     return {
         [=](const size_t& start, const size_t& end) {
@@ -378,17 +377,12 @@ struct map_state {
   std::vector<caf::actor> worker;
 };
 caf::behavior map(caf::stateful_actor<map_state> *self,
-                  uint32_t nw, bool detached) {
+                  uint32_t nw) {
   // create workers
   self->state.worker.resize(nw);
   for (uint32_t i = 0; i < nw; i++) {
-    caf::actor a;
-    if (detached) {
-      a = self->spawn<caf::detached>(map_worker, i, nw);
-    } else {
-      a = self->spawn<caf::lazy_init>(map_worker, i, nw);
-    }
-    self->state.worker[i] = a;
+    caf::actor a = self->spawn<caf::lazy_init>(map_worker, i, nw);
+    self->state.worker[i] = std::move(a);
   }
   return {[=](const size_t& start, const size_t& end) {
     size_t nv = end - start + 1;
@@ -408,39 +402,73 @@ caf::behavior map(caf::stateful_actor<map_state> *self,
   }};
 }
 #else
-caf::behavior map_worker(caf::event_based_actor *self, uint32_t iw, uint32_t nw) {
+#ifdef CAF_V2
+using wend = caf::atom_constant<caf::atom("wend")>;
+caf::behavior map_worker(caf::event_based_actor *self, uint64_t i, uint64_t nw) {
     return {
-        [=](const size_t& i) {
-            fptype price;
-            fptype priceDelta;
-            /* Calling main function to calculate option value based on
-            * Black & Scholes's equation.
-            */
-            price = BlkSchlsEqEuroNoDiv(sptprice[i], strike[i],
-                                        rate[i], volatility[i], otime[i],
-                                        otype[i], 0);
-            prices[i] = price;
+        [=](const size_t& start, const size_t& end) {
+            for (size_t i = start; i < end; ++i) {
+                fptype price;
+                fptype priceDelta;
+               /* Calling main function to calculate option value based on
+                * Black & Scholes's equation.
+                */
+                price = BlkSchlsEqEuroNoDiv(sptprice[i], strike[i],
+                                            rate[i], volatility[i], otime[i],
+                                            otype[i], 0);
+                prices[i] = price;
 #ifdef ERR_CHK
-            priceDelta = data[i].DGrefval - price;
-            if( fabs(priceDelta) >= 1e-4 ){
-                printf("Error on %d. Computed=%.5f, Ref=%.5f, Delta=%.5f\n",
-                    i, price, data[i].DGrefval, priceDelta);
-                numError ++;
-            }
+                priceDelta = data[i].DGrefval - price;
+                if( fabs(priceDelta) >= 1e-4 ){
+                    printf("Error on %d. Computed=%.5f, Ref=%.5f, Delta=%.5f\n",
+                        i, price, data[i].DGrefval, priceDelta);
+                    numError ++;
+                }
 #endif
+            }
+            return wend::value;
       }};
 }
 
-caf::behavior map(caf::event_based_actor *self) {
+struct map_state {
+  std::vector<caf::actor> worker;
+};
+caf::behavior map(caf::stateful_actor<map_state> *self, uint64_t nw) {
+  // create workers
+  self->state.worker.resize(nw);
+  for (uint64_t i = 0; i < nw; i++) {
+    caf::actor a = self->spawn<caf::lazy_init>(map_worker, i, nw);
+    self->state.worker[i] = std::move(a);
+  }
   return {[=](const size_t& start, const size_t& end) {
-    auto nv = end - start + 1; 
-    for (auto i=start; i<end; i++){
-        auto a = self->spawn<caf::lazy_init>(map_worker, i, nv);
-        self->send(a, i);
+    size_t nv = end - start + 1;
+    size_t chunk = nv / nw;
+    size_t plus = nv % nw;
+
+    auto promis = self->make_response_promise();
+    auto n_res = std::make_shared<uint64_t>(nw);
+    auto update_cb = [=](wend) mutable {
+      if (--(*n_res) == 0) {
+        promis.deliver(wend::value);
+      }
+    };
+
+    size_t p_start = start;
+    for (uint64_t iw = 0; iw < nw; iw++) {
+        size_t p_end = p_start+chunk;
+        if (plus > 0){
+          p_end++;
+          plus--;
+        }
+        self->request(self->state.worker[iw], caf::infinite, p_start, p_end)
+             .then(update_cb);
+        p_start = p_end;
     }
+    return promis;
   }};
 }
-#endif
+#endif // CAF_V1
+#endif // CAF_V2
 #else // !ENABLE_CAF
 
 #ifdef ENABLE_NORNIR_NATIVE
@@ -698,24 +726,27 @@ int main (int argc, char **argv)
     caf::actor_system_config cfg;
     cfg.set("scheduler.max-threads", nThreads);
     caf::actor_system sys{cfg};
-    // caf::scoped_actor self{sys};
-#ifdef V_PARTITION
-    std::cout << "v_partition" << std::endl;
     uint32_t wpt = 1;
     if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
         wpt = atoi(env_wpt);
     }
-    uint32_t nw = nThreads * wpt;
+    uint64_t nw = nThreads * wpt;
     std::cout << "N. worker: " << nw << std::endl;
-    auto map_inst = sys.spawn(map, nw, CAF_DETACHED_WORKER);
+    auto map_inst = sys.spawn(map, nw);
+#ifdef CAF_V1
+    std::cout << "CAF_V1" << std::endl;
     for (uint32_t j=0; j<NUM_RUNS; j++) {
         caf::anon_send(map_inst, size_t{0}, (size_t)numOptions);
     }
-#else
-    std::cout << "no v_partition" << std::endl;
-    auto map_inst = sys.spawn(map);
+#elif defined(CAF_V2)
+    caf::scoped_actor self{sys};
+    std::cout << "CAF_V2" << std::endl;
     for (uint32_t j=0; j<NUM_RUNS; j++) {
-        caf::anon_send(map_inst, size_t{0}, (size_t)numOptions);
+        self->request(map_inst, caf::infinite, size_t{0}, (size_t)numOptions)
+        .receive(
+            [&](wend) {},
+            [&](caf::error &_) { caf::aout(self) << "error_" << _ << std::endl; }
+        );
     }
 #endif
 }
