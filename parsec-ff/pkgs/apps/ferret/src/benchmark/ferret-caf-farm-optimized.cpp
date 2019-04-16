@@ -446,12 +446,12 @@ int main (int argc, char *argv[])
     std::cout << "N. worker: " << nw << std::endl;
 
 		// spawn a pipe of farms
-		auto out = sys.spawn<Out>();
+		auto out = sys.spawn<Out, caf::detached>();
 		auto *context = sys.dummy_execution_unit();
 		auto col_pipe = caf::actor_pool::make(context, nw,
 			[&]() {return sys.spawn<CollapsedPipeline>(out);},
 			caf::actor_pool::round_robin());
-		auto load = sys.spawn<Load>(col_pipe);
+		auto load = sys.spawn<Load, caf::detached>(col_pipe);
     caf::anon_send(load, startload::value);
 	}
 

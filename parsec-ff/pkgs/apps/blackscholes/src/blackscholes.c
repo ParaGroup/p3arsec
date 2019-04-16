@@ -69,6 +69,8 @@ using namespace ff;
 #include <cstdlib>
 #include "caf/all.hpp"
 #define CAF_V2
+#define DETACHED_EMITTER
+// #define DETACHED_WORKER
 #endif //ENABLE_CAF
 
 // Multi-threaded header for Windows
@@ -381,7 +383,11 @@ caf::behavior map(caf::stateful_actor<map_state> *self,
   // create workers
   self->state.worker.resize(nw);
   for (uint32_t i = 0; i < nw; i++) {
-    caf::actor a = self->spawn<caf::lazy_init>(map_worker, i, nw);
+#ifdef DETACHED_WORKER
+    caf::actor a = self->spawn<caf::detached>(map_worker, i, nw);
+#else
+    caf::actor a = self->spawn(map_worker, i, nw);
+#endif
     self->state.worker[i] = std::move(a);
   }
   return {[=](const size_t& start, const size_t& end) {
@@ -437,7 +443,12 @@ caf::behavior map(caf::stateful_actor<map_state> *self, uint64_t nw) {
   // create workers
   self->state.worker.resize(nw);
   for (uint64_t i = 0; i < nw; i++) {
-    caf::actor a = self->spawn<caf::lazy_init>(map_worker, i, nw);
+    // caf::actor a = self->spawn<caf::lazy_init>(map_worker, i, nw);
+#ifdef DETACHED_WORKER
+    caf::actor a = self->spawn<caf::detached>(map_worker, i, nw);
+#else
+    caf::actor a = self->spawn(map_worker, i, nw);
+#endif
     self->state.worker[i] = std::move(a);
   }
   return {[=](const size_t& start, const size_t& end) {
@@ -724,15 +735,33 @@ int main (int argc, char **argv)
 {
     std::cout << "CAF_VERSION=" << CAF_VERSION << std::endl;
     caf::actor_system_config cfg;
+#ifdef DETACHED_WORKER
+    std::cout << "DETACH WORKER" << std::endl;
+    cfg.set("scheduler.max-threads", 1);
+#else
     cfg.set("scheduler.max-threads", nThreads);
+#endif 
+    // cfg.set("scheduler.enable-profiling", true);
+    // cfg.set("scheduler.profiling-output-file", "./profile.log");
+    // sfg.set("profiling-resolution", "100ms");
     caf::actor_system sys{cfg};
     uint32_t wpt = 1;
     if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
         wpt = atoi(env_wpt);
     }
-    uint64_t nw = nThreads * wpt;
-    std::cout << "N. worker: " << nw << std::endl;
+    uint32_t act = 0;
+    if(const char* env_act = std::getenv("CAF_CONF_ACT")){
+        act = atoi(env_act);
+    }
+    uint64_t nw = act == 0 ? nThreads * wpt : act;
+    std::cout << "N. thread: " << nThreads << " "
+              << "N. actor: "  << nw << std::endl;
+#ifdef DETACHED_EMITTER
+    std::cout << "DETACH EMITTER" << std::endl;
+    auto map_inst = sys.spawn<caf::detached>(map, nw);
+#else
     auto map_inst = sys.spawn(map, nw);
+#endif
 #ifdef CAF_V1
     std::cout << "CAF_V1" << std::endl;
     for (uint32_t j=0; j<NUM_RUNS; j++) {

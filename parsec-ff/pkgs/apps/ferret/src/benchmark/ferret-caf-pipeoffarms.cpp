@@ -496,7 +496,7 @@ int main (int argc, char *argv[])
     std::cout << "N. worker: " << nw << std::endl;
 
 		// spawn a pipe of farms
-		auto out = sys.spawn<Out>();
+		auto out = sys.spawn<Out, caf::detached>();
 		auto *context = sys.dummy_execution_unit();
 		auto rank = caf::actor_pool::make(context, nw,
 																		  [&]() {return sys.spawn<Rank>(out);},
@@ -510,7 +510,7 @@ int main (int argc, char *argv[])
 		auto seg  = caf::actor_pool::make(context, nw,
 																	    [&]() {return sys.spawn<Seg>(ext);},
 																		  caf::actor_pool::round_robin());
-		auto load = sys.spawn<Load>(seg);
+		auto load = sys.spawn<Load, caf::detached>(seg);
     caf::anon_send(load, startload::value);
 	}
 

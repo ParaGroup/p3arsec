@@ -174,9 +174,14 @@ int main (int argc, char * const argv[]) {
     if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
         wpt = atoi(env_wpt);
     }
-    uint nw = num_threads * wpt;
-    std::cout << "N. worker: " << nw << std::endl;
-    sys.spawn(master_actor, nw, number_temp_steps, &my_netlist, swaps_per_temp, double(start_temp));
+    uint32_t act = 0;
+    if(const char* env_act = std::getenv("CAF_CONF_ACT")){
+        act = atoi(env_act);
+    }
+    uint64_t nw = act == 0 ? num_threads * wpt : act;
+    std::cout << "N. thread: " << num_threads << " "
+              << "N. actor: "  << nw << std::endl;
+    sys.spawn<caf::detached>(master_actor, nw, number_temp_steps, &my_netlist, swaps_per_temp, double(start_temp));
 	}
 #else // pthreads version
 	std::vector<pthread_t> threads(num_threads);

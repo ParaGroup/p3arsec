@@ -360,7 +360,7 @@ public:
 		// spawn a farm of pipeline
 		auto *context = cfg.host;
 		auto &sys = context->system();
-		auto out = sys.spawn<Out>();
+		auto out = sys.spawn<Out,caf::detached>();
 		auto spawn_worker = [&]() -> caf::actor {
 				auto rank = sys.spawn<Rank>(out);
 				auto vec = sys.spawn<Vec>(rank);
@@ -508,7 +508,7 @@ int main (int argc, char *argv[])
     }
     uint32_t nw = nthreads * wpt;
     std::cout << "N. worker: " << nw << std::endl;
-    auto farm_inst = sys.spawn<Load>(nw);
+    auto farm_inst = sys.spawn<Load, caf::detached>(nw);
     caf::anon_send(farm_inst, startload::value);
 	}
 
