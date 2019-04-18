@@ -70,7 +70,7 @@ using namespace ff;
 #include "caf/all.hpp"
 #define CAF_V2
 #define DETACHED_EMITTER
-// #define DETACHED_WORKER
+#define DETACHED_WORKER
 #endif //ENABLE_CAF
 
 // Multi-threaded header for Windows

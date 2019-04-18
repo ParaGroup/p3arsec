@@ -181,7 +181,7 @@ int main (int argc, char * const argv[]) {
     uint64_t nw = act == 0 ? num_threads * wpt : act;
     std::cout << "N. thread: " << num_threads << " "
               << "N. actor: "  << nw << std::endl;
-    sys.spawn<caf::detached>(master_actor, nw, number_temp_steps, &my_netlist, swaps_per_temp, double(start_temp));
+    sys.spawn(master_actor, nw, number_temp_steps, &my_netlist, swaps_per_temp, double(start_temp));
 	}
 #else // pthreads version
 	std::vector<pthread_t> threads(num_threads);

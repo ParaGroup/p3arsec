@@ -336,98 +336,111 @@ const std::string CAF_V = "CAF_V4DET";
 const std::string CAF_V = "CAF_V4";
 #endif
 using wget = caf::atom_constant<caf::atom("wget")>;
-caf::behavior pfor_worker(caf::event_based_actor *self, uint64_t i, caf::actor emitter) {
-  return {
-    [=](const size_t& start, const size_t& end, const std::function<void(size_t)>& fun) {
-      // caf::aout(self) << "DEBUG " 
-      //                 << "->worker " << i << " "
-      //                 << "get " << start << " - " << end << std::endl;
-      self->send(emitter, wget::value);
-      for (size_t i = start; i < end; ++i) {
-        fun(i);
-      }
-    }//,
-    // [=](wend){self->quit();}
-  };
+atomic<size_t> *atomic_i;
+caf::behavior pfor_worker(caf::event_based_actor *self, uint64_t iw,
+                          caf::actor emitter) {
+  return {[=](const size_t &start, const size_t &end,
+              const std::function<void(size_t)> &fun) {
+            // caf::aout(self) << "DEBUG "
+            //                 << "->worker " << iw << " "
+            //                 << "get " << start << " - " << end << std::endl;
+            self->send(emitter, wget::value);
+            for (auto i = start; i < end; ++i) {
+              fun(i);
+            }
+            return wend::value;
+          },
+          [=](const size_t &size, const std::function<void(size_t)> &fun) {
+            size_t i;
+            while ((i = atomic_i->fetch_add(1)) < size) {
+              // caf::aout(self) << "DEBUG "
+              //                 << "->worker " << iw << " "
+              //                 << "get " << i << std::endl;
+              fun(i);
+            }
+            return wend::value;
+          }};
 }
-struct map_state {
-  std::vector<caf::actor> worker;
-  size_t p_start;
-  size_t end;
-  size_t chunk;
-  size_t plus;
-  std::function<void(size_t)> fun;
-  caf::response_promise promis;
-  size_t n_res;
-};
-caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
+void pfor_act(caf::blocking_actor *self, uint64_t nw) {
   // create workers
-  self->state.worker.resize(nw);
-  self->state.p_start = 0;
-  for (uint64_t i = 0; i < nw; i++) {
+  vector<caf::actor> worker(nw);
+  for (auto i = 0; i < nw; i++) {
 #ifdef CAF_V4DET
-    caf::actor a = self->spawn<caf::detached>(pfor_worker, i, caf::actor_cast<caf::actor>(self));
+    worker[i] = self->spawn<caf::detached>(pfor_worker, i, caf::actor_cast<caf::actor>(self));
 #else
-    caf::actor a = self->spawn(pfor_worker, i, caf::actor_cast<caf::actor>(self));
+    worker[i] = self->spawn(pfor_worker, i, caf::actor_cast<caf::actor>(self));
 #endif
-    self->state.worker[i] = std::move(a);
   }
-  return {[=](const size_t& start, const size_t& end,
-              const size_t& grain, const std::function<void(size_t)>& fun) {
-      // TO-FIX: this do not work if multiple message are received
-      //         !!do not use on stream!!
-      size_t nv = end - start;
-      size_t chunk = nv / nw;
-      size_t plus = nv % nw;
-      if (grain > 0 && grain < chunk ) {
-        chunk = grain;
-        plus = nv % grain;
-      }
-      // caf::aout(self) << "DEBUG "
-      //                 << "nv=" << nv << " "
-      //                 << "grain=" << grain << " "
-      //                 << "nw=" << nw << std::endl;
-      self->state.p_start = start;
-      self->state.end = end;
-      self->state.chunk = chunk;
-      self->state.plus = plus;
-      self->state.fun = move(fun);
-      self->state.n_res = 0;
-      self->state.promis = self->make_response_promise();
+  bool running = true;
+  self->receive_while(running)(
+      [=](const size_t &start, const size_t &end, const size_t &grain,
+          const std::function<void(size_t)> &fun) {
+        auto sender = caf::actor_cast<caf::actor>(self->current_sender());
+        size_t nv = end - start;
 
-      for (auto w : self->state.worker) {
-        if (self->state.p_start < self->state.end) {
-          size_t p_end = self->state.p_start + self->state.chunk;
-          if (self->state.plus > 0) {
-            p_end++;
-            self->state.plus--;
+        if (grain == 1) {
+          // use the atomic version
+          atomic_i = new atomic<size_t>(0);
+
+          for (auto w : worker) {
+            self->send(w, nv, fun);
           }
-          self->send(w, self->state.p_start, p_end, self->state.fun);
-          self->state.n_res++;
-          self->state.p_start = p_end;
+          size_t i{0};
+          self->receive_for(i, worker.size())([=](wend) {});
+          free(atomic_i);
         } else {
-          break;
+          // use the generic with message version
+          size_t chunk = nv / nw;
+          size_t plus = nv % nw;
+          // if grain is specified use it
+          if (grain > 0 && grain < chunk) {
+            chunk = grain;
+            plus = nv % grain;
+          }
+
+          size_t p_start = start;
+          size_t n_res = 0;
+          auto send_chunk = [&](const caf::actor& to) {
+            size_t p_end = p_start + chunk;
+            if (plus > 0) {
+              p_end++;
+              plus--;
+            }
+            self->send(to, p_start, p_end, fun);
+            n_res++;
+            p_start = p_end;
+          };
+
+          for (auto w : worker) {
+            if (p_start < end) {
+              send_chunk(w);
+            } else {
+              break;
+            }
+          }
+
+          bool receive = true;
+          self->receive_while(receive)(
+              [&](wget) {
+                if (p_start < end) {
+                  send_chunk(
+                      caf::actor_cast<caf::actor>(self->current_sender()));
+                }
+              },
+              [&](wend) {
+                --n_res;
+                if (p_start >= end && n_res == 0)
+                  receive = false;
+              });
         }
-      }
-      return self->state.promis;
-    },
-    [=](wget) {
-      if (self->state.p_start < self->state.end) {
-        size_t p_end = self->state.p_start + self->state.chunk;
-        if (self->state.plus > 0) {
-          p_end++;
-          self->state.plus--;
+        self->response(wend::value);
+      },
+      [&](caf::exit_msg &em) {
+        if (em.reason) {
+          self->fail_state(std::move(em.reason));
+          running = false;
         }
-        self->send(caf::actor_cast<caf::actor>(self->current_sender()),
-                   self->state.p_start, p_end, self->state.fun);
-        self->state.p_start = p_end;
-      } else {
-        if (--self->state.n_res == 0) {
-          self->state.promis.deliver(wend::value);
-        }
-      }
-    }
-  };
+      });
 }
 #endif // CAF_V4
 #endif // CAF_V3
@@ -1067,8 +1080,8 @@ void Context::renderFrame(Camera *camera,
     uint64_t nw = caf_conf_act == 0 ? m_threads * caf_conf_wpt : caf_conf_act;
     std::cout << "N. thread: " << m_threads << " "
               << "N. actor: "  << nw << " "<< std::flush;
-    pf = system->spawn<caf::detached>(pfor_act, nw);
-#endif // CAF_V1 | CAF_V3 | CAF_V4
+    pf = system->spawn(pfor_act, nw);
+#endif // CAF_V1 | CAF_V3 | CAF_V4 | CAF_V4DET
 #ifdef CAF_V2
     pf = system->spawn<caf::detached>(pfor_act);
 #endif// CAF_V2

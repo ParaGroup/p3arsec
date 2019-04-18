@@ -158,8 +158,8 @@ caf::behavior master_actor(caf::stateful_actor<master_state> *self, uint nw,
     self->state.tasks = vector<CTask>(nw);
     // spawn workers
     auto spawn_worker = [=]() -> caf::actor {
-        return self->spawn<caf::lazy_init>(worker_actor, netlist_, nw,
-                                           swaps_per_temp, start_temp);
+        return self->spawn(worker_actor, netlist_, nw,
+                           swaps_per_temp, start_temp);
     };
     auto workers = caf::actor_pool::make(self->context(), nw, spawn_worker,
                                          caf::actor_pool::round_robin());
