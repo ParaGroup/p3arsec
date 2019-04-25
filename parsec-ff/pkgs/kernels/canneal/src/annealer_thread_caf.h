@@ -31,6 +31,8 @@
 #ifndef ANNEALER_THREAD_CAF_H
 #define ANNEALER_THREAD_CAF_H
 
+#define DETACHED_WORKER
+
 #include <array>
 #include <assert.h>
 
@@ -158,8 +160,13 @@ caf::behavior master_actor(caf::stateful_actor<master_state> *self, uint nw,
     self->state.tasks = vector<CTask>(nw);
     // spawn workers
     auto spawn_worker = [=]() -> caf::actor {
+#ifdef DETACHED_WORKER
+        return self->spawn<caf::detached>(worker_actor, netlist_, nw,
+                                          swaps_per_temp, start_temp);
+#else
         return self->spawn(worker_actor, netlist_, nw,
                            swaps_per_temp, start_temp);
+#endif
     };
     auto workers = caf::actor_pool::make(self->context(), nw, spawn_worker,
                                          caf::actor_pool::round_robin());
