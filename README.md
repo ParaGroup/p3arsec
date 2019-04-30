@@ -286,3 +286,6 @@ dynamically scaling the clock frequency, etc...**
 
 # Contributors
 P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto:d.desensi.software@gmail.com) and [Tiziano De Matteis](mailto:dematteis@di.unipi.it).
+
+If our work is useful for your research, please cite the following paper:
+ - M. Danelutto, T. De Matteis, D. De Sensi, G. Mencagli and M. Torquati. P3ARSEC: Towards Parallel Patterns Benchmarking. In proceedings of the 32nd ACM SIGAPP Symposium on Applied Computing (SAC), Marrakesh, Morocco, 2017. ISBN: 978-145034486-9, DOI: 10.1145/3019612.3019745
