@@ -227,7 +227,7 @@ At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace 
 
 After that, build and run *ferret* as usual.
 
-# Enforcing pPerformance and power consumption objectives
+# Enforcing performance and power consumption objectives
 
 It is possible to specify requirements on performance (throughput or execution time) and/or power and energy
 consumption for all the benchmarks. We provide this possibility by exploiting dynamic reconfiguration of the applications 
