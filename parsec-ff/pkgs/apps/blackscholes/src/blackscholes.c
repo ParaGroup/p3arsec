@@ -488,12 +488,23 @@ struct DataCont {
     float otime;
 };
 using InVec = std::vector<DataCont>;
-using OutVec = std::vector<fptype>;
 CAF_ALLOW_UNSAFE_MESSAGE_TYPE(InVec)
+using OutVec = std::vector<fptype>;
 caf::behavior map_worker(caf::event_based_actor *self, uint64_t i_, uint64_t nw_) {
     return {
-        [=](const InVec& data_vec, const size_t& start, const size_t& end) {
-            OutVec partial_prices(end-start);
+        [=](const InVec& data_vec) -> std::tuple<OutVec, size_t, size_t> {
+            size_t nv = data_vec.size();
+            size_t chunk = nv / nw_;
+            size_t plus = nv % nw_;
+
+            size_t start = i_ * chunk + std::min(plus, i_);
+            if (plus > i_){
+                chunk++;
+            }
+            size_t end = start + chunk;
+            
+            OutVec partial_prices(chunk);
+            size_t j = 0;
             for (auto i = start; i < end; ++i) {
                 fptype price;
                 fptype priceDelta;
@@ -504,7 +515,8 @@ caf::behavior map_worker(caf::event_based_actor *self, uint64_t i_, uint64_t nw_
                                             data_vec[i].rate, data_vec[i].volatility, 
                                             data_vec[i].otime, data_vec[i].otype, 0);
 
-                partial_prices.push_back(price);
+                partial_prices[j] = price;
+                j += 1;
 #ifdef ERR_CHK
                 priceDelta = data[i].DGrefval - price;
                 if( fabs(priceDelta) >= 1e-4 ){
@@ -514,7 +526,7 @@ caf::behavior map_worker(caf::event_based_actor *self, uint64_t i_, uint64_t nw_
                 }
 #endif
             }
-            return std::make_tuple(std::move(partial_prices), start, end);
+            return {std::move(partial_prices), start, end};
       }};
 }
 
@@ -538,6 +550,7 @@ caf::behavior map_func(caf::stateful_actor<map_state> *self, uint64_t nw_) {
     auto n_res = std::make_shared<size_t>(nw_);
     auto update_cb = [=](const OutVec &partial, const size_t start,
                          const size_t end) mutable {
+    // std::cout << "receive start:" << start << " end:" << end << std::endl;
       uint j = 0;
       for (auto i = start; i < end; ++i) {
         (*res)[i] = partial[j++];
@@ -547,16 +560,10 @@ caf::behavior map_func(caf::stateful_actor<map_state> *self, uint64_t nw_) {
       }
     };
 
-    size_t p_start = 0;
-    for (auto iw = 0u; iw < nw_; iw++) {
-        size_t p_end = p_start+chunk;
-        if (plus > 0){
-          p_end++;
-          plus--;
-        }
-        self->request(self->state.worker[iw], caf::infinite, data_vec, p_start, p_end)
-             .then(update_cb);
-        p_start = p_end;
+    auto this_msg = self->current_mailbox_element()->move_content_to_message();
+    for (size_t iw = 0; iw < nw_; iw++) {
+      self->request(self->state.worker[iw], caf::infinite, this_msg)
+          .then(update_cb);
     }
     return promis;
   }};
@@ -772,6 +779,7 @@ int main (int argc, char **argv)
                       rate[i],volatility[i],otime[i]};
         data_vec.push_back(std::move(data));
     } 
+    OutVec final_res(numOptions);
 #endif
 
 #ifdef ENABLE_PARSEC_HOOKS
@@ -879,9 +887,9 @@ int main (int argc, char **argv)
     caf::scoped_actor self{sys};
     std::cout << "CAF_V3" << std::endl;
     auto map_inst = sys.spawn(map_func, nw);
-    OutVec final_res;
     for (uint32_t j=0; j<NUM_RUNS; j++) {
-        self->request(map_inst, caf::infinite, move(data_vec))
+        // std::cout << "N: " << j << "/" << NUM_RUNS << std::endl;
+        self->request(map_inst, caf::infinite, data_vec)
         .receive(
             [&](OutVec& res) {
                 final_res = move(res);
@@ -889,7 +897,6 @@ int main (int argc, char **argv)
             [&](caf::error &_) { caf::aout(self) << "error_" << _ << std::endl; }
         );
     }
-    prices = &final_res[0];
 #endif
 }
 #else //ENABLE_CAF
