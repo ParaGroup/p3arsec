@@ -488,13 +488,13 @@ struct DataCont {
     float otime;
 };
 using InVec = std::vector<DataCont>;
-using OutVec = std::vector<float>;
+using OutVec = std::vector<fptype>;
 CAF_ALLOW_UNSAFE_MESSAGE_TYPE(InVec)
-caf::behavior map_worker(caf::event_based_actor *self, uint64_t i, uint64_t nw) {
+caf::behavior map_worker(caf::event_based_actor *self, uint64_t i_, uint64_t nw_) {
     return {
         [=](const InVec& data_vec, const size_t& start, const size_t& end) {
-            OutVec partial_prices(end-start+1);
-            for (size_t i = start; i < end; ++i) {
+            OutVec partial_prices(end-start);
+            for (auto i = start; i < end; ++i) {
                 fptype price;
                 fptype priceDelta;
                /* Calling main function to calculate option value based on
@@ -521,26 +521,25 @@ caf::behavior map_worker(caf::event_based_actor *self, uint64_t i, uint64_t nw) 
 struct map_state {
   std::vector<caf::actor> worker;
 };
-caf::behavior map_func(caf::stateful_actor<map_state> *self, uint64_t nw) {
+caf::behavior map_func(caf::stateful_actor<map_state> *self, uint64_t nw_) {
   // create workers
-  self->state.worker.resize(nw);
-  for (uint64_t i = 0; i < nw; i++) {
-    caf::actor a = self->spawn(map_worker, i, nw);
+  self->state.worker.resize(nw_);
+  for (auto i = 0u; i < nw_; i++) {
+    caf::actor a = self->spawn(map_worker, i, nw_);
     self->state.worker[i] = std::move(a);
   }
   return {[=](const InVec& data_vec) {
     size_t nv = data_vec.size();
-    size_t chunk = nv / nw;
-    size_t plus = nv % nw;
+    size_t chunk = nv / nw_;
+    size_t plus = nv % nw_;
 
     auto promis = self->make_response_promise();
     auto res = std::make_shared<OutVec>(nv);
-    auto n_res = std::make_shared<size_t>(nw);
+    auto n_res = std::make_shared<size_t>(nw_);
     auto update_cb = [=](const OutVec &partial, const size_t start,
                          const size_t end) mutable {
-                             std::cout << "DEBUG receive partial " << std::endl;
       uint j = 0;
-      for (size_t i = start; i < end; ++i) {
+      for (auto i = start; i < end; ++i) {
         (*res)[i] = partial[j++];
       }
       if (--(*n_res) == 0) {
@@ -549,7 +548,7 @@ caf::behavior map_func(caf::stateful_actor<map_state> *self, uint64_t nw) {
     };
 
     size_t p_start = 0;
-    for (uint64_t iw = 0; iw < nw; iw++) {
+    for (auto iw = 0u; iw < nw_; iw++) {
         size_t p_end = p_start+chunk;
         if (plus > 0){
           p_end++;
