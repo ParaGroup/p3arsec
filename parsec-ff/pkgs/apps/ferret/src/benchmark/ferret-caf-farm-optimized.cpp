@@ -437,6 +437,9 @@ int main (int argc, char *argv[])
     std::cout << "CAF_VERSION=" << CAF_VERSION << std::endl;
     caf::actor_system_config cfg;
     cfg.set("scheduler.max-threads", nthreads);
+		cfg.set("scheduler.max-throughput", 1);
+    cfg.set("work-stealing.moderate-poll-attempts", 0);
+		cfg.set("work-stealing.relaxed-sleep-duration", "500ms");
     caf::actor_system sys{cfg};
     uint32_t wpt = 1;
     if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
@@ -446,7 +449,7 @@ int main (int argc, char *argv[])
     std::cout << "N. worker: " << nw << std::endl;
 
 		// spawn a pipe of farms
-		auto out = sys.spawn<Out, caf::detached>();
+		auto out = sys.spawn<Out>();
 		auto *context = sys.dummy_execution_unit();
 		auto col_pipe = caf::actor_pool::make(context, nw,
 			[&]() {return sys.spawn<CollapsedPipeline>(out);},

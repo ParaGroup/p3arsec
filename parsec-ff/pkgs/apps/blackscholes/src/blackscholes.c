@@ -67,10 +67,11 @@ using namespace ff;
 
 #ifdef ENABLE_CAF
 #include <cstdlib>
+#include <vector>
 #include "caf/all.hpp"
-#define CAF_V2
-#define DETACHED_EMITTER
-#define DETACHED_WORKER
+#define CAF_V3
+// #define DETACHED_EMITTER
+// #define DETACHED_WORKER
 #endif //ENABLE_CAF
 
 // Multi-threaded header for Windows
@@ -407,8 +408,7 @@ caf::behavior map(caf::stateful_actor<map_state> *self,
     }
   }};
 }
-#else
-#ifdef CAF_V2
+#elif defined(CAF_V2) // CAF_V1
 using wend = caf::atom_constant<caf::atom("wend")>;
 caf::behavior map_worker(caf::event_based_actor *self, uint64_t i, uint64_t nw) {
     return {
@@ -478,8 +478,91 @@ caf::behavior map(caf::stateful_actor<map_state> *self, uint64_t nw) {
     return promis;
   }};
 }
-#endif // CAF_V1
-#endif // CAF_V2
+#elif defined(CAF_V3) // CAF_V2
+struct DataCont {
+    int otype;
+    float sptprice;
+    float strike;
+    float rate;
+    float volatility;
+    float otime;
+};
+using InVec = std::vector<DataCont>;
+using OutVec = std::vector<float>;
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(InVec)
+caf::behavior map_worker(caf::event_based_actor *self, uint64_t i, uint64_t nw) {
+    return {
+        [=](const InVec& data_vec, const size_t& start, const size_t& end) {
+            OutVec partial_prices(end-start+1);
+            for (size_t i = start; i < end; ++i) {
+                fptype price;
+                fptype priceDelta;
+               /* Calling main function to calculate option value based on
+                * Black & Scholes's equation.
+                */
+                price = BlkSchlsEqEuroNoDiv(data_vec[i].sptprice, data_vec[i].strike,
+                                            data_vec[i].rate, data_vec[i].volatility, 
+                                            data_vec[i].otime, data_vec[i].otype, 0);
+
+                partial_prices.push_back(price);
+#ifdef ERR_CHK
+                priceDelta = data[i].DGrefval - price;
+                if( fabs(priceDelta) >= 1e-4 ){
+                    printf("Error on %d. Computed=%.5f, Ref=%.5f, Delta=%.5f\n",
+                        i, price, data[i].DGrefval, priceDelta);
+                    numError ++;
+                }
+#endif
+            }
+            return std::make_tuple(std::move(partial_prices), start, end);
+      }};
+}
+
+struct map_state {
+  std::vector<caf::actor> worker;
+};
+caf::behavior map_func(caf::stateful_actor<map_state> *self, uint64_t nw) {
+  // create workers
+  self->state.worker.resize(nw);
+  for (uint64_t i = 0; i < nw; i++) {
+    caf::actor a = self->spawn(map_worker, i, nw);
+    self->state.worker[i] = std::move(a);
+  }
+  return {[=](const InVec& data_vec) {
+    size_t nv = data_vec.size();
+    size_t chunk = nv / nw;
+    size_t plus = nv % nw;
+
+    auto promis = self->make_response_promise();
+    auto res = std::make_shared<OutVec>(nv);
+    auto n_res = std::make_shared<size_t>(nw);
+    auto update_cb = [=](const OutVec &partial, const size_t start,
+                         const size_t end) mutable {
+                             std::cout << "DEBUG receive partial " << std::endl;
+      uint j = 0;
+      for (size_t i = start; i < end; ++i) {
+        (*res)[i] = partial[j++];
+      }
+      if (--(*n_res) == 0) {
+        promis.deliver(std::move(*res));
+      }
+    };
+
+    size_t p_start = 0;
+    for (uint64_t iw = 0; iw < nw; iw++) {
+        size_t p_end = p_start+chunk;
+        if (plus > 0){
+          p_end++;
+          plus--;
+        }
+        self->request(self->state.worker[iw], caf::infinite, data_vec, p_start, p_end)
+             .then(update_cb);
+        p_start = p_end;
+    }
+    return promis;
+  }};
+}
+#endif // CAF_V3
 #else // !ENABLE_CAF
 
 #ifdef ENABLE_NORNIR_NATIVE
@@ -683,6 +766,15 @@ int main (int argc, char **argv)
 
     printf("Size of data: %d\n", numOptions * (sizeof(OptionData) + sizeof(int)));
 
+#ifdef CAF_V3
+    InVec data_vec(numOptions);
+    for (i=0; i<numOptions; i++) {
+        DataCont data{otype[i],sptprice[i],strike[i],
+                      rate[i],volatility[i],otime[i]};
+        data_vec.push_back(std::move(data));
+    } 
+#endif
+
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();
 #endif
@@ -756,18 +848,25 @@ int main (int argc, char **argv)
     uint64_t nw = act == 0 ? nThreads * wpt : act;
     std::cout << "N. thread: " << nThreads << " "
               << "N. actor: "  << nw << std::endl;
+
+#ifdef CAF_V1
 #ifdef DETACHED_EMITTER
     std::cout << "DETACH EMITTER" << std::endl;
     auto map_inst = sys.spawn<caf::detached>(map, nw);
 #else
     auto map_inst = sys.spawn(map, nw);
 #endif
-#ifdef CAF_V1
     std::cout << "CAF_V1" << std::endl;
     for (uint32_t j=0; j<NUM_RUNS; j++) {
         caf::anon_send(map_inst, size_t{0}, (size_t)numOptions);
     }
 #elif defined(CAF_V2)
+#ifdef DETACHED_EMITTER
+    std::cout << "DETACH EMITTER" << std::endl;
+    auto map_inst = sys.spawn<caf::detached>(map, nw);
+#else
+    auto map_inst = sys.spawn(map, nw);
+#endif
     caf::scoped_actor self{sys};
     std::cout << "CAF_V2" << std::endl;
     for (uint32_t j=0; j<NUM_RUNS; j++) {
@@ -777,6 +876,21 @@ int main (int argc, char **argv)
             [&](caf::error &_) { caf::aout(self) << "error_" << _ << std::endl; }
         );
     }
+#elif defined(CAF_V3)
+    caf::scoped_actor self{sys};
+    std::cout << "CAF_V3" << std::endl;
+    auto map_inst = sys.spawn(map_func, nw);
+    OutVec final_res;
+    for (uint32_t j=0; j<NUM_RUNS; j++) {
+        self->request(map_inst, caf::infinite, move(data_vec))
+        .receive(
+            [&](OutVec& res) {
+                final_res = move(res);
+            },
+            [&](caf::error &_) { caf::aout(self) << "error_" << _ << std::endl; }
+        );
+    }
+    prices = &final_res[0];
 #endif
 }
 #else //ENABLE_CAF

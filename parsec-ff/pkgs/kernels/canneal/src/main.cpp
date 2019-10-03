@@ -59,6 +59,7 @@ nornir::Instrumenter* instr;
 #elif defined ENABLE_NORNIR_NATIVE
 #include "annealer_thread_nornir.h"
 #elif defined ENABLE_CAF
+#define DETACHED_WORKER
 #include "annealer_thread_caf.h"
 #else
 #include "annealer_thread.h"
@@ -168,7 +169,36 @@ int main (int argc, char * const argv[]) {
 	{
     std::cout << "CAF_VERSION=" << CAF_VERSION << std::endl;
     caf::actor_system_config cfg;
+#ifndef DETACHED_WORKER
     cfg.set("scheduler.max-threads", num_threads);
+    cfg.set("scheduler.max-throughput", 1);
+    cfg.set("work-stealing.aggressive-poll-attempts", 1000);
+    cfg.set("work-stealing.aggressive_steal_interval", 1);
+    cfg.set("work-stealing.moderate-poll-attempts", 0);
+	cfg.set("work-stealing.relaxed-sleep-duration", "10us");
+#else
+    cfg.set("scheduler.max-threads", 3);
+    if(char* wait_time = std::getenv("CAF_CONF_WAIT_TIME")){
+        string aa = "--detached.wait_time="+string(wait_time);
+        char * cstr = new char [aa.length()+1];
+        std::strcpy (cstr, aa.c_str());
+        char *a[] = {
+            (char*)"",
+            cstr
+        };
+        cfg.parse(2, a);
+    }
+    if(char* attempts = std::getenv("CAF_CONF_ATTEMPTS")){
+        string aa = "--detached.attempts="+string(attempts);
+        char * cstr = new char [aa.length()+1];
+        std::strcpy (cstr, aa.c_str());
+        char *a[] = {
+            (char*)"",
+            cstr
+        };
+        cfg.parse(2, a);
+    }
+#endif
     caf::actor_system sys{cfg};
     uint32_t wpt = 1;
     if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
@@ -181,8 +211,14 @@ int main (int argc, char * const argv[]) {
     uint64_t nw = act == 0 ? num_threads * wpt : act;
     std::cout << "N. thread: " << num_threads << " "
               << "N. actor: "  << nw << std::endl;
+
+#ifdef DETACHED_WORKER
+    sys.spawn<caf::detached>(master_actor, nw, number_temp_steps, &my_netlist, swaps_per_temp, double(start_temp));
+#else
     sys.spawn(master_actor, nw, number_temp_steps, &my_netlist, swaps_per_temp, double(start_temp));
+#endif
 	}
+    std::cout << "   SYSTEM OUT OF SCOPE" << std::endl;
 #else // pthreads version
 	std::vector<pthread_t> threads(num_threads);
 	void* thread_in = static_cast<void*>(&a_thread);

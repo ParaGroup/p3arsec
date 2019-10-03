@@ -31,8 +31,6 @@
 #ifndef ANNEALER_THREAD_CAF_H
 #define ANNEALER_THREAD_CAF_H
 
-#define DETACHED_WORKER
-
 #include <array>
 #include <assert.h>
 
@@ -186,6 +184,7 @@ caf::behavior master_actor(caf::stateful_actor<master_state> *self, uint nw,
                 if (!keep_going(self->state.tasks[i],
                                 self->state.temp_steps_completed,
                                 number_temp_steps)) {
+                    std::cout << "QUIT" << std::endl;
                     self->quit();
                     return;
                 }

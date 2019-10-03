@@ -65,7 +65,7 @@ export STRIP="${BINUTIL_HOME}/bin/${BINARY_PREFIX}strip"
 
 # GNU Tools
 export M4="${GNUTOOL_HOME}/bin/${BINARY_PREFIX}m4"
-export MAKE="${GNUTOOL_HOME}/bin/${BINARY_PREFIX}make"
+export MAKE="${GNUTOOL_HOME}/bin/${BINARY_PREFIX}make -j"
 
 # Flags for increased portability of binaries
 PORTABILITY_FLAGS="-static-libgcc -Wl,--hash-style=both,--as-needed"

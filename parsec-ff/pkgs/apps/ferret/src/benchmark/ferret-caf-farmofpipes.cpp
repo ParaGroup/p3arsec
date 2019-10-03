@@ -360,7 +360,7 @@ public:
 		// spawn a farm of pipeline
 		auto *context = cfg.host;
 		auto &sys = context->system();
-		auto out = sys.spawn<Out,caf::detached>();
+		auto out = sys.spawn<Out>();
 		auto spawn_worker = [&]() -> caf::actor {
 				auto rank = sys.spawn<Rank>(out);
 				auto vec = sys.spawn<Vec>(rank);
@@ -501,6 +501,9 @@ int main (int argc, char *argv[])
     std::cout << "CAF_VERSION=" << CAF_VERSION << std::endl;
     caf::actor_system_config cfg;
     cfg.set("scheduler.max-threads", nthreads);
+    cfg.set("scheduler.max-throughput", 1);
+    cfg.set("work-stealing.moderate-poll-attempts", 0);
+		cfg.set("work-stealing.relaxed-sleep-duration", "500ms");
     caf::actor_system sys{cfg};
     uint32_t wpt = 1;
     if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
@@ -508,7 +511,7 @@ int main (int argc, char *argv[])
     }
     uint32_t nw = nthreads * wpt;
     std::cout << "N. worker: " << nw << std::endl;
-    auto farm_inst = sys.spawn<Load, caf::detached>(nw);
+    auto farm_inst = sys.spawn<Load>(nw);
     caf::anon_send(farm_inst, startload::value);
 	}
 
