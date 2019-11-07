@@ -84,7 +84,11 @@ else
 		mkdir pkgs/libs/mammut
 		git clone https://github.com/DanieleDeSensi/mammut.git pkgs/libs/mammut
 		pushd pkgs/libs/mammut
-		make 
+		git checkout 075a2f2
+		mkdir build 
+		pushd build
+		cmake .. && make
+		popd
 		popd
 		# Add "hooks" to 'build_deps'
 		echo $ALLAPS
@@ -112,13 +116,9 @@ else
 	# Install Nornir
 	if [ "$NORNIR" = true ]; then
 		cd ./pkgs/libs && git clone https://github.com/DanieleDeSensi/nornir.git
-        if [ "$MEASURE" = true ]; then
-            # To avoid collisions between two differet mammut versions, remove
-            # one so that both p3arsec and nornir have the same mammut version.
-            rm -rf ./nornir/src/external/mammut
-            ln -s $(pwd)/mammut $(pwd)/nornir/src/external/mammut
-        fi
-		cd nornir && git checkout a97827b && make && make bin
+		cd nornir && git checkout a31e9af
+		mkdir build && cd build
+		cmake .. && make 
 		cd $rootdir
 	fi
 
