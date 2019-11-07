@@ -1331,7 +1331,7 @@ int FP_tree::FP_growth_first(FSout* fout)
 		lowerbound = itemno;
 
 #ifdef ENABLE_NORNIR
-	instr = new nornir::Instrumenter(getParametersPath(), omp_get_max_threads());
+	instr = new nornir::Instrumenter(getParametersPath(), omp_get_max_threads(), NULL, true);
 #endif //ENABLE_NORNIR
 	for (int t = 0; t < 3; t ++) {
 		upperbound = lowerbound;

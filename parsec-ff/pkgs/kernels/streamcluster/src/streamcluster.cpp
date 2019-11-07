@@ -2474,9 +2474,9 @@ int main(int argc, char **argv)
 
 #ifdef ENABLE_NORNIR
 #ifdef FF_VERSION
-  instr = new nornir::Instrumenter(getParametersPath());
+  instr = new nornir::Instrumenter(getParametersPath(), 1, NULL, true);
 #else
-  instr = new nornir::Instrumenter(getParametersPath(), nproc);
+  instr = new nornir::Instrumenter(getParametersPath(), nproc, NULL, true);
 #endif // FF_VERSION
 #endif // ENABLE_NORNIR
 

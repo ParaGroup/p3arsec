@@ -1381,7 +1381,7 @@ void Encode(config_t * _conf) {
 #endif
 
 #ifdef ENABLE_NORNIR
-  instr = nornir_instrumenter_create(getParametersPath());
+  instr = nornir_instrumenter_create_with_server(getParametersPath(), 1);
   nornir_instrumenter_mark_inconsistent_samples(instr);
 #endif //ENABLE_NORNIR
 

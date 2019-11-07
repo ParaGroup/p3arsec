@@ -107,7 +107,7 @@ int main (int argc, char * const argv[]) {
 #endif
 		
 #ifdef ENABLE_NORNIR
-    instr = new nornir::Instrumenter(getParametersPath(), num_threads);
+    instr = new nornir::Instrumenter(getParametersPath(), num_threads, NULL, true);
 #endif //ENABLE_NORNIR
     
 	//argument 2 is the num moves / temp

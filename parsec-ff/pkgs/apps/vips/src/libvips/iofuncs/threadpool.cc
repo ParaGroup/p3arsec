@@ -951,7 +951,7 @@ vips_threadpool_run( VipsImage *im,
 	pool->a = a;
 
 #ifdef HAVE_NORNIR
-	instr = new nornir::Instrumenter(getParametersPath(), im_concurrency_get());
+	instr = new nornir::Instrumenter(getParametersPath(), im_concurrency_get(), NULL, true);
 #endif //HAVE_NORNIR
     /*
      * Create worker structures (not real threads).
@@ -1109,7 +1109,7 @@ vips_threadpool_run( VipsImage *im,
 	pool->a = a;
 
 #ifdef HAVE_NORNIR
-	instr = new nornir::Instrumenter(getParametersPath(), pool->nthr);
+	instr = new nornir::Instrumenter(getParametersPath(), pool->nthr, NULL, true);
 #endif //HAVE_NORNIR
 
 	/* Attach workers and set them going.

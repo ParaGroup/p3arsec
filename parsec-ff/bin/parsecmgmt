@@ -1219,13 +1219,13 @@ function run_benchmark {
   fi 
 
   ###### Starting Nornir Manager
-  NORNIR_EXTERNAL_MANAGER_PID=0
-  pidof manager-external
-  if [[ $? == 0 ]]; then
-      NORNIR_EXTERNAL_MANAGER_PID=$(pidof manager-external)
-      echo "Manager already running"
-  elif [[ $build == "gcc-ff-nornir" ]] || [[ $build == "gcc-pthreads-nornir" ]] || [[ $build == "gcc-openmp-nornir" ]] || [[  $build == "gcc-tbb-nornir" ]]; then
-    echo "Starting Nornir external manager"
+  NORNIR_EXTERNAL_MANAGER_PID=$(pidof nornir_instrumented)
+  if [[ $NORNIR_EXTERNAL_MANAGER_PID -ne "" ]]; then
+    echo "Killing Nornir manager."
+    sleep 4
+    kill -9 $NORNIR_EXTERNAL_MANAGER_PID
+  fi
+  if [[ $build == "gcc-ff-nornir" ]] || [[ $build == "gcc-pthreads-nornir" ]] || [[ $build == "gcc-openmp-nornir" ]] || [[  $build == "gcc-tbb-nornir" ]]; then
     # Check if the script has been run with sudo
     if [ "$(id -u)" != "0" ]; then
         echo "=========================== ATTENTION =========================="
@@ -1234,11 +1234,6 @@ function run_benchmark {
         echo "================================================================"
         exit 1
     fi
-    (cd ${PARSECDIR}/bin; ${PARSECDIR}/pkgs/libs/nornir/bin/manager-external > manager_out.log 2> manager_err.log &) # Run in background
-    sleep 1
-    NORNIR_EXTERNAL_MANAGER_PID=$(pidof manager-external)
-    trap 'sudo kill $NORNIR_EXTERNAL_MANAGER_PID; exit' SIGINT
-    echo "Manager started with pid "$NORNIR_EXTERNAL_MANAGER_PID
   fi
 
   ##### Starting application
@@ -1248,13 +1243,6 @@ function run_benchmark {
   echo "${oprefix} [---------- Beginning of output ----------]" | ${TEE} ${log}
   (eval ${cmd} 2>&1) 2>&1 | ${TEE} ${bmrundir}/benchmark.out | ${TEE} ${log}
   echo "${oprefix} [----------    End of output    ----------]" | ${TEE} ${log}
-
-  ##### Killing Nornir Manager
-  if [[ $NORNIR_EXTERNAL_MANAGER_PID -ne 0 ]]; then
-      echo "Killing Nornir manager."
-      sleep 4
-      kill -9 $NORNIR_EXTERNAL_MANAGER_PID
-  fi
 
   # Unpack reference output and compare
   #echo "${oprefix} Unpacking benchmark reference output for '${inputsize}'." | ${TEE} ${log}

@@ -116,7 +116,7 @@ else
 	# Install Nornir
 	if [ "$NORNIR" = true ]; then
 		cd ./pkgs/libs && git clone https://github.com/DanieleDeSensi/nornir.git
-		cd nornir && git checkout a31e9af
+		cd nornir && git checkout 5ebc59e
 		mkdir build && cd build
 		cmake .. && make 
 		cd $rootdir

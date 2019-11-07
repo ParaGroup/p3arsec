@@ -221,7 +221,7 @@ int mainFF(string path, int cameras, int frames, int particles, int layers, int 
 	vector<float> estimate;																//expected pose from particle distribution
 
 #ifdef USE_NORNIR
-    nornir::Instrumenter instr(getParametersPath());
+    nornir::Instrumenter instr(getParametersPath(), 1, NULL, true);
 #endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_begin();
@@ -335,7 +335,7 @@ int mainOMP(string path, int cameras, int frames, int particles, int layers, int
 	vector<float> estimate;																//expected pose from particle distribution
 
 #ifdef USE_NORNIR
-	nornir::Instrumenter instr(getParametersPath());
+	nornir::Instrumenter instr(getParametersPath(), 1, NULL, true);
 #endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_begin();
@@ -411,7 +411,7 @@ int mainPthreads(string path, int cameras, int frames, int particles, int layers
 	vector<float> estimate;																//expected pose from particle distribution
 
 #ifdef USE_NORNIR
-    nornir::Instrumenter instr(getParametersPath());
+    nornir::Instrumenter instr(getParametersPath(), 1, NULL, true);
 #endif //USE_NORNIR
 #if defined(ENABLE_PARSEC_HOOKS)
         __parsec_roi_begin();

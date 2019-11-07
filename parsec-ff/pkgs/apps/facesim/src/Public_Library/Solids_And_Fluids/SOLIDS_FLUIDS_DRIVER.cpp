@@ -64,7 +64,7 @@ template<class T> void SOLIDS_FLUIDS_DRIVER<T>::
 Simulate_To_Frame (const int frame_input)
 {
 #ifdef ENABLE_NORNIR
-	nornir::Instrumenter instr(getParametersPath());
+	nornir::Instrumenter instr(getParametersPath(), 1, NULL, true);
 #endif //ENABLE_NORNIR
 	while (current_frame < frame_input)
 	{

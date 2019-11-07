@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
         swaption_seed = (long)(2147483647L * RanUnif(&seed));
 
 #ifdef ENABLE_NORNIR
-    instr = new nornir::Instrumenter(getParametersPath(), nThreads);
+    instr = new nornir::Instrumenter(getParametersPath(), nThreads, NULL, true);
 #endif //ENABLE_NORNIR
     
 #ifdef ENABLE_THREADS

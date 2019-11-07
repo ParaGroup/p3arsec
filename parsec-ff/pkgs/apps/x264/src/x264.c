@@ -837,7 +837,7 @@ static int  Encode( x264_param_t *param, cli_opt_t *opt )
     char    buf[200];
 
 #ifdef ENABLE_NORNIR
-    instr = nornir_instrumenter_create(getParametersPath());
+    instr = nornir_instrumenter_create_with_server(getParametersPath(), 1);
 #endif //ENABLE_NORNIR
     
     opt->b_progress &= param->i_log_level < X264_LOG_DEBUG;

@@ -386,7 +386,7 @@ int main (int argc, char *argv[])
 	}
 
 #ifdef ENABLE_NORNIR
-	instr = new nornir::Instrumenter(getParametersPath());
+	instr = new nornir::Instrumenter(getParametersPath(), 1, NULL, true);
 #endif //ENABLE_NORNIR
 
 	db_dir = argv[1];

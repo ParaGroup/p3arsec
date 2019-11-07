@@ -1180,7 +1180,7 @@ void EncodeFF(config_t * _conf) {
 #endif
 
 #ifdef ENABLE_NORNIR
-  instr = new nornir::Instrumenter(getParametersPath());
+  instr = new nornir::Instrumenter(getParametersPath(), 1, NULL, true);
 #endif //ENABLE_NORNIR
   
   //Create chunk cache
