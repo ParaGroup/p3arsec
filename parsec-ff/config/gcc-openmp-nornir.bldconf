@@ -7,10 +7,5 @@
 # Written by Christian Bienia
 
 source ${PARSECDIR}/config/gcc-openmp.bldconf
-
-NORNIRDIR=${PARSECDIR}/pkgs/libs/nornir/src
-
-CFLAGS="${CFLAGS} -I${NORNIRDIR} -I${NORNIRDIR}/external/fastflow"
-CXXFLAGS="--std=c++11 ${CXXFLAGS} -I${NORNIRDIR} -I${NORNIRDIR}/external/fastflow -fexceptions"
-LIBS="${LIBS} -pthread -lnornir  -lrt -lm -lmlpack -llapack -lblas -lgsl -lgslcblas -larmadillo -lriff -lanl"
-LDFLAGS="${LDFLAGS} -L${NORNIRDIR} -L${NORNIRDIR}/external/riff/src"
+CXXFLAGS="--std=c++11 ${CXXFLAGS} -fexceptions"
+LIBS="${LIBS} -pthread -lnornir  -lriff"

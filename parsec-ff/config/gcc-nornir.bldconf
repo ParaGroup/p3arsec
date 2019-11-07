@@ -8,11 +8,9 @@
 
 source ${PARSECDIR}/config/gcc.bldconf
 
-NORNIRDIR=${PARSECDIR}/pkgs/libs/nornir/src
 BLOCKING="-DNO_DEFAULT_MAPPING"
-FFDIR=${NORNIRDIR}/external/fastflow
+FFDIR=${PARSECDIR}/pkgs/libs/fastflow
 
-CFLAGS="${CFLAGS} ${BLOCKING} -I${NORNIRDIR} -I${FFDIR}"
-CXXFLAGS="--std=c++11 ${CXXFLAGS} ${BLOCKING} -I${NORNIRDIR} -fexceptions -I${FFDIR}"
-LIBS="${LIBS} -pthread -lnornir  -lrt -lm -lmlpack -llapack -lblas -lgsl -lgslcblas -larmadillo -lriff -lanl"
-LDFLAGS="${LDFLAGS} -L${NORNIRDIR} -L${NORNIRDIR}/external/riff/src"
+CFLAGS="${CFLAGS} ${BLOCKING} -I${FFDIR}"
+CXXFLAGS="--std=c++11 ${CXXFLAGS} ${BLOCKING} -fexceptions -I${FFDIR}"
+LIBS="${LIBS} -pthread -lnornir -lriff"

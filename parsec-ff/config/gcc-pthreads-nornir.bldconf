@@ -8,9 +8,8 @@
 
 source ${PARSECDIR}/config/gcc-pthreads.bldconf
 
-NORNIRDIR=${PARSECDIR}/pkgs/libs/nornir/src
 # Enable FastFlow
-CFLAGS="${CFLAGS} -I${NORNIRDIR}"
-CXXFLAGS="--std=c++11 ${CXXFLAGS} -I${NORNIRDIR} -I${NORNIRDIR}/external/fastflow -fexceptions"
-LIBS="${LIBS} -pthread -lnornir  -lrt -lm -lmlpack -llapack -lblas -lgsl -lgslcblas -larmadillo -lriff -lanl"
-LDFLAGS="${LDFLAGS} -L${NORNIRDIR} -L${NORNIRDIR}/external/riff/src"
+CFLAGS="${CFLAGS}"
+CXXFLAGS="--std=c++11 ${CXXFLAGS}-fexceptions"
+LIBS="${LIBS} -pthread -lnornir -lriff"
+LDFLAGS="${LDFLAGS}"

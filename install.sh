@@ -3,7 +3,6 @@
 MEASURE=true
 INPUT=true
 ONLYINPUT=false
-NORNIR=false
 SKEPU=false
 APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips x264"
 KERNELS="canneal dedup streamcluster"
@@ -26,9 +25,6 @@ case $key in
     ;;
     -i|--inputs)
     ONLYINPUT=true
-    ;;
-    -n|--nornir)
-    NORNIR=true
     ;;
     -s|--skeputools)
     SKEPU=true
@@ -113,14 +109,6 @@ else
 	fi
 
 	rootdir=$(pwd)
-	# Install Nornir
-	if [ "$NORNIR" = true ]; then
-		cd ./pkgs/libs && git clone https://github.com/DanieleDeSensi/nornir.git
-		cd nornir && git checkout 5ebc59e
-		mkdir build && cd build
-		cmake .. && make 
-		cd $rootdir
-	fi
 
 	# Install SkePU2
 	if [ "$SKEPU" = true ]; then
