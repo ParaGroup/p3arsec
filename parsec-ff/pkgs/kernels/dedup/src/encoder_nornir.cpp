@@ -46,8 +46,8 @@ extern "C" {
 
 #include <iostream>
 
-#include <instrumenter.hpp>
-#include <interface.hpp>
+#include <nornir/instrumenter.hpp>
+#include <nornir/interface.hpp>
 #include <stdlib.h>
 #include <iostream>
 

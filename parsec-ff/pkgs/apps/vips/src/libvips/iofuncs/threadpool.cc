@@ -74,7 +74,7 @@
 #endif /*WITH_DMALLOC*/
 
 #if defined(HAVE_NORNIR) || defined(HAVE_NORNIR_NATIVE)
-#include <interface.hpp>
+#include <nornir/interface.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

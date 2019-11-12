@@ -28,7 +28,7 @@
 // SUCH DAMAGE.
 
 #undef BLOCKING_MODE
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <iostream>
 extern nornir::Instrumenter* instr;
 

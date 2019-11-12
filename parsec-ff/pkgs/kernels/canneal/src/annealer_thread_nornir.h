@@ -38,7 +38,7 @@
 #include "netlist.h"
 #include "netlist_elem.h"
 #include "rng.h"
-#include <interface.hpp>
+#include <nornir/interface.hpp>
 
 typedef struct CTask{
     int accepted_good_moves;

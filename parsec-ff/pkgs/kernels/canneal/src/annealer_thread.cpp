@@ -44,7 +44,7 @@ using std::cout;
 using std::endl;
 
 #ifdef ENABLE_NORNIR
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <iostream>
 extern nornir::Instrumenter* instr;
 #endif // ENABLE_NORNIR

@@ -53,7 +53,7 @@ static int omp_get_thread_num() {return 0;}
 #endif //_OPENMP
 
 #ifdef ENABLE_NORNIR
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 nornir::Instrumenter* instr;

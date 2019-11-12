@@ -13,7 +13,7 @@
 
 
 #ifdef ENABLE_NORNIR
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 extern nornir::Instrumenter* instr;
 #endif //ENABLE_NORNIR
 

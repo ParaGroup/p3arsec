@@ -60,13 +60,13 @@ using namespace tbb;
 
 #ifdef USE_NORNIR_NATIVE
 #undef BLOCKING_MODE // TODO FIX
-#include <nornir.hpp>
+#include <nornir/nornir.hpp>
 #include "ParticleFilterNornir.h"
 #include "TrackingModelNornir.h"
 #endif //USE_NORNIR_NATIVE
 
 #if defined(USE_NORNIR) || defined(USE_NORNIR_NATIVE)
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

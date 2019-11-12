@@ -23,7 +23,7 @@
 # include "config.h"
 #endif
 
-#include <nornir.hpp>
+#include <nornir/nornir.hpp>
 #include "TrackingModel.h"
 #include <iostream>
 #include <iomanip>

@@ -31,7 +31,7 @@ tbb::cache_aligned_allocator<parm> memory_parm;
 #endif // TBB_VERSION
 
 #ifdef ENABLE_NORNIR
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

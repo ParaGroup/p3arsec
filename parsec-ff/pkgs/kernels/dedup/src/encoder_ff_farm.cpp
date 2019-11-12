@@ -47,7 +47,7 @@ extern "C" {
 #include <iostream>
 
 #ifdef ENABLE_NORNIR
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

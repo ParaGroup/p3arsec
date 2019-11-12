@@ -26,11 +26,11 @@
 
 #ifdef ENABLE_NORNIR_NATIVE
 #undef BLOCKING_MODE
-#include <nornir.hpp>
+#include <nornir/nornir.hpp>
 #endif // ENABLE_NORNIR_NATIVE
 
 #ifdef ENABLE_NORNIR
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 #endif

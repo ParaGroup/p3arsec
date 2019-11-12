@@ -40,7 +40,7 @@ by the emitter (i.e. file loading) is moved to the farm's workers.
 #include <../image/image.h>
 #include "tpool.h"
 
-#include <interface.hpp>
+#include <nornir/interface.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

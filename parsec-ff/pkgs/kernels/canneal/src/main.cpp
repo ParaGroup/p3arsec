@@ -43,7 +43,7 @@
 #endif
 
 #if defined(ENABLE_NORNIR) || defined(ENABLE_NORNIR_NATIVE)
-#include <instrumenter.hpp>
+#include <nornir/instrumenter.hpp>
 #include <stdlib.h>
 #include <iostream>
 std::string getParametersPath(){

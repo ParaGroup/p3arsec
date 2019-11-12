@@ -24,7 +24,7 @@
 # include "config.h"
 #endif
 
-#include <nornir.h>
+#include <nornir/nornir.h>
 #include "ParticleFilter.h"
 
 template<class T> 
