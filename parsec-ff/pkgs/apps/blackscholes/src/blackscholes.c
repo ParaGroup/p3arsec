@@ -392,7 +392,7 @@ int bs_thread(void *tid_ptr) {
 
 #ifdef ENABLE_NORNIR
 #ifdef ENABLE_OPENMP
-        instr->begin();
+        instr->begin(omp_get_thread_num());
 #else
         instr->begin(tid);
 #endif
@@ -416,7 +416,7 @@ int bs_thread(void *tid_ptr) {
 
 #ifdef ENABLE_NORNIR
 #ifdef ENABLE_OPENMP
-        instr->end();
+        instr->end(omp_get_thread_num());
 #else
         instr->end(tid);
 #endif
