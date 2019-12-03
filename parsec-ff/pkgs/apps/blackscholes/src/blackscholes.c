@@ -485,11 +485,7 @@ int main (int argc, char **argv)
 #endif
 
 #ifdef ENABLE_NORNIR
-#ifdef ENABLE_OPENMP
-    instr = new nornir::Instrumenter(getParametersPath(), 1, NULL, true);
-#else
     instr = new nornir::Instrumenter(getParametersPath(), nThreads, NULL, true);
-#endif
 #endif //ENABLE_NORNIR
     
     // alloc spaces for the option data
