@@ -15,6 +15,7 @@
 /version
 /.parsec_uniquefile
 /CONTRIBUTORS
+/LICENSE_PARSEC
 
 # Archive and folder of parsec
 /parsec-3.0*
