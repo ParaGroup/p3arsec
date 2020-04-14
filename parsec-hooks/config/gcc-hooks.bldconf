@@ -14,7 +14,8 @@ MAMMUT_PATH=${PARSECDIR}/pkgs/libs/mammut
 CFLAGS="${CFLAGS} -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include"
 CXXFLAGS="${CXXFLAGS} --std=c++11 -DENABLE_PARSEC_HOOKS -I${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/include -I${MAMMUT_PATH}"
 LDFLAGS="${LDFLAGS} -L${PARSECDIR}/pkgs/libs/hooks/inst/${PARSECPLAT}/lib -L${MAMMUT_PATH}/mammut"
-LIBS="${LIBS} -lhooks -lm -lstdc++ -pthread -lmammut -lrt"
+LIBS="${LIBS} -lhooks -lm -pthread -lmammut -lrt"
+# LIBS="${LIBS} -lhooks -lm -lstdc++ -pthread -lmammut -lrt"
 
 # Add directory with hooks library to library search path
 if [ -z "${LD_LIBRARY_PATH}" ]; then

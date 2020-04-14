@@ -78,6 +78,10 @@ ifdef version
     benchmark_base := ferret-ff-farm-optimized
     LDLIBS += -lpthread
   endif
+  ifeq "$(version)" "caf"
+    benchmark_base := ferret-caf-$(CAF_V)
+    LDLIBS += -lpthread
+  endif
   ifeq "$(version)" "nornir"
     benchmark_base := ferret-nornir
     LDLIBS += -lpthread
@@ -91,11 +95,16 @@ endif
 ifeq "$(version)" "ff"
   benchmark_src := $(benchmark_base).cpp
 endif
+ifeq "$(version)" "caf"
+  benchmark_src := $(benchmark_base).cpp
+endif
 
 benchmark_tgt := $(notdir $(benchmark_src))
 ifeq "$(version)" "tbb"
   benchmark_tgt := $(addprefix $(BINDIR)/, $(benchmark_tgt:.cpp=))
 else ifeq "$(version)" "ff"
+  benchmark_tgt := $(addprefix $(BINDIR)/, $(benchmark_tgt:.cpp=))
+else ifeq "$(version)" "caf"
   benchmark_tgt := $(addprefix $(BINDIR)/, $(benchmark_tgt:.cpp=))
 else
   benchmark_tgt := $(addprefix $(BINDIR)/, $(benchmark_tgt:.c=))

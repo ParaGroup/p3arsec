@@ -7,7 +7,7 @@ SKEPU=false
 APPLICATIONS="blackscholes bodytrack facesim ferret fluidanimate freqmine raytrace swaptions vips x264"
 KERNELS="canneal dedup streamcluster"
 ALLAPS="$APPLICATIONS $KERNELS"
-VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-serial gcc-skepu gcc-pthreads-nornir gcc-openmp-nornir gcc-ff-nornir"
+VERSIONS="gcc-pthreads gcc-openmp gcc-tbb gcc-ff gcc-caf gcc-serial gcc-skepu gcc-pthreads-nornir gcc-openmp-nornir gcc-ff-nornir"
 
 while [[ $# -gt 0 ]]
 do
@@ -57,25 +57,25 @@ else
 	if [ "$INPUT" = true ]; then
 		wget http://parsec.cs.princeton.edu/download/3.0/parsec-3.0.tar.gz
 		tar -xvzf parsec-3.0.tar.gz
-		rm -f parsec-3.0.tar.gz
+		# rm -f parsec-3.0.tar.gz
 	else
 		wget http://parsec.cs.princeton.edu/download/3.0/parsec-3.0-core.tar.gz
 		tar -xvzf parsec-3.0-core.tar.gz
-		rm -f parsec-3.0-core.tar.gz
+		# rm -f parsec-3.0-core.tar.gz
 	fi
 
 	# Copy its content in the current directory
-	rsync --remove-source-files -a parsec-3.0/ ./
+	rsync -a parsec-3.0/ ./
 	rm -rf parsec-3.0
 
 	# Overwrite files with parsec-ff ones.
-	rsync --remove-source-files -a parsec-ff/ ./
-	rm -rf parsec-ff
+	rsync -a parsec-ff/ ./
+	# rm -rf parsec-ff
 
 	# Overwrite files with parsec-hooks ones.
 	if [ "$MEASURE" = true ]; then
-		rsync --remove-source-files -a parsec-hooks/ ./
-		rm -rf parsec-hooks
+		rsync -a parsec-hooks/ ./
+		# rm -rf parsec-hooks
 		# Download and install Mammut (for energy measurements)
 		mkdir pkgs/libs/mammut
 		git clone https://github.com/DanieleDeSensi/mammut.git pkgs/libs/mammut

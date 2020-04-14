@@ -1,0 +1,23 @@
+# Original file of Parsec
+/bin/
+/CHANGELOG
+/config/
+/env.sh
+/ext/
+/FAQ
+/LICENSE
+/log/
+/man/
+/pkgs/
+/README_PARSEC
+/repairpod.sh
+/toolkit/
+/version
+/.parsec_uniquefile
+/CONTRIBUTORS
+
+# Archive and folder of parsec
+/parsec-3.0*
+
+# python
+__pycache__/

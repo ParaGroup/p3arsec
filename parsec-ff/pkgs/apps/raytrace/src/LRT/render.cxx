@@ -48,7 +48,17 @@ std::string getParametersPath(){
 #include <ff/parallel_for.hpp>
 #undef _INLINE
 #define _INLINE inline __attribute__((always_inline))
+#endif // FF_VERSION
+
+#ifdef ENABLE_CAF
+// CAF_V1 | CAF_V2 | CAF_V3 | CAF_V4 | CAF_V4DET
+#if !defined(CAF_V1) && !defined(CAF_V2) && !defined(CAF_V3) \
+    && !defined(CAF_V4) && !defined(CAF_V4DET)
+// #define CAF_V4
+#  error "DEFINED CAF_Vx"
 #endif
+#include "caf/all.hpp"
+#endif // ENABLE_CAF
 
 #define NORMALIZE_PRIMARY_RAYS
 
@@ -99,6 +109,345 @@ static const sse_f factor = _mm_set_ps1(255.0f);
 
 using namespace RTTL;
 using namespace std;
+
+
+#ifdef ENABLE_CAF
+using wend = caf::atom_constant<caf::atom("wend")>;
+CAF_ALLOW_UNSAFE_MESSAGE_TYPE(std::function<void(size_t)>)
+
+#ifdef CAF_V1
+const std::string CAF_V = "CAF_V1";
+caf::behavior pfor_worker(caf::event_based_actor *self, uint64_t i, uint64_t nw) {
+  return {
+    [=](const size_t& start, const size_t& end, const std::function<void(size_t)>& fun) {
+      for (size_t i = start; i < end; ++i) {
+        fun(i);
+      }
+      return wend::value;
+    }
+  };
+}
+struct map_state {
+  std::vector<caf::actor> worker;
+};
+// caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
+//   // create workers
+//   self->state.worker.resize(nw);
+//   for (uint32_t i = 0; i < nw; i++) {
+//     caf::actor a = self->spawn<caf::lazy_init>(pfor_worker, i, nw);
+//     self->state.worker[i] = a;
+//   }
+//   return {[=](const size_t& start, const size_t& end,
+//               const size_t& grain, const std::function<void(size_t)>& fun) {
+//     size_t nv = end - start;
+//     size_t chunk = nv / nw;
+//     size_t plus = nv % nw;
+//     if (grain > 0 && grain < chunk ) {
+//       chunk = grain;
+//       plus = nv % grain;
+//     }
+    
+//     auto promis = self->make_response_promise();
+//     auto n_res = make_shared<size_t>(nw);
+//     auto update_cb = [=](wend) mutable {
+//       if (--(*n_res) == 0) {
+//         promis.deliver(wend::value);
+//       }
+//     };
+
+//     size_t p_start = start;
+//     uint32_t iw = 0;
+//     while(p_start < end) {
+//         size_t p_end = p_start + chunk;
+//         if (plus > 0){
+//           p_end++;
+//           plus--;
+//         }
+//         self->request(self->state.worker[iw], caf::infinite,
+//                       p_start, p_end, fun).then(update_cb);
+//         p_start = p_end;
+//         iw = (iw + 1) % nw;
+//     }
+//     return promis;
+//   }};
+// }
+caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
+  // create workers
+  self->state.worker.resize(nw);
+  for (uint64_t i = 0; i < nw; i++) {
+    caf::actor a = self->spawn(pfor_worker, i, nw);
+    self->state.worker[i] = a;
+  }
+  return {[=](const size_t& start, const size_t& end, const std::function<void(size_t)>& fun) {
+    size_t nv = end - start;
+    size_t chunk = nv / nw;
+    size_t plus = nv % nw;
+    
+    auto promis = self->make_response_promise();
+    auto n_res = make_shared<uint64_t>(nw);
+    auto update_cb = [=](wend) mutable {
+      if (--(*n_res) == 0) {
+        promis.deliver(wend::value);
+      }
+    };
+
+    size_t p_start = start;
+    uint32_t iw = 0;
+    while(p_start < end) {
+        size_t p_end = p_start + chunk;
+        if (plus > 0){
+          p_end++;
+          plus--;
+        }
+        self->request(self->state.worker[iw], caf::infinite,
+                      p_start, p_end, fun).then(update_cb);
+        p_start = p_end;
+        iw = (iw + 1) % nw;
+    }
+    return promis;
+  }};
+}
+#else
+#ifdef CAF_V2
+const std::string CAF_V = "CAF_V2";
+caf::behavior pfor_worker(caf::event_based_actor *self, uint64_t i, uint64_t nw) {
+  return {
+    [=](const size_t& start, const size_t& end, const std::function<void(size_t)>& fun) {
+      for (size_t i = start; i < end; ++i) {
+        fun(i);
+      }
+      return wend::value;
+    }
+  };
+}
+caf::behavior pfor_act(caf::event_based_actor *self) {
+  return {[=](const size_t& start, const size_t& end,
+              const size_t& grain, const std::function<void(size_t)>& fun) {
+    size_t nv = end - start;
+    size_t nw = nv / grain;
+    size_t plus = nv % grain;
+    
+    auto promis = self->make_response_promise();
+    auto n_res = make_shared<size_t>(nw);
+    auto update_cb = [=](wend) mutable {
+      if (--(*n_res) == 0) {
+        promis.deliver(wend::value);
+      }
+    };
+
+    size_t p_start = start;
+    for (auto i=0; i<nw; i++){
+      size_t p_end = p_start + grain;
+      if (plus > 0) {
+        p_end++;
+        plus--;
+      }
+      caf::actor worker = self->spawn(pfor_worker, i, nw);
+      self->request(worker, caf::infinite, p_start, p_end, fun)
+            .then(update_cb);
+      p_start = p_end;
+    }
+    return promis;
+  }};
+}
+#else
+#ifdef CAF_V3
+const std::string CAF_V = "CAF_V3";
+caf::behavior pfor_worker(caf::event_based_actor *self, uint64_t i) {
+  return {
+    [=](const size_t& start, const size_t& end, const std::function<void(size_t)>& fun) {
+      for (size_t i = start; i < end; ++i) {
+        fun(i);
+      }
+      return wend::value;
+    }
+  };
+}
+struct map_state {
+  std::vector<caf::actor> worker;
+};
+caf::behavior pfor_act(caf::stateful_actor<map_state> *self, uint64_t nw) {
+  // create workers
+  self->state.worker.resize(nw);
+  for (uint64_t i = 0; i < nw; i++) {
+    caf::actor a = self->spawn(pfor_worker, i);
+    self->state.worker[i] = a;
+  }
+  // caf::aout(self) << "DEBUG " << "nw=" << nw << " "
+  //                 << "worker.size=" << self->state.worker.size() << std::endl;
+  return {[=](const size_t& start, const size_t& end,
+              const size_t& grain, const std::function<void(size_t)>& fun) {
+    size_t nv = end - start;
+    size_t w_spawn = nv / grain;
+    size_t plus = nv % grain;
+    size_t nw = self->state.worker.size();
+    // caf::aout(self) << "DEBUG "
+    //                 << "nv=" << nv << " "
+    //                 << "grain=" << grain << " "
+    //                 << "w_spawn=" << w_spawn << " "
+    //                 << "nw=" << nw << std::endl;
+    for (auto i = nw; i < w_spawn; i++) {
+      caf::actor a = self->spawn(pfor_worker, i);
+      self->state.worker.push_back(a);
+      // caf::aout(self) << "+";
+    }
+    if (nw < w_spawn) {
+      caf::aout(self) << std::endl << "spawned " << w_spawn << " worker" << "("
+                    << "nv=" << nv << ","
+                    << "grain=" << grain << ")" << std::endl;
+    }
+    nw = self->state.worker.size();
+    // caf::aout(self) << "DEBUG " << "nw=" << nw << std::endl;
+
+    auto promis = self->make_response_promise();
+    auto n_res = make_shared<size_t>(nw);
+    auto update_cb = [=](wend) mutable {
+      if (--(*n_res) == 0) {
+        promis.deliver(wend::value);
+      }
+    };
+
+    size_t p_start = start;
+    uint32_t iw = 0;
+    while(p_start < end) {
+        size_t p_end = p_start + grain;
+        if (plus > 0){
+          p_end++;
+          plus--;
+        }
+        self->request(self->state.worker[iw], caf::infinite,
+                      p_start, p_end, fun).then(update_cb);
+        // caf::aout(self) << "DEBUG "
+        //                 << "worker=" << iw << " "
+        //                 << "p_start=" << p_start << " "
+        //                 << "p_end=" << p_end << " "
+        //                 << "len=" << p_end - p_start << std::endl;
+        p_start = p_end;
+        iw = (iw + 1) % nw;
+    }
+    return promis;
+  }};
+}
+#else
+#if defined(CAF_V4) || defined(CAF_V4DET)
+#ifdef CAF_V4DET
+const std::string CAF_V = "CAF_V4DET";
+#else
+const std::string CAF_V = "CAF_V4";
+#endif
+using wget = caf::atom_constant<caf::atom("wget")>;
+atomic<size_t> *atomic_i;
+caf::behavior pfor_worker(caf::event_based_actor *self, uint64_t iw,
+                          caf::actor emitter) {
+  return {[=](const size_t &start, const size_t &end,
+              const std::function<void(size_t)> &fun) {
+            // caf::aout(self) << "DEBUG "
+            //                 << "->worker " << iw << " "
+            //                 << "get " << start << " - " << end << std::endl;
+            self->send(emitter, wget::value);
+            for (auto i = start; i < end; ++i) {
+              fun(i);
+            }
+            return wend::value;
+          },
+          [=](const size_t &size, const std::function<void(size_t)> &fun) {
+            size_t i;
+            while ((i = atomic_i->fetch_add(1)) < size) {
+              // caf::aout(self) << "DEBUG "
+              //                 << "->worker " << iw << " "
+              //                 << "get " << i << std::endl;
+              fun(i);
+            }
+            return wend::value;
+          }};
+}
+void pfor_act(caf::blocking_actor *self, uint64_t nw) {
+  // create workers
+  vector<caf::actor> worker(nw);
+  for (auto i = 0; i < nw; i++) {
+#ifdef CAF_V4DET
+    worker[i] = self->spawn<caf::detached>(pfor_worker, i, caf::actor_cast<caf::actor>(self));
+#else
+    worker[i] = self->spawn(pfor_worker, i, caf::actor_cast<caf::actor>(self));
+#endif
+  }
+  bool running = true;
+  self->receive_while(running)(
+      [=](const size_t &start, const size_t &end, const size_t &grain,
+          const std::function<void(size_t)> &fun) {
+        auto sender = caf::actor_cast<caf::actor>(self->current_sender());
+        size_t nv = end - start;
+
+        if (grain == 1) {
+          // use the atomic version
+          atomic_i = new atomic<size_t>(0);
+
+          for (auto w : worker) {
+            self->send(w, nv, fun);
+          }
+          size_t i{0};
+          self->receive_for(i, worker.size())([=](wend) {});
+          free(atomic_i);
+        } else {
+          // use the generic with message version
+          size_t chunk = nv / nw;
+          size_t plus = nv % nw;
+          // if grain is specified use it
+          if (grain > 0 && grain < chunk) {
+            chunk = grain;
+            plus = nv % grain;
+          }
+
+          size_t p_start = start;
+          size_t n_res = 0;
+          auto send_chunk = [&](const caf::actor& to) {
+            size_t p_end = p_start + chunk;
+            if (plus > 0) {
+              p_end++;
+              plus--;
+            }
+            self->send(to, p_start, p_end, fun);
+            n_res++;
+            p_start = p_end;
+          };
+
+          for (auto w : worker) {
+            if (p_start < end) {
+              send_chunk(w);
+            } else {
+              break;
+            }
+          }
+
+          bool receive = true;
+          self->receive_while(receive)(
+              [&](wget) {
+                if (p_start < end) {
+                  send_chunk(
+                      caf::actor_cast<caf::actor>(self->current_sender()));
+                }
+              },
+              [&](wend) {
+                --n_res;
+                if (p_start >= end && n_res == 0)
+                  receive = false;
+              });
+        }
+        self->response(wend::value);
+      },
+      [&](caf::exit_msg &em) {
+        if (em.reason) {
+          self->fail_state(std::move(em.reason));
+          running = false;
+        }
+      });
+}
+#endif // CAF_V4
+#endif // CAF_V3
+#endif // CAF_V2
+#endif // CAF_V1
+
+#endif // ENABLE_CAF
 
 class Camera {
 public:
@@ -169,7 +518,14 @@ protected:
 #ifdef FF_VERSION
 	ff::ParallelFor* pf;
 #endif
-
+#ifdef ENABLE_CAF
+  std::shared_ptr<caf::actor_system> system;
+  std::shared_ptr<caf::scoped_actor> self;
+  caf::actor pf;
+  uint32_t caf_conf_wpt;
+  uint32_t caf_conf_grain;
+  uint32_t caf_conf_act;
+#endif // ENABLE_CAF
 #ifdef ENABLE_NORNIR_NATIVE
   nornir::ParallelFor* pf;
 #endif
@@ -237,6 +593,23 @@ public:
 #ifdef FF_VERSION
 	pf = NULL;
 #endif
+#ifdef ENABLE_CAF
+    std::cout << "CAF_VERSION=" << CAF_VERSION << " " << CAF_V << std::endl;
+    caf_conf_wpt = 1;
+    if(const char* env_wpt = std::getenv("CAF_CONF_WPT")){
+      caf_conf_wpt = atoi(env_wpt);
+    }
+    caf_conf_act = 0;
+    if(const char* env_act = std::getenv("CAF_CONF_ACT")){
+      caf_conf_act = atoi(env_act);
+    }
+#if defined(CAF_V2) || defined(CAF_V3) || defined(CAF_V4) || defined(CAF_V4DET)
+    caf_conf_grain = 1;
+    if(const char* env_grain = std::getenv("CAF_CONF_GRAIN")){
+      caf_conf_grain = atoi(env_grain);
+    }
+#endif  // CAF_V2 / CAF_V3
+#endif // ENABLE_CAF
 #ifdef ENABLE_NORNIR
     instr = new nornir::Instrumenter(getParametersPath(), 1, NULL, true);
 #endif
@@ -642,7 +1015,7 @@ void Context::buildSpatialIndexStructure()
 }
 
 
-#ifdef FF_VERSION
+#if defined(FF_VERSION) || defined(ENABLE_CAF)
 int Context::task(int jobID, int threadId){;}
 
 #else 
@@ -694,18 +1067,43 @@ void Context::renderFrame(Camera *camera,
       pf = new ff::ParallelFor(m_threads, false, true);
       pf->disableScheduler();
 #else
+#ifdef ENABLE_CAF
+    caf::actor_system_config cfg;
+#ifdef DETACHED_WORKER
+    cfg.set("scheduler.max-threads", 1);
+#else
+    cfg.set("scheduler.max-threads", m_threads);
+#endif
+    system = make_shared<caf::actor_system>(cfg);
+    self = make_shared<caf::scoped_actor>(*system);
+#if defined(CAF_V1) || defined(CAF_V3) || defined(CAF_V4) || defined(CAF_V4DET)
+    uint64_t nw = caf_conf_act == 0 ? m_threads * caf_conf_wpt : caf_conf_act;
+    std::cout << "N. thread: " << m_threads << " "
+              << "N. actor: "  << nw << " "<< std::flush;
+    pf = system->spawn(pfor_act, nw);
+#endif // CAF_V1 | CAF_V3 | CAF_V4 | CAF_V4DET
+#ifdef CAF_V2
+    pf = system->spawn<caf::detached>(pfor_act);
+#endif// CAF_V2
+#if defined(CAF_V2) || defined(CAF_V3) || defined(CAF_V4) || defined(CAF_V4DET)
+    std::cout << "(grain=" << caf_conf_grain << ") " << std::flush;
+#endif
+#else
 #ifdef ENABLE_NORNIR_NATIVE 
       // Nornir: ParallelFor
       pf = new nornir::ParallelFor(m_threads, new nornir::Parameters(getParametersPath()));
 #else
     // Pthreads: Create threads
 	  createThreads(m_threads);
-#endif
-#endif
+#endif // ENABLE_NORNIR_NATIVE
+#endif // ENABLE_CAF
+#endif //FF_VERSION
 	  cout << "done" << endl << flush;
 	}
       m_threadsCreated = true;
     }
+
+// std::cout << "DEBUG: elements " << m_threadData.maxTiles << std::endl;
 
 #ifdef ENABLE_NORNIR
 #ifdef DEMO_BRIGHT17
@@ -715,8 +1113,8 @@ void Context::renderFrame(Camera *camera,
   }
 #else
   instr->begin();
-#endif
-#endif
+#endif // DEMO_BRIGHT17
+#endif // ENABLE_NORNIR
   frameBuffer->startNewFrame();
   initSharedThreadData(camera,resX,resY,frameBuffer);
 
@@ -744,6 +1142,40 @@ void Context::renderFrame(Camera *camera,
          , m_threads
          );
 #else
+#ifdef ENABLE_CAF
+        // Parallel for
+        const int tilesPerRow = m_threadData.resX >> TILE_WIDTH_SHIFT;
+        static bool size_print = false;
+        if (!size_print) {
+          std::cout << "N. of elements " << m_threadData.maxTiles << std::endl;
+          size_print = true;
+        }
+        std::function<void(size_t)> fun = [&](size_t index) {
+            /* todo: get rid of '/' and '%' */
+            int sx = (index % tilesPerRow)*TILE_WIDTH;
+            int sy = (index / tilesPerRow)*TILE_WIDTH;
+            int ex = min(sx+TILE_WIDTH,m_threadData.resX);
+            int ey = min(sy+TILE_WIDTH,m_threadData.resY);
+            if (m_geometryMode == MINIRT_POLYGONAL_GEOMETRY)
+                renderTile<StandardTriangleMesh,RAY_PACKET_LAYOUT_TRIANGLE>(m_threadData.frameBuffer,sx,sy,ex,ey);
+            else if (m_geometryMode == MINIRT_SUBDIVISION_SURFACE_GEOMETRY)
+                renderTile<DirectedEdgeMesh,RAY_PACKET_LAYOUT_SUBDIVISION>(m_threadData.frameBuffer,sx,sy,ex,ey);
+            else
+                FATAL("unknown mesh type");
+          };
+#ifdef CAF_V1
+        auto promis = (*self)->request(pf, caf::infinite, (size_t) 0, (size_t) m_threadData.maxTiles, fun);
+#else
+        auto promis = (*self)->request(pf, caf::infinite, (size_t) 0, (size_t) m_threadData.maxTiles,
+                                       (size_t) caf_conf_grain, fun);
+#endif // CAF_V1
+        promis.receive(
+          [&](wend) {
+            // caf::aout(*self) << "DEBUG " << "end pf computation" << endl;
+          },
+          [&](caf::error &_) { caf::aout(*self) << "error_" << _ << endl; }
+        );
+#else
 #ifdef ENABLE_NORNIR_NATIVE
         // Parallel for
         int index;
@@ -763,11 +1195,12 @@ void Context::renderFrame(Camera *camera,
                 else
                     FATAL("unknown mesh type");
          });
-#else // ENABLE_NORNIR_NATIVE
+#else
       Context::m_tileCounter.reset();
       startThreads();
       waitForAllThreads();
 #endif // ENABLE_NORNIR_NATIVE
+#endif // ENABLE_CAF
 #endif // FF_VERSION
     }
   else

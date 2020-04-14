@@ -1,0 +1,6 @@
+#!/bin/bash
+# gcc-caf.bldconf - configuration file for PARSEC
+
+source ${PARSECDIR}/pkgs/kernels/canneal/parsec/gcc.bldconf
+
+build_env="version=caf"

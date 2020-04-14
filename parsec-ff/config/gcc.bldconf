@@ -51,10 +51,10 @@ case "${OSTYPE}" in
 esac
 
 # Compilers and preprocessors
-export CC="${CC_HOME}/bin/gcc"
-export CXX="${CC_HOME}/bin/g++"
-export CPP="${CC_HOME}/bin/cpp"
-export CXXCPP=""
+# export CC=$(which gcc)
+# export CXX=$(which g++)
+# export CPP=$(which cpp)
+# export CXXCPP=""
 
 # GNU Binutils
 export LD="${BINUTIL_HOME}/bin/${BINARY_PREFIX}ld"
@@ -65,7 +65,7 @@ export STRIP="${BINUTIL_HOME}/bin/${BINARY_PREFIX}strip"
 
 # GNU Tools
 export M4="${GNUTOOL_HOME}/bin/${BINARY_PREFIX}m4"
-export MAKE="${GNUTOOL_HOME}/bin/${BINARY_PREFIX}make"
+export MAKE="${GNUTOOL_HOME}/bin/${BINARY_PREFIX}make -j"
 
 # Flags for increased portability of binaries
 PORTABILITY_FLAGS="-static-libgcc -Wl,--hash-style=both,--as-needed"
@@ -75,7 +75,8 @@ export CFLAGS=" -O3 -funroll-loops -fprefetch-loop-arrays ${PORTABILITY_FLAGS}"
 export CXXFLAGS="-O3 -funroll-loops -fprefetch-loop-arrays -fpermissive -fno-exceptions ${PORTABILITY_FLAGS}"
 export CPPFLAGS=""
 export CXXCPPFLAGS=""
-export LDFLAGS="-L${CC_HOME}/lib64 -L${CC_HOME}/lib"
+# export LDFLAGS="-L${CC_HOME}/lib64 -L${CC_HOME}/lib"
+export LDFLAGS=""
 export LIBS=""
 export EXTRA_LIBS=""
 export PARMACS_MACRO_FILE="pthreads"
