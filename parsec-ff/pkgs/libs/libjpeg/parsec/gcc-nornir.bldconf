@@ -2,5 +2,5 @@
 
 # gcc-ff-nornir.bldconf - configuration file for PARSEC
 
-source ${PARSECDIR}/pkgs/libs/gsl/parsec/gcc-ff.bldconf
+source ${PARSECDIR}/pkgs/libs/libjpeg/parsec/gcc-ff.bldconf
 

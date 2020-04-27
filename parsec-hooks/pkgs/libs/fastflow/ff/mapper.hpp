@@ -34,7 +34,7 @@
 #include <ff/utils.hpp>
 #include <ff/mapping_utils.hpp>
 #include <vector>
-// #define ENABLE_FF_MAMMUT_MAPPING
+#define ENABLE_FF_MAMMUT_MAPPING
 #ifdef ENABLE_FF_MAMMUT_MAPPING
 #include <mammut/mammut.hpp>
 #endif

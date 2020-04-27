@@ -14,34 +14,38 @@ Daniele De Sensi, Tiziano De Matteis, Massimo Torquati, Gabriele Mencagli, Marco
 
 [Release v1.0](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
 
-All the applications (except x264) have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) pattern-based parallel programming framework. Some benchmarks have been also implemented with the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) framework. In the following table you can find more details about the pattern used for each benchmark and the file(s) containing the actual implementation, both for **FastFlow** and for **SkePU2**. The pattern descriptions reported here are an approximation and exact descriptions will come later. Some benchmarks are implemented by using different patterns (**bold** pattern is the one used by default). To run the benchmark a different pattern refer to the specific [section](#run-alternative-versions) of this document.
+All the applications (except x264) have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) pattern-based parallel programming framework.
+Some benchmarks have been also implemented with the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) framework and other with the [C++ Actor Framework (CAF)](https://github.com/actor-framework/actor-framework).
+In the following table you can find more details about the pattern used for each benchmark and the file(s) containing the actual implementation, both for **FastFlow**, **SkePU2** and **CAF**.
+The pattern descriptions reported here are an approximation and exact descriptions will come later.
+Some benchmarks are implemented by using different patterns (**bold** pattern is the one used by default).
+To run the benchmark a different pattern refer to the specific [section](#run-alternative-versions) of this document.
 
-Application   | Used Pattern           | FastFlow Files                                                       | SkePU2 Files
-------------- | -----------------------|----------------------------------------------------------------------|--------------
-Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c)        | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu.cpp)
-Bodytrack     | **Maps**               | [File 1](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/TrackingModelFF.cpp), [File 2](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/ParticleFilterFF.h)
-Canneal       | **Master-Worker**      | [File 1](parsec-ff/pkgs/kernels/canneal/src/main.cpp)
-Dedup         | Pipeline of Farms      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)
-"             | Farm                   | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farm.cpp)
-"             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farmofpipes.cpp)
-"             | **Ordering Farm**      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)
-Facesim       | **Maps**               | [File 1](parsec-ff/pkgs/apps/facesim/src/Benchmarks/facesim/FACE_EXAMPLE.h), [File 2](parsec-ff/pkgs/apps/facesim/src/Public_Library/Forces_And_Torques/DIAGONALIZED_FINITE_VOLUME_3D.cpp), [File 3](parsec-ff/pkgs/apps/facesim/src/Public_Library/Deformable_Objects/DEFORMABLE_OBJECT.cpp), [File 4](parsec-ff/pkgs/apps/facesim/src/Public_Library/Arrays/ARRAY_PARALLEL_OPERATIONS.cpp)
-Ferret        | Pipeline of Farms      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)
-"             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp)
-"             | Farm                   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)
-"             | **Farm (Optimized)**   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm-optimized.cpp)
-Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)
-Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)
-Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu.cxx)
-Streamcluster | **Maps and MapReduce** | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster.cpp) | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster_skepu.cpp)
-Swaptions     | **Map**                | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)       | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities_skepu.cpp)
-Vips          | **Farm**               | [File 1](parsec-ff/pkgs/apps/vips/src/libvips/iofuncs/threadpool.cc)
-x264          | Not available.
+| Application   | Used Pattern           | FastFlow Files                                                                                                                                                                                                                                                                                                                                                                               | SkePU2 Files                                                               | CAF Files                                                                        |
+| ------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Blackscholes  | **Map**                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c)                                                                                                                                                                                                                                                                                                                                | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes_skepu.cpp)      | [File 1](parsec-ff/pkgs/apps/blackscholes/src/blackscholes.c)                    |
+| Bodytrack     | **Maps**               | [File 1](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/TrackingModelFF.cpp), [File 2](parsec-ff/pkgs/apps/bodytrack/src/TrackingBenchmark/ParticleFilterFF.h)                                                                                                                                                                                                                          |                                                                            |                                                                                  |
+| Canneal       | **Master-Worker**      | [File 1](parsec-ff/pkgs/kernels/canneal/src/main.cpp)                                                                                                                                                                                                                                                                                                                                        |                                                                            | [File 1](parsec-ff/pkgs/kernels/canneal/src/main.cpp)                            |
+| Dedup         | Pipeline of Farms      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_pipeoffarms.cpp)                                                                                                                                                                                                                                                                                                                        |                                                                            |                                                                                  |
+| "             | Farm                   | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farm.cpp)                                                                                                                                                                                                                                                                                                                               |                                                                            |                                                                                  |
+| "             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_farmofpipes.cpp)                                                                                                                                                                                                                                                                                                                        |                                                                            |                                                                                  |
+| "             | **Ordering Farm**      | [File 1](parsec-ff/pkgs/kernels/dedup/src/encoder_ff_ofarm.cpp)                                                                                                                                                                                                                                                                                                                              |                                                                            |                                                                                  |
+| Facesim       | **Maps**               | [File 1](parsec-ff/pkgs/apps/facesim/src/Benchmarks/facesim/FACE_EXAMPLE.h), [File 2](parsec-ff/pkgs/apps/facesim/src/Public_Library/Forces_And_Torques/DIAGONALIZED_FINITE_VOLUME_3D.cpp), [File 3](parsec-ff/pkgs/apps/facesim/src/Public_Library/Deformable_Objects/DEFORMABLE_OBJECT.cpp), [File 4](parsec-ff/pkgs/apps/facesim/src/Public_Library/Arrays/ARRAY_PARALLEL_OPERATIONS.cpp) |                                                                            |                                                                                  |
+| Ferret        | Pipeline of Farms      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-pipeoffarms.cpp)                                                                                                                                                                                                                                                                                                                 |                                                                            | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-caf-pipeoffarms.cpp)    |
+| "             | Farm of Pipelines      | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farmofpipes.cpp)                                                                                                                                                                                                                                                                                                                 |                                                                            | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-caf-farmofpipes.cpp)    |
+| "             | Farm                   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm.cpp)                                                                                                                                                                                                                                                                                                                        |                                                                            |                                                                                  |
+| "             | **Farm (Optimized)**   | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-ff-farm-optimized.cpp)                                                                                                                                                                                                                                                                                                              |                                                                            | [File 1](parsec-ff/pkgs/apps/ferret/src/benchmark/ferret-caf-farm-optimized.cpp) |
+| Fluidanimate  | **Maps**               | [File 1](parsec-ff/pkgs/apps/fluidanimate/src/ff.cpp)                                                                                                                                                                                                                                                                                                                                        |                                                                            |                                                                                  |
+| Freqmine      | **Maps**               | [File 1](parsec-ff/pkgs/apps/freqmine/src/fp_tree_ff.cpp)                                                                                                                                                                                                                                                                                                                                    |                                                                            |                                                                                  |
+| Raytrace      | **Map**                | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)                                                                                                                                                                                                                                                                                                                                    | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render_skepu.cxx)            | [File 1](parsec-ff/pkgs/apps/raytrace/src/LRT/render.cxx)                        |
+| Streamcluster | **Maps and MapReduce** | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster.cpp)                                                                                                                                                                                                                                                                                                                         | [File 1](parsec-ff/pkgs/kernels/streamcluster/src/streamcluster_skepu.cpp) |                                                                                  |
+| Swaptions     | **Map**                | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities.cpp)                                                                                                                                                                                                                                                                                                                               | [File 1](parsec-ff/pkgs/apps/swaptions/src/HJM_Securities_skepu.cpp)       |                                                                                  |
+| Vips          | **Farm**               | [File 1](parsec-ff/pkgs/apps/vips/src/libvips/iofuncs/threadpool.cc)                                                                                                                                                                                                                                                                                                                         |                                                                            |                                                                                  |
+| x264          | Not available.         |                                                                                                                                                                                                                                                                                                                                                                                              |                                                                            |                                                                                  |
 
 
 These implementations have been engineered in order to be used with the standard PARSEC tools.
-Accordingly, you can use and evaluate the parallel patterns implementations together with
-the *Pthreads*, *OpenMP* and *TBB* versions already present in PARSEC.
+Accordingly, you can use and evaluate the parallel patterns implementations together with the *Pthreads*, *OpenMP* and *TBB* versions already present in PARSEC.
 After following this guide, more details can be found on [PARSEC Website](http://parsec.cs.princeton.edu/).
 
 # Download
@@ -65,8 +69,7 @@ Then, run:
 ./install.sh 
 ```
 
-These commands could take few minutes to complete, since it will download the original PARSEC
-implementations with all the input datasets (around 3GB) and all the needed dependencies.
+These commands could take few minutes to complete, since it will download the original PARSEC implementations with all the input datasets (around 3GB) and all the needed dependencies.
 
 You can specify the following parameters to the `./install.sh` command:
 * `--nomeasure`: In this case the infrastructure for measuring execution time and energy 
@@ -118,10 +121,10 @@ If you also want to compile the other existing versions of the benchmark, just r
 * *gcc-pthreads* for the Pthreads implementation.
 * *gcc-openmp* for the OpenMP implementation.
 * *gcc-tbb* for the Intel TBB implementation.
+* *gcc-caf for the CAF implementation
 
-Note that not all these implementations are available for all the benchmarks. For more details on supported 
-implementations, please refer to the original [PARSEC documentation](http://wiki.cs.princeton.edu/index.php/PARSEC) 
-(and to the top table in this file for the SkePU2 and FastFlow versions).
+Note that not all these implementations are available for all the benchmarks.
+For more details on supported implementations, please refer to the original [PARSEC documentation](http://wiki.cs.princeton.edu/index.php/PARSEC) (and to the top table in this file for the SkePU2 and FastFlow versions).
 
 **ATTENTION: If you plan to execute the benchmark with more than 1024 threads, you need to modify the following MACROS:**
 * `MAX_THREADS` in `pkgs/apps/blackscholes/src/c.m4.pthreads` file.
@@ -254,21 +257,21 @@ to [Nornir Documentation](http://danieledesensi.github.io/nornir/description.htm
 The meaning of *iteration* (i.e. the way in which we measure the throughput) is application-specific. In the
 following table we show what do we mean for *iteration* for each benchmark application:
 
-Application   | Iteration
-------------- | ---------
-Blacksholes   | 1 Stock Option
-Bodytrack     | 1 Frame
-Canneal       | 1 Move
-Dedup         | 1 Chunk
-Facesim       | 1 Frame
-Ferret        | 1 Query
-Fluidanimate  | 1 Frame
-Freqmine      | 1 Call of the *FP_growth* function
-Raytrace      | 1 Frame
-Streamcluster | 1 Evaluation for opening a new center
-Swaptions     | 1 Simulation
-Vips          | 1 Image Tile
-x264          | 1 Frame
+| Application   | Iteration                             |
+| ------------- | ------------------------------------- |
+| Blacksholes   | 1 Stock Option                        |
+| Bodytrack     | 1 Frame                               |
+| Canneal       | 1 Move                                |
+| Dedup         | 1 Chunk                               |
+| Facesim       | 1 Frame                               |
+| Ferret        | 1 Query                               |
+| Fluidanimate  | 1 Frame                               |
+| Freqmine      | 1 Call of the *FP_growth* function    |
+| Raytrace      | 1 Frame                               |
+| Streamcluster | 1 Evaluation for opening a new center |
+| Swaptions     | 1 Simulation                          |
+| Vips          | 1 Image Tile                          |
+| x264          | 1 Frame                               |
 
 For example, the example XML file we shown before would
 enforce *Blackscholes* to process at least 100 Stock Options per second.

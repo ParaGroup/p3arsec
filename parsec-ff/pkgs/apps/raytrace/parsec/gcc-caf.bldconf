@@ -21,7 +21,7 @@ build_deps="mesa"  # removed 'cmake' dependency because do not compile
 # NOTE: By default PARSEC links raytrace to mesa with Xlib driver so that all
 #       computations are done by the CPU. This requires to also link to the X
 #       libraries and the pthreads library.
-build_env="CXXFLAGS=\"-I${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/include ${CXXFLAGS} -fexceptions -fno-strict-aliasing -fno-align-labels -DNDEBUG -D_MM_NO_ALIGN_CHECK -DFF_VERSION\" LDFLAGS=\"-L${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/lib ${LDFLAGS}\" LIBS=\"${LIBS} -lGL -lGLU -lXmu -lXext -lXau -lX11 -ldl -lpthread\""
+build_env="CXXFLAGS=\"-DCAF_V${CAF_V} -I${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/include ${CXXFLAGS} -fexceptions -fno-strict-aliasing -fno-align-labels -DNDEBUG -DENABLE_CAF\" LDFLAGS=\"-L${PARSECDIR}/pkgs/libs/mesa/inst/${PARSECPLAT}/lib ${LDFLAGS}\" LIBS=\"${LIBS} -lGL -lGLU -lXmu -lXext -lXau -lX11 -ldl -lpthread\""
 
 # Whether the build system supports only in-place compilation.
 # If TRUE, then all sources will be copied to the build directory before we

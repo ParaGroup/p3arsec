@@ -30,6 +30,9 @@ ifdef version
   ifeq "$(version)" "ff"
     MT        = -DENABLE_FF
   endif
+  ifeq "$(version)" "caf"
+    MT        = -DENABLE_CAF
+  endif
   ifeq "$(version)" "skepu"
     #./skepu-tool-openmp blackscholes_skepu.cpp -name=blackscholes_skepu_omp -fnames=exp,log -- -std=c++11 -I../lib/Headers -I/tmp/p3arsec/pkgs/libs/skepu2/include -I/usr/include 
 	CSRC = blackscholes_skepu_omp.cpp
