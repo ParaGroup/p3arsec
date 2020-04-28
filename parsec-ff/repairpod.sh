@@ -5,3 +5,4 @@ do
     echo "Replacing '=item $i' to '=item C<$i>'"
     grep -rl "=item $i" * | grep ".*\.pod" | xargs sed -i "s/=item $i/=item C<$i>/g"
 done
+exit 0
