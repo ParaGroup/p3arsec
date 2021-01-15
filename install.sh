@@ -80,10 +80,10 @@ else
 		mkdir pkgs/libs/mammut
 		git clone https://github.com/DanieleDeSensi/mammut.git pkgs/libs/mammut
 		pushd pkgs/libs/mammut
-		git checkout 075a2f2
+		git checkout de6ce29
 		mkdir build 
 		pushd build
-		cmake .. && make
+		cmake -DENABLE_RAPLCAP=OFF .. && make
 		popd
 		popd
 		# Add "hooks" to 'build_deps'
