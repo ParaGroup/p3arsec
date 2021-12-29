@@ -2,17 +2,8 @@
 [![release](https://img.shields.io/github/release/paragroup/p3arsec.svg)](https://github.com/paragroup/p3arsec/releases/latest)
 [![HitCount](http://hits.dwyl.io/paragroup/p3arsec.svg)](http://hits.dwyl.io/paragroup/p3arsec)
 
-
 # P<sup>3</sup>ARSEC
 This repository contains parallel patterns implementations of some applications contained in the PARSEC benchmark.
-
-The structure and modelling of the applications is described in the paper:
-
-[**Bringing Parallel Patterns out of the Corner: the P<sup>3</sup>ARSEC Benchmark Suite**</br>
-Daniele De Sensi, Tiziano De Matteis, Massimo Torquati, Gabriele Mencagli, Marco Danelutto</br>
-*ACM Transactions on Architecture and Code Optimization (TACO), October 2017* </br>](https://dl.acm.org/citation.cfm?id=3132710)
-
-[Release v1.0](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
 
 All the applications (except x264) have been implemented by using the [FastFlow](http://calvados.di.unipi.it/) pattern-based parallel programming framework.
 Some benchmarks have been also implemented with the [SkePU2](https://www.ida.liu.se/labs/pelab/skepu/) framework and other with the [C++ Actor Framework (CAF)](https://github.com/actor-framework/actor-framework).
@@ -43,12 +34,11 @@ To run the benchmark a different pattern refer to the specific [section](#run-al
 | Vips          | **Farm**               | [File 1](parsec-ff/pkgs/apps/vips/src/libvips/iofuncs/threadpool.cc)                                                                                                                                                                                                                                                                                                                         |                                                                            |                                                                                  |
 | x264          | Not available.         |                                                                                                                                                                                                                                                                                                                                                                                              |                                                                            |                                                                                  |
 
-
 These implementations have been engineered in order to be used with the standard PARSEC tools.
 Accordingly, you can use and evaluate the parallel patterns implementations together with the *Pthreads*, *OpenMP* and *TBB* versions already present in PARSEC.
 After following this guide, more details can be found on [PARSEC Website](http://parsec.cs.princeton.edu/).
 
-# Download
+## Download
 To download the last version of P<sup>3</sup>RSEC, run the
 following commands:
 
@@ -84,8 +74,7 @@ only if `./install.sh --fast` has already been run.
 source to source compiler. This is not mandatory and you only need it if you want to modify the 
 `*_skepu.cpp` files. This parameter is mainly intended for developers.
 
-
-# Compile
+## Compile
 To let PARSEC properly work, some dependencies needs to be installed. For Ubuntu systems, you can do it with the following command:
 ```
 sudo apt-get install git build-essential m4 x11proto-xext-dev libglu1-mesa-dev libxi-dev libxmu-dev libtbb-dev libssl-dev
@@ -130,7 +119,7 @@ For more details on supported implementations, please refer to the original [PAR
 * `MAX_THREADS` in `pkgs/apps/blackscholes/src/c.m4.pthreads` file.
 * `MAX_NUM_THREADS` in `pkgs/libs/fastflow/ff/config.hpp` file.
 
-# Run
+## Run
 Once you compiled a benchmark, you can run it with:
 ```
 ./parsecmgmt -a run -p [BenchmarkName] -c gcc-ff -n [ConcurrencyLevel]
@@ -159,7 +148,7 @@ Accordingly, we have the following values:
 Some parallel patterns implementations may not follow this rule. For example, the *ordered farm* implementation
 of the *dedup* benchmark will activate n+2 threads.
 
-## Measuring time and energy consumption
+### Measuring time and energy consumption
 If you want to measure energy consumption of the benchmarks (and if you __**do not**__ specified the `--nomeasure` parameter in
 the `./install.sh` script), 
 please run the benchmarks with `sudo`. In this case, in the output of the program you will find something like:
@@ -199,7 +188,7 @@ on the running architecture. TYPE can be one of the followings:
 	
 If energy counters are not present, only execution time will be printed.
 
-# Run alternative versions
+## Run alternative versions
 Some applications (e.g. *ferret* and *dedup*) have been implemented according to different pattern compositions.
 To run versions different from the default one, you need first to remove the existing one (if present).
 To do so, execute:
@@ -210,7 +199,8 @@ To do so, execute:
 ```
 
 To compile and run the other versions, please refer to the following sections.
-## Dedup
+
+### Dedup
 At line 33 of the [Makefile](p3arsec/pkgs/kernels/dedup/src/Makefile), replace `encoder_ff_pipeoffarms.o` with:
 
 * `encoder_ff_farm.o` if you want to run the *farm* version.
@@ -220,7 +210,7 @@ At line 33 of the [Makefile](p3arsec/pkgs/kernels/dedup/src/Makefile), replace `
 
 After that, build and run *dedup* as usual.
 
-## Ferret
+### Ferret
 At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace `ferret-ff-pipeoffarms` with:
 
 * `ferret-ff-farm` if you want to run the *farm* version.
@@ -230,8 +220,7 @@ At line 78 of the [Makefile](p3arsec/pkgs/apps/swaptions/src/Makefile), replace 
 
 After that, build and run *ferret* as usual.
 
-# Enforcing performance and power consumption objectives
-
+## Enforcing performance and power consumption objectives
 It is possible to specify requirements on performance (throughput or execution time) and/or power and energy
 consumption for all the benchmarks. We provide this possibility by exploiting dynamic reconfiguration of the applications 
 by relying on [Nornir](http://danieledesensi.github.io/nornir/) runtime. The runtime will automatically change the number of cores
@@ -287,5 +276,30 @@ configurations (to be specified through the ```-c``` parameter):
 **ATTENTION: To run *gcc-&ast;-nornir* configurations sudo rights are required since we need to perform some high-priviledge operations such as: reading the power consumption,
 dynamically scaling the clock frequency, etc...**
 
-# Contributors
-P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto:d.desensi.software@gmail.com) and [Tiziano De Matteis](mailto:dematteis@di.unipi.it).
+## How to Cite
+The structure and modelling of the applications is described in the paper:
+```
+@article{10.1145/3132710,
+ author = {De Sensi, Daniele and De Matteis, Tiziano and Torquati, Massimo and Mencagli, Gabriele and Danelutto, Marco},
+ title = {Bringing Parallel Patterns Out of the Corner: The P3 ARSEC Benchmark Suite},
+ year = {2017},
+ issue_date = {December 2017},
+ publisher = {Association for Computing Machinery},
+ address = {New York, NY, USA},
+ volume = {14},
+ number = {4},
+ issn = {1544-3566},
+ url = {https://doi.org/10.1145/3132710},
+ doi = {10.1145/3132710},
+ journal = {ACM Trans. Archit. Code Optim.},
+ month = {oct},
+ articleno = {33},
+ numpages = {26},
+ keywords = {multicore programming, parsec, Parallel patterns, algorithmic skeletons, benchmarking}
+}
+```
+
+[Release v1.0](https://github.com/paragroup/p3arsec/releases/tag/v1.0) was used in the paper.
+
+## Contributors
+P<sup>3</sup>ARSEC has been developed by [Daniele De Sensi](mailto: ddesensi@ethz.ch) and [Tiziano De Matteis](mailto:tdematt@inf.ethz.ch).
